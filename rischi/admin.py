@@ -1,4 +1,6 @@
+from django import forms
 from django.contrib import admin
+from django.contrib.admin.widgets import FilteredSelectMultiple
 
 from . import models as m
 
@@ -19,8 +21,60 @@ class SchedaModelloAdmin(admin.ModelAdmin):
 
 @admin.register(m.Modulo)
 class ModuloAdmin(admin.ModelAdmin):
-    list_display = ("nome", "sempre_attivo", "attivo", "ordine")
+    list_display = ("nome", "sempre_attivo", "attivato_da", "attivo", "ordine")
     list_editable = ("ordine",)
+    exclude = ("caratteristiche",)
+    readonly_fields = ("attivato_da",)
+
+    @admin.display(description="attivato da")
+    def attivato_da(self, obj):
+        if obj.sempre_attivo:
+            return "sempre"
+        return ", ".join(c.nome for c in obj.caratteristiche.all()) or "nessuna caratteristica"
+
+
+class CaratteristicaForm(forms.ModelForm):
+    moduli = forms.ModelMultipleChoiceField(
+        m.Modulo.objects.filter(sempre_attivo=False),
+        required=False,
+        widget=FilteredSelectMultiple("moduli", is_stacked=False),
+        label="Moduli da attivare",
+        help_text="Quando la macchina ha questa caratteristica, l'analisi propone le schede di questi moduli.",
+    )
+
+    class Meta:
+        model = m.Caratteristica
+        fields = ["nome", "descrizione"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["moduli"].initial = self.instance.moduli.all()
+
+    def save(self, commit=True):
+        caratteristica = super().save(commit=commit)
+        if commit:
+            caratteristica.moduli.set(self.cleaned_data["moduli"])
+        else:
+            vecchio_save_m2m = self.save_m2m
+
+            def save_m2m():
+                vecchio_save_m2m()
+                caratteristica.moduli.set(self.cleaned_data["moduli"])
+
+            self.save_m2m = save_m2m
+        return caratteristica
+
+
+@admin.register(m.Caratteristica)
+class CaratteristicaAdmin(admin.ModelAdmin):
+    form = CaratteristicaForm
+    list_display = ("nome", "moduli_attivati")
+    search_fields = ("nome",)
+
+    @admin.display(description="moduli attivati")
+    def moduli_attivati(self, obj):
+        return ", ".join(mo.nome for mo in obj.moduli.all())
 
 
 
@@ -74,7 +128,7 @@ class RegistroAdmin(admin.ModelAdmin):
         return False
 
 
-for modello in (m.Pericolo, m.CondizioneOperativa, m.Caratteristica, m.RiferimentoNormativo, m.Cliente, m.Fabbricante, m.LegislazioneUE):
+for modello in (m.Pericolo, m.CondizioneOperativa, m.RiferimentoNormativo, m.Cliente, m.Fabbricante, m.LegislazioneUE):
     admin.site.register(modello)
 
 

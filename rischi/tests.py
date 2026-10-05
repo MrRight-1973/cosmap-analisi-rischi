@@ -341,3 +341,28 @@ class DocumentiTest(BaseConLibreria):
         self.approva()
         self.client.post(reverse("genera_documento", args=[self.rev.pk, "valutazione"]))
         self.assertTrue(DocumentoGenerato.objects.get(tipo="VALUTAZIONE").definitivo)
+
+
+class AmministrazioneCaratteristicheTest(BaseConLibreria):
+    def test_moduli_si_scelgono_dalla_caratteristica(self):
+        from .models import Modulo
+
+        admin_utente = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(admin_utente)
+        robot = Modulo.objects.get(nome__startswith="Gruppo di smerigliatura")
+        zona = Modulo.objects.get(nome__startswith="Zona smerigliatura")
+        risposta = self.client.post(
+            reverse("admin:rischi_caratteristica_add"),
+            {"nome": "Robot antropomorfo", "descrizione": "", "moduli": [robot.pk, zona.pk]},
+        )
+        self.assertEqual(risposta.status_code, 302)
+        nuova = Caratteristica.objects.get(nome="Robot antropomorfo")
+        self.assertEqual(set(nuova.moduli.all()), {robot, zona})
+
+        pagina = self.client.get(reverse("admin:rischi_caratteristica_change", args=[nuova.pk]))
+        self.assertContains(pagina, "Moduli da attivare")
+        self.assertContains(self.client.get(reverse("admin:rischi_modulo_changelist")), "Robot antropomorfo")
+
+        macchina = self.nuova_macchina("28-01", "Robot antropomorfo")
+        analisi = servizi.crea_analisi_da_libreria(macchina, self.compilatore)
+        self.assertTrue(analisi.revisione_corrente.schede.filter(modulo=robot).exists())
