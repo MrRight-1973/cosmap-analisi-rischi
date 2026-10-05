@@ -5,7 +5,7 @@ macchine Cosmap secondo il Regolamento (UE) 2023/1230.
 
 La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
 
-- **Libreria**: moduli, schede modello, misure, pericoli (EN ISO 12100 all. B),
+- **Libreria**: moduli (con le loro schede), schede modello, misure, pericoli (EN ISO 12100 all. B),
   requisiti RESS, norme, metodo di stima (ISO/TR 14121-2 ibrido). Si gestisce
   dalla sezione "Libreria e utenti" (amministrazione).
 - **Analisi di commessa**: commessa → macchina → analisi → revisioni → schede.
@@ -18,8 +18,11 @@ La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
 ## Cosa fa il prototipo
 
 1. Importa la libreria dal file Excel (`dati/Libreria_analisi_rischi_Cosmap.xlsx`).
-2. Crea una commessa con la sua macchina: dalle caratteristiche scelte propone
-   le schede dei moduli attivati, oppure copia un'analisi già approvata.
+2. Crea una commessa con la sua macchina: si scelgono i moduli della libreria e
+   l'analisi propone le loro schede, oppure si copia un'analisi già approvata.
+   I moduli si cambiano anche dopo, dai dati della macchina, finché la revisione
+   è in bozza: le schede dei moduli aggiunti entrano come proposte, quelle dei
+   moduli tolti escono solo se ancora da decidere.
 3. Il compilatore conferma, modifica o scarta ogni scheda (lo scarto richiede
    la motivazione), compila stime e misure, segna i requisiti non applicabili.
 4. Classe ed esito si calcolano dalla matrice del metodo, come nel file Excel.

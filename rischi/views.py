@@ -12,7 +12,14 @@ from django.views.decorators.http import require_POST
 
 from . import servizi
 from . import documenti
-from .forms import ApplicabilitaFormSet, MacchinaForm, MisureFormSet, NuovaCommessaForm, SchedaForm
+from .forms import (
+    ApplicabilitaFormSet,
+    MacchinaForm,
+    MisureFormSet,
+    ModuliMacchinaForm,
+    NuovaCommessaForm,
+    SchedaForm,
+)
 from .models import Cliente, Commessa, DocumentoGenerato, Macchina, RegistroModifica, Revisione, SchedaAnalisi
 
 
@@ -67,7 +74,7 @@ def nuova_commessa(request):
                     materiali=d["materiali"],
                     funzione=d["funzione"],
                 )
-                macchina.caratteristiche.set(d["caratteristiche"])
+                macchina.moduli.set(d["moduli"])
                 macchina.altre_legislazioni.set(d["altre_legislazioni"])
                 if d["origine"] == "COPIA":
                     analisi = servizi.crea_analisi_da_copia(macchina, d["copia_da"], request.user)
@@ -262,17 +269,37 @@ def macchina(request, pk):
         not analisi or analisi.revisione_corrente.modificabile
     )
     form = MacchinaForm(request.POST or None, instance=macchina)
+    form_moduli = ModuliMacchinaForm(request.POST or None, initial={"moduli": macchina.moduli.all()})
     if not modificabile:
-        for campo in form.fields.values():
+        for campo in list(form.fields.values()) + list(form_moduli.fields.values()):
             campo.disabled = True
     if request.method == "POST":
         if not modificabile:
             raise PermissionDenied("Dati della macchina modificabili solo con una revisione in bozza.")
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Dati della macchina salvati.")
-            return redirect("analisi", pk=analisi.pk) if analisi else redirect("elenco_commesse")
-    return render(request, "rischi/macchina.html", {"form": form, "macchina": macchina, "analisi": analisi, "modificabile": modificabile})
+        if form.is_valid() and form_moduli.is_valid():
+            try:
+                with transaction.atomic():
+                    form.save()
+                    aggiunte, tolte, rimaste = servizi.cambia_moduli(
+                        macchina, form_moduli.cleaned_data["moduli"], request.user
+                    )
+            except (PermissionDenied, ValidationError) as e:
+                _errore(request, e)
+            else:
+                messages.success(request, "Dati della macchina salvati.")
+                if aggiunte or tolte:
+                    messages.info(request, f"Schede aggiunte come proposte: {aggiunte}; schede tolte: {tolte}.")
+                if rimaste:
+                    messages.warning(
+                        request,
+                        f"{rimaste} schede dei moduli tolti erano già decise e restano nell'analisi: scartale se non servono.",
+                    )
+                return redirect("analisi", pk=analisi.pk) if analisi else redirect("elenco_commesse")
+    return render(
+        request,
+        "rischi/macchina.html",
+        {"form": form, "form_moduli": form_moduli, "macchina": macchina, "analisi": analisi, "modificabile": modificabile},
+    )
 
 
 NOMI_FILE = {

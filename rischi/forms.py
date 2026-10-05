@@ -3,12 +3,12 @@ from django.forms import inlineformset_factory, modelformset_factory
 
 from .models import (
     ApplicabilitaRequisito,
-    Caratteristica,
     LegislazioneUE,
     Cliente,
     Commessa,
     Macchina,
     MisuraAnalisi,
+    Modulo,
     RequisitoRESS,
     Revisione,
     RiferimentoNormativo,
@@ -27,6 +27,17 @@ ETICHETTE_FATTORI = {
     "pr": "Pr – Probabilità dell'evento",
     "av": "Av – Possibilità di evitare il danno",
 }
+
+
+class SceltaModuli(forms.ModelMultipleChoiceField):
+    def __init__(self, **kwargs):
+        kwargs.setdefault("widget", forms.CheckboxSelectMultiple)
+        kwargs.setdefault("required", False)
+        kwargs.setdefault("label", "Moduli della libreria")
+        super().__init__(Modulo.objects.filter(attivo=True), **kwargs)
+
+    def label_from_instance(self, modulo):
+        return f"{modulo.nome} ({modulo.condizione})" if modulo.condizione else modulo.nome
 
 
 def _scelta(valori):
@@ -66,11 +77,10 @@ class NuovaCommessaForm(forms.Form):
         label="Altra legislazione UE applicabile",
         initial=lambda: LegislazioneUE.objects.filter(predefinita=True),
     )
-    caratteristiche = forms.ModelMultipleChoiceField(
-        Caratteristica.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=False,
-        help_text="Determinano quali moduli della libreria vengono proposti.",
+    moduli = SceltaModuli(
+        initial=lambda: Modulo.objects.filter(attivo=True, sempre_attivo=True),
+        help_text="Le schede di questi moduli vengono proposte nell'analisi. Si possono cambiare anche dopo, "
+        "dai dati della macchina. Copiando un'analisi si prendono i moduli di quella.",
     )
 
     origine = forms.ChoiceField(choices=ORIGINE, widget=forms.RadioSelect, initial="LIBRERIA")
@@ -117,6 +127,13 @@ class MacchinaForm(forms.ModelForm):
             "organismo_notificato": forms.Textarea(attrs={"rows": 2}),
             "altre_legislazioni": forms.CheckboxSelectMultiple,
         }
+
+
+class ModuliMacchinaForm(forms.Form):
+    moduli = SceltaModuli(
+        help_text="Aggiungendo un modulo le sue schede entrano nella bozza come proposte. Togliendolo escono "
+        "le sue schede ancora da decidere; quelle già decise restano e vanno scartate a mano.",
+    )
 
 
 class SchedaForm(forms.ModelForm):

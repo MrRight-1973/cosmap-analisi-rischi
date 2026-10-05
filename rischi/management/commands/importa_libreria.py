@@ -13,7 +13,6 @@ from django.db import transaction
 
 from rischi.models import (
     CellaMatrice,
-    Caratteristica,
     CondizioneOperativa,
     Esito,
     FasciaClasse,
@@ -233,22 +232,17 @@ class Command(BaseCommand):
             if not nome or nome.lower() == "totale":
                 continue
             condizione = testo(r[2])
-            modulo, _ = Modulo.objects.update_or_create(
+            Modulo.objects.update_or_create(
                 nome=nome,
                 defaults={
                     "descrizione": testo(r[4]),
+                    "condizione": "" if condizione.lower() == "sempre" else condizione[:200],
                     "sempre_attivo": condizione.lower() == "sempre",
                     "ordine": ordine,
                 },
             )
-            caratteristica = re.sub(r"^Se present[ei]\s+", "", condizione, flags=re.I)
-            if caratteristica and caratteristica.lower() != "sempre":
-                c, _ = Caratteristica.objects.get_or_create(nome=caratteristica[:1].upper() + caratteristica[1:])
-                modulo.caratteristiche.set([c])
-            else:
-                modulo.caratteristiche.clear()
             n += 1
-        self.stdout.write(f"Moduli: {n}, caratteristiche: {Caratteristica.objects.count()}")
+        self.stdout.write(f"Moduli: {n}")
 
     # -- Schede ---------------------------------------------------------------
 
