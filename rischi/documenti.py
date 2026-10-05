@@ -283,12 +283,28 @@ def dichiarazione(revisione, lingua="it"):
 # ---------------------------------------------------------------------------
 
 
-def _stima(scheda, quale):
-    se = getattr(scheda, f"se_{quale}")
-    fr, pr, av = (getattr(scheda, f"{f}_{quale}") for f in ("fr", "pr", "av"))
-    cl = getattr(scheda, f"cl_{quale}")
-    esito = getattr(scheda, f"esito_{quale}")
-    return [se, fr, pr, av, cl, ESITI_TESTO.get(esito, "–")], esito
+FATTORI = ("Se", "Fr", "Pr", "Av")
+
+
+def _valore(descrizioni, fattore, valore):
+    if valore is None:
+        return "–"
+    descrizione = descrizioni.get((fattore, valore))
+    return f"{valore} – {descrizione}" if descrizione else str(valore)
+
+
+def _tabella_stima(doc, scheda, descrizioni):
+    righe = [
+        [fattore] + [_valore(descrizioni, fattore, getattr(scheda, f"{fattore.lower()}_{quale}")) for quale in ("iniziale", "finale")]
+        for fattore in FATTORI
+    ]
+    righe.append(["Cl"] + [_valore({}, "", getattr(scheda, f"cl_{quale}")) for quale in ("iniziale", "finale")])
+    esiti = [getattr(scheda, f"esito_{quale}") for quale in ("iniziale", "finale")]
+    righe.append(["Esito"] + [ESITI_TESTO.get(e, "–") for e in esiti])
+    tabella = _tabella(doc, ["", "Stima iniziale", "Stima finale"], righe, [2, 7.5, 7.5])
+    for cella, esito in zip(tabella.rows[-1].cells[1:], esiti):
+        if esito:
+            _sfondo(cella, ESITI_COLORE[esito])
 
 
 def valutazione(revisione):
@@ -332,6 +348,16 @@ def valutazione(revisione):
             if esito:
                 _sfondo(cella, ESITI_COLORE[esito])
 
+    descrizioni = metodo.descrizioni()
+    if descrizioni:
+        doc.add_paragraph("Valori dei fattori:")
+        _tabella(
+            doc,
+            ["Fattore", "Valore", "Descrizione"],
+            [[f, v, descrizioni[(f, v)]] for f in FATTORI for v in sorted({v for (ff, v) in descrizioni if ff == f}, reverse=True)],
+            [2, 2, 13],
+        )
+
     doc.add_heading("Requisiti non applicabili", level=1)
     non_applicabili = revisione.applicabilita.filter(applicabile=False).select_related("requisito")
     if non_applicabili:
@@ -353,12 +379,7 @@ def valutazione(revisione):
                 for p in pericoli:
                     doc.add_paragraph(f"{p.codice} {p.descrizione}", style="List Bullet")
             if s.ha_stima_iniziale or s.ha_stima_finale:
-                iniziale, esito_i = _stima(s, "iniziale")
-                finale, esito_f = _stima(s, "finale")
-                tabella = _tabella(doc, ["Stima", "Se", "Fr", "Pr", "Av", "Cl", "Esito"], [["Iniziale"] + iniziale, ["Finale"] + finale])
-                for riga, esito in zip(tabella.rows[1:], (esito_i, esito_f)):
-                    if esito:
-                        _sfondo(riga.cells[6], ESITI_COLORE[esito])
+                _tabella_stima(doc, s, descrizioni)
             misure = list(s.misure.all())
             if misure:
                 doc.add_paragraph().add_run("Misure di protezione").bold = True

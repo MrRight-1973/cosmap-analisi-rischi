@@ -1,4 +1,5 @@
 {% extends "rischi/base.html" %}
+{% load rischi_extra %}
 {% block titolo %}Scheda {{ scheda.codice|default:"nuova" }}{% endblock %}
 {% block contenuto %}
 <p><a href="{% url 'analisi' revisione.analisi_id %}">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
@@ -15,8 +16,8 @@
   {% include "rischi/_campo.html" with f=form.pericoli %}
 </fieldset>
 <fieldset><legend>Stima iniziale</legend>
-  <div class="stime">{% include "rischi/_campo.html" with f=form.se_iniziale %}{% include "rischi/_campo.html" with f=form.fr_iniziale %}{% include "rischi/_campo.html" with f=form.pr_iniziale %}{% include "rischi/_campo.html" with f=form.av_iniziale %}</div>
-  {% if scheda.pk %}<p class="sotto">Cl = {{ scheda.cl_iniziale|default:"–" }} · esito: {{ scheda.esito_iniziale|default:"–" }}</p>{% endif %}
+  <div class="stime fattori">{% include "rischi/_campo.html" with f=form.se_iniziale %}{% include "rischi/_campo.html" with f=form.fr_iniziale %}{% include "rischi/_campo.html" with f=form.pr_iniziale %}{% include "rischi/_campo.html" with f=form.av_iniziale %}</div>
+  {% if scheda.pk %}<p class="sotto">Cl = Fr + Pr + Av = {{ scheda.cl_iniziale|default:"–" }} · esito: {% esito scheda.se_iniziale scheda.cl_iniziale scheda.esito_iniziale %}</p>{% endif %}
 </fieldset>
 <fieldset><legend>Misure di protezione</legend>
   {{ misure.management_form }}
@@ -28,8 +29,8 @@
   {% endfor %}
 </fieldset>
 <fieldset><legend>Stima finale</legend>
-  <div class="stime">{% include "rischi/_campo.html" with f=form.se_finale %}{% include "rischi/_campo.html" with f=form.fr_finale %}{% include "rischi/_campo.html" with f=form.pr_finale %}{% include "rischi/_campo.html" with f=form.av_finale %}</div>
-  {% if scheda.pk %}<p class="sotto">Cl = {{ scheda.cl_finale|default:"–" }} · esito: {{ scheda.esito_finale|default:"–" }}</p>{% endif %}
+  <div class="stime fattori">{% include "rischi/_campo.html" with f=form.se_finale %}{% include "rischi/_campo.html" with f=form.fr_finale %}{% include "rischi/_campo.html" with f=form.pr_finale %}{% include "rischi/_campo.html" with f=form.av_finale %}</div>
+  {% if scheda.pk %}<p class="sotto">Cl = Fr + Pr + Av = {{ scheda.cl_finale|default:"–" }} · esito: {% esito scheda.se_finale scheda.cl_finale scheda.esito_finale %}</p>{% endif %}
   {% include "rischi/_campo.html" with f=form.testo_istruzioni %}
   {% include "rischi/_campo.html" with f=form.norme %}
   {% include "rischi/_campo.html" with f=form.note %}

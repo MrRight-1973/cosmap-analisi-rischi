@@ -21,6 +21,14 @@ VALORI_PR = [(None, "–"), (1, "1"), (2, "2"), (3, "3"), (4, "4"), (5, "5")]
 VALORI_AV = [(None, "–"), (1, "1"), (3, "3"), (5, "5")]
 
 
+ETICHETTE_FATTORI = {
+    "se": "Se – Gravità",
+    "fr": "Fr – Frequenza di esposizione",
+    "pr": "Pr – Probabilità dell'evento",
+    "av": "Av – Possibilità di evitare il danno",
+}
+
+
 def _scelta(valori):
     return forms.TypedChoiceField(choices=valori, coerce=int, empty_value=None, required=False)
 
@@ -174,10 +182,22 @@ class SchedaForm(forms.ModelForm):
             "norme": forms.SelectMultiple(attrs={"size": 8}),
         }
 
-    def __init__(self, *args, riferimento=None, **kwargs):
+    def __init__(self, *args, riferimento=None, metodo=None, **kwargs):
         super().__init__(*args, **kwargs)
         if riferimento:
             self.fields["requisito"].queryset = RequisitoRESS.objects.filter(riferimento=riferimento)
+        for nome, campo in self.fields.items():
+            if nome[:2] in ("se", "fr", "pr", "av") and nome.endswith(("_iniziale", "_finale")):
+                campo.label = ETICHETTE_FATTORI[nome[:2]]
+        if metodo:
+            descrizioni = metodo.descrizioni()
+            for nome, campo in self.fields.items():
+                if nome[:2] in ("se", "fr", "pr", "av") and nome.endswith(("_iniziale", "_finale")):
+                    fattore = nome[:2].capitalize()
+                    campo.choices = [
+                        (v, f"{v} – {descrizioni[(fattore, v)]}" if (fattore, v) in descrizioni else e)
+                        for v, e in campo.choices
+                    ]
 
     def contenuto_cambiato(self):
         return any(campo in self.changed_data for campo in self.CAMPI_CONTENUTO)

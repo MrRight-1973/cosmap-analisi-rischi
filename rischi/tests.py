@@ -326,6 +326,19 @@ class DocumentiTest(BaseConLibreria):
         altra = self.rev.schede.exclude(pk=scheda.pk).exclude(testo_istruzioni="").first()
         self.assertIn(altra.testo_istruzioni[:40], residui)
 
+    def test_stime_con_descrizione(self):
+        from . import documenti
+
+        scheda = self.rev.schede.exclude(se_iniziale=None).first()
+        self.client.force_login(self.compilatore)
+        pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
+        self.assertContains(pagina, "4 – Morte")
+        self.assertContains(pagina, "3 – Possibile")
+        valutazione = self.leggi(documenti.valutazione(self.rev))
+        self.assertIn("Valori dei fattori", valutazione)
+        se = self.rev.metodo.descrizioni()[("Se", scheda.se_iniziale)]
+        self.assertIn(f"{scheda.se_iniziale} – {se}", valutazione)
+
     def test_genera_da_pagina_e_archivia(self):
         from .models import DocumentoGenerato
 
