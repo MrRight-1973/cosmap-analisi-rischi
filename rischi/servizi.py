@@ -12,6 +12,8 @@ from .models import (
     Analisi,
     ApplicabilitaRequisito,
     Esito,
+    Figura,
+    FiguraMacchina,
     MetodoStima,
     MisuraAnalisi,
     Modulo,
@@ -85,11 +87,24 @@ def _copia_scheda(sorgente, revisione, **extra):
     nuova.condizioni.set(sorgente.condizioni.all())
     nuova.pericoli.set(sorgente.pericoli.all())
     nuova.norme.set(sorgente.norme.all())
+    nuova.soggetti.set(sorgente.soggetti.all())
     for misura in sorgente.misure.all():
         MisuraAnalisi.objects.create(
             scheda=nuova, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma
         )
     return nuova
+
+
+def allinea_figure(macchina, revisione, descrizioni=None):
+    """Aggiunge alla macchina le figure usate nelle schede, con la descrizione standard o quella data."""
+    descrizioni = descrizioni or {}
+    usate = Figura.objects.filter(schedaanalisi__revisione=revisione).distinct()
+    for figura in usate:
+        FiguraMacchina.objects.get_or_create(
+            macchina=macchina,
+            figura=figura,
+            defaults={"descrizione": descrizioni.get(figura.pk, figura.descrizione)},
+        )
 
 
 def _requisito_equivalente(requisito, revisione):
@@ -134,6 +149,7 @@ def crea_analisi_da_libreria(macchina, utente):
     )
     for scheda in schede:
         _copia_scheda(scheda, revisione, origine=scheda, decisione=SchedaAnalisi.Decisione.PROPOSTA)
+    allinea_figure(macchina, revisione)
     _crea_applicabilita(revisione)
     return analisi
 
@@ -155,6 +171,7 @@ def crea_analisi_da_copia(macchina, revisione_sorgente, utente):
     for scheda in revisione_sorgente.schede.filter(decisione__in=_DECISIONI_ATTIVE):
         _copia_scheda(scheda, revisione, origine=scheda.origine, decisione=SchedaAnalisi.Decisione.PROPOSTA)
     macchina.moduli.set(revisione_sorgente.analisi.macchina.moduli.all())
+    allinea_figure(macchina, revisione, revisione_sorgente.analisi.macchina.descrizioni_figure())
     _crea_applicabilita(revisione, precedente=revisione_sorgente)
     return analisi
 
@@ -183,6 +200,7 @@ def cambia_moduli(macchina, moduli, utente):
     for scheda in SchedaModello.objects.filter(modulo__in=aggiunti).exclude(codice__in=presenti):
         _copia_scheda(scheda, revisione, origine=scheda, decisione=SchedaAnalisi.Decisione.PROPOSTA)
         aggiunte += 1
+    allinea_figure(macchina, revisione)
     da_togliere = revisione.schede.filter(modulo__in=tolti)
     rimaste = da_togliere.exclude(decisione=SchedaAnalisi.Decisione.PROPOSTA).count()
     tolte = 0
@@ -241,7 +259,7 @@ def decidi_scheda(scheda, utente, decisione, motivazione=""):
     scheda.motivazione = motivazione
     scheda.decisa_da = utente
     scheda.decisa_il = timezone.now()
-    scheda.full_clean(exclude=["condizioni", "pericoli", "norme"])
+    scheda.full_clean(exclude=["condizioni", "pericoli", "norme", "soggetti"])
     scheda.save()
 
 
@@ -356,7 +374,9 @@ class Anomalia:
 def controlli(revisione):
     anomalie = []
     schede = list(
-        revisione.schede.select_related("requisito", "revisione__metodo").prefetch_related("misure")
+        revisione.schede.select_related("requisito", "revisione__metodo").prefetch_related(
+            "misure", "pericoli", "soggetti"
+        )
     )
     attive = [s for s in schede if s.attiva]
 
@@ -378,6 +398,8 @@ def controlli(revisione):
         if s.decisione == SchedaAnalisi.Decisione.PROPOSTA:
             anomalie.append(Anomalia("decisione", "Proposta non ancora confermata, modificata o scartata.", s))
     for s in attive:
+        if s.pericoli.all() and not s.soggetti.all():
+            anomalie.append(Anomalia("soggetti", "Nessun soggetto esposto indicato (operatore o persona esposta).", s))
         if s.ha_stima_iniziale and not s.ha_stima_finale:
             anomalie.append(Anomalia("stima", "Stima iniziale presente ma stima finale mancante.", s))
         if s.ha_stima_finale and s.esito_finale != Esito.OK and not s.testo_istruzioni.strip():

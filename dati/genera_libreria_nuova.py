@@ -778,6 +778,54 @@ for scheda in SCHEDE:
         scheda["istr"] = testo_residuo
 
 # ---------------------------------------------------------------------------
+# Soggetti esposti (RESS 1.1.1 c e d): nomi come le figure standard del programma
+# ---------------------------------------------------------------------------
+
+CONDUZIONE, ATTREZZAGGIO, MANUT_MECC, MANUT_ELETT, PROGRAMMATORE, PULIZIE, INSTALLATORE, TERZI = (
+    "Operatore di conduzione",
+    "Operatore di attrezzaggio",
+    "Manutentore meccanico",
+    "Manutentore elettrico",
+    "Programmatore",
+    "Addetto alle pulizie",
+    "Installatore / collaudatore",
+    "Terzi di passaggio",
+)
+# Pericoli che durante il funzionamento raggiungono anche chi passa vicino alla macchina
+PERICOLI_VERSO_ESTERNO = ("3.2", "4.1", "4.2", "7.1", "7.3", "7.4", "9.1")
+
+
+def soggetti_scheda(scheda):
+    """Soggetti esposti proposti in base a condizioni operative, modulo e pericoli."""
+    if not scheda["per"]:
+        return []
+    condizioni = scheda["cond"].lower()
+    elettrico = scheda["modulo"] == ELE or any(p.startswith("2.") for p in scheda["per"])
+    tutte = "tutte" in condizioni
+    soggetti = []
+    if tutte or "normale" in condizioni or "sblocco" in condizioni:
+        soggetti.append(CONDUZIONE)
+    if "regolazione" in condizioni:
+        soggetti.append(ATTREZZAGGIO)
+    if "programmazione" in condizioni:
+        soggetti.append(PROGRAMMATORE)
+    if tutte or "manutenzione" in condizioni or "sblocco" in condizioni:
+        soggetti.append(MANUT_ELETT if elettrico else MANUT_MECC)
+    if "pulizia" in condizioni:
+        soggetti.append(PULIZIE)
+    if any(fase in condizioni for fase in ("installazione", "trasporto", "smantellamento")):
+        soggetti.append(INSTALLATORE)
+    in_funzione = tutte or "normale" in condizioni
+    verso_esterno = any(p in PERICOLI_VERSO_ESTERNO for p in scheda["per"])
+    if in_funzione and (verso_esterno or (scheda["modulo"] == CAB and "1.9" in scheda["per"])):
+        soggetti.append(TERZI)
+    return list(dict.fromkeys(soggetti))
+
+
+for scheda in SCHEDE:
+    scheda["soggetti"] = soggetti_scheda(scheda)
+
+# ---------------------------------------------------------------------------
 # Scrittura del file
 # ---------------------------------------------------------------------------
 
@@ -829,6 +877,8 @@ def genera():
         "Le misure sono nel foglio Misure, una per riga, con il tipo (PROG progettazione, PROT protezione,",
         "INFO informazioni) e la norma di riferimento. La colonna misure del foglio Libreria è solo una sintesi.",
         "Codici dei pericoli a due cifre (es. 1.01) per non confondersi con quelli della prima estrazione.",
+        "Soggetti esposti proposti in base a condizioni operative e pericoli (ultima colonna del foglio Libreria):",
+        "operatori secondo il RESS 1.1.1 d) e persone esposte secondo il RESS 1.1.1 c).",
         "Edizioni e stato di armonizzazione delle norme vanno verificati sulla GUUE.",
         "",
         "Requisiti senza scheda (di regola non applicabili, da dichiarare nell'applicabilità):",
@@ -848,7 +898,8 @@ def genera():
         "Zona pericolosa", "Condizioni operative", "Pericoli", "Se iniz.", "Fr iniz.", "Pr iniz.", "Av iniz.",
         "Cl iniz.", "Esito iniziale", "Misure di protezione (sintesi: dettaglio nel foglio Misure)", "Indicazioni per le istruzioni / rischio residuo",
         "Se fin.", "Fr fin.", "Pr fin.", "Av fin.", "Cl fin.", "Esito finale", "Norme citate", "Note di revisione",
-    ], [9, 8, 30, 8, 16, 26, 20, 30, 22, 34, 6, 6, 6, 6, 6, 10, 70, 45, 6, 6, 6, 6, 6, 10, 40, 35])
+        "Soggetti esposti",
+    ], [9, 8, 30, 8, 16, 26, 20, 30, 22, 34, 6, 6, 6, 6, 6, 10, 70, 45, 6, 6, 6, 6, 6, 10, 40, 35, 40])
     titoli = {r[2]: r[1] for r in RESS}
     condizioni_modulo = {nome: condizione for nome, condizione, _ in MODULI}
     for n, s in enumerate(SCHEDE, start=1):
@@ -863,7 +914,7 @@ def genera():
             *(s["si"] or (None,) * 4), cl_i, es_i,
             testo_misure(s["mis"]), s["istr"],
             *(s["sf"] or (None,) * 4), cl_f, es_f,
-            testo_norme(s), note,
+            testo_norme(s), note, "; ".join(s["soggetti"]),
         ])
     for riga in ws.iter_rows(min_row=2):
         for cella in riga:

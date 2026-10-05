@@ -17,6 +17,7 @@ from rischi.models import (
     CellaMatrice,
     CondizioneOperativa,
     Esito,
+    Figura,
     FasciaClasse,
     MetodoStima,
     MisuraModello,
@@ -74,6 +75,7 @@ COL = {
     "av_f": 21,
     "norme": 24,
     "note": 25,
+    "soggetti": 26,  # facoltativa: figure separate da ";"
 }
 
 
@@ -298,6 +300,19 @@ class Command(BaseCommand):
                 risultato.append(tutte[nome])
         return risultato
 
+    def soggetti(self, valore):
+        figure = {f.nome.lower(): f for f in Figura.objects.all()}
+        trovate, sconosciute = [], []
+        for nome in re.split(r"[;\n]", testo(valore)):
+            nome = nome.strip()
+            if not nome:
+                continue
+            if nome.lower() in figure:
+                trovate.append(figure[nome.lower()])
+            else:
+                sconosciute.append(nome)
+        return trovate, sconosciute
+
     def importa_schede(self, ws):
         n = 0
         avvisi = []
@@ -339,6 +354,10 @@ class Command(BaseCommand):
             scheda.condizioni.set(self.condizioni(r[COL["condizioni"]]))
             scheda.pericoli.set(self.pericoli(r[COL["pericoli"]]))
             scheda.norme.set(self.norme_citate(r[COL["norme"]]))
+            if len(r) > COL["soggetti"]:
+                soggetti, sconosciuti = self.soggetti(r[COL["soggetti"]])
+                scheda.soggetti.set(soggetti)
+                avvisi += [f"{codice}: figura '{nome}' non trovata" for nome in sconosciuti]
             scheda.misure.all().delete()
             if self.misure is not None:
                 for ordine, tipo, testo_misura, norma in self.misure.get(codice, []):
