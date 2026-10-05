@@ -17,7 +17,9 @@ La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
 
 ## Cosa fa il prototipo
 
-1. Importa la libreria dal file Excel (`dati/Libreria_analisi_rischi_Cosmap.xlsx`).
+1. Importa la libreria da un file Excel: `dati/Libreria_nuova_Cosmap.xlsx` (scritta da zero
+   sul Regolamento 2023/1230, misure classificate per tipo, stime da validare) oppure la
+   libreria precedente `dati/Libreria_analisi_rischi_Cosmap.xlsx`.
 2. Crea una commessa con la sua macchina: si scelgono i moduli della libreria e
    l'analisi propone le loro schede, oppure si copia un'analisi già approvata.
    I moduli si cambiano anche dopo, dai dati della macchina, finché la revisione
@@ -61,7 +63,14 @@ Aprire http://127.0.0.1:8000, entrare con l'utente creato e, da
 "Libreria e utenti", creare gli utenti assegnando i gruppi
 Compilatore / Verificatore / Approvatore.
 
-Senza variabili d'ambiente il prototipo usa un database SQLite locale.
+Senza variabili d'ambiente il prototipo usa un database SQLite locale (`db.sqlite3`).
+Per provare un'altra libreria senza toccare i propri dati si usa un database separato:
+
+```powershell
+$env:SQLITE_PATH = "db-libreria-nuova.sqlite3"
+.venv\Scripts\python manage.py migrate
+.venv\Scripts\python manage.py importa_libreria dati/Libreria_nuova_Cosmap.xlsx
+```
 
 ## Server interno con PostgreSQL
 
