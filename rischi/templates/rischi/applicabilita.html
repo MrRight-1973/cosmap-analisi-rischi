@@ -1,0 +1,24 @@
+{% extends "rischi/base.html" %}
+{% block titolo %}Applicabilità requisiti{% endblock %}
+{% block contenuto %}
+<p><a href="{% url 'analisi' revisione.analisi_id %}">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
+<h1>Applicabilità dei requisiti</h1>
+<p class="sotto">Ogni requisito deve avere almeno una scheda oppure essere segnato come non applicabile con la motivazione.</p>
+<form method="post">{% csrf_token %}
+{{ formset.management_form }}
+<table class="tabella">
+<thead><tr><th>Requisito</th><th>Schede</th><th>Applicabile</th><th>Motivazione se non applicabile</th></tr></thead>
+<tbody>
+{% for f, a, n in righe %}
+<tr class="{% if n == 0 and a.applicabile %}con-anomalia{% endif %}">
+  <td>{{ f.id }}{{ a.requisito.codice }} {{ a.requisito.titolo }}{% if a.requisito.nuovo %} <span class="etichetta">nuovo</span>{% endif %}</td>
+  <td>{{ n }}</td>
+  <td>{% if modificabile %}{{ f.applicabile }}{% else %}{{ a.applicabile|yesno:"sì,no" }}{% endif %}</td>
+  <td>{% if modificabile %}{{ f.motivazione }}{% else %}{{ a.motivazione }}{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% if modificabile %}<button class="primario">Salva</button>{% endif %}
+</form>
+{% endblock %}

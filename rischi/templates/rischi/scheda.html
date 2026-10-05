@@ -1,0 +1,44 @@
+{% extends "rischi/base.html" %}
+{% block titolo %}Scheda {{ scheda.codice|default:"nuova" }}{% endblock %}
+{% block contenuto %}
+<p><a href="{% url 'analisi' revisione.analisi_id %}">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
+<h1>Scheda {{ scheda.codice|default:"nuova" }}{% if scheda.pk %} · {{ scheda.requisito.codice }} {{ scheda.requisito.titolo }}{% endif %}</h1>
+{% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
+<form method="post" class="modulo">{% csrf_token %}
+{{ form.non_field_errors }}
+<fieldset><legend>Identificazione</legend>
+  {% include "rischi/_campo.html" with f=form.modulo %}
+  {% include "rischi/_campo.html" with f=form.requisito %}
+  {% include "rischi/_campo.html" with f=form.zona_impianto %}
+  {% include "rischi/_campo.html" with f=form.zona_pericolosa %}
+  {% include "rischi/_campo.html" with f=form.condizioni %}
+  {% include "rischi/_campo.html" with f=form.pericoli %}
+</fieldset>
+<fieldset><legend>Stima iniziale</legend>
+  <div class="stime">{% include "rischi/_campo.html" with f=form.se_iniziale %}{% include "rischi/_campo.html" with f=form.fr_iniziale %}{% include "rischi/_campo.html" with f=form.pr_iniziale %}{% include "rischi/_campo.html" with f=form.av_iniziale %}</div>
+  {% if scheda.pk %}<p class="sotto">Cl = {{ scheda.cl_iniziale|default:"–" }} · esito: {{ scheda.esito_iniziale|default:"–" }}</p>{% endif %}
+</fieldset>
+<fieldset><legend>Misure di protezione</legend>
+  {{ misure.management_form }}
+  {% for mf in misure %}
+  <div class="misura">{{ mf.id }}
+    <div class="stime">{% include "rischi/_campo.html" with f=mf.ordine %}{% include "rischi/_campo.html" with f=mf.tipo %}{% include "rischi/_campo.html" with f=mf.norma %}{% if mf.instance.pk %}{% include "rischi/_campo.html" with f=mf.DELETE %}{% endif %}</div>
+    {% include "rischi/_campo.html" with f=mf.testo %}
+  </div>
+  {% endfor %}
+</fieldset>
+<fieldset><legend>Stima finale</legend>
+  <div class="stime">{% include "rischi/_campo.html" with f=form.se_finale %}{% include "rischi/_campo.html" with f=form.fr_finale %}{% include "rischi/_campo.html" with f=form.pr_finale %}{% include "rischi/_campo.html" with f=form.av_finale %}</div>
+  {% if scheda.pk %}<p class="sotto">Cl = {{ scheda.cl_finale|default:"–" }} · esito: {{ scheda.esito_finale|default:"–" }}</p>{% endif %}
+  {% include "rischi/_campo.html" with f=form.testo_istruzioni %}
+  {% include "rischi/_campo.html" with f=form.norme %}
+  {% include "rischi/_campo.html" with f=form.note %}
+</fieldset>
+<fieldset><legend>Decisione del tecnico</legend>
+  {% include "rischi/_campo.html" with f=form.decisione %}
+  {% include "rischi/_campo.html" with f=form.motivazione %}
+  {% if scheda.decisa_da %}<p class="sotto">Ultima decisione: {{ scheda.decisa_da.get_full_name|default:scheda.decisa_da.username }}, {{ scheda.decisa_il|date:"d/m/Y H:i" }}</p>{% endif %}
+</fieldset>
+{% if modificabile %}<button class="primario">Salva scheda</button>{% endif %}
+</form>
+{% endblock %}

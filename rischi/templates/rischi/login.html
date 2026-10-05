@@ -1,0 +1,11 @@
+{% extends "rischi/base.html" %}
+{% block titolo %}Accesso{% endblock %}
+{% block contenuto %}
+<section class="riquadro stretto">
+<h1>Accesso</h1>
+<form method="post">{% csrf_token %}
+{{ form.as_p }}
+<button class="primario">Entra</button>
+</form>
+</section>
+{% endblock %}

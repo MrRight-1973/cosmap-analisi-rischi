@@ -1,0 +1,314 @@
+"""Operazioni sull'analisi: creazione, copia, flusso di approvazione, controlli."""
+
+from dataclasses import dataclass
+
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
+from django.db.models import Q
+from django.utils import timezone
+
+from .models import (
+    Analisi,
+    ApplicabilitaRequisito,
+    Esito,
+    MetodoStima,
+    MisuraAnalisi,
+    Modulo,
+    RequisitoRESS,
+    Revisione,
+    SchedaAnalisi,
+    SchedaModello,
+)
+
+# ---------------------------------------------------------------------------
+# Ruoli (gruppi Django)
+# ---------------------------------------------------------------------------
+
+COMPILATORE = "Compilatore"
+VERIFICATORE = "Verificatore"
+APPROVATORE = "Approvatore"
+RUOLI = (COMPILATORE, VERIFICATORE, APPROVATORE)
+
+
+def ha_ruolo(utente, ruolo):
+    return utente.is_active and (utente.is_superuser or utente.groups.filter(name=ruolo).exists())
+
+
+def richiedi_ruolo(utente, ruolo):
+    if not ha_ruolo(utente, ruolo):
+        raise PermissionDenied(f"Serve il ruolo {ruolo}.")
+
+
+# ---------------------------------------------------------------------------
+# Creazione e copia
+# ---------------------------------------------------------------------------
+
+
+def moduli_attivi(macchina):
+    """Moduli sempre attivi più quelli attivati dalle caratteristiche della macchina."""
+    caratteristiche = macchina.caratteristiche.all()
+    return (
+        Modulo.objects.filter(attivo=True)
+        .filter(Q(sempre_attivo=True) | Q(caratteristiche__in=caratteristiche))
+        .distinct()
+    )
+
+
+_CAMPI_STIMA = (
+    "zona_impianto",
+    "zona_pericolosa",
+    "se_iniziale",
+    "fr_iniziale",
+    "pr_iniziale",
+    "av_iniziale",
+    "se_finale",
+    "fr_finale",
+    "pr_finale",
+    "av_finale",
+    "testo_istruzioni",
+    "note",
+)
+
+
+def _copia_scheda(sorgente, revisione, **extra):
+    """Copia una scheda (modello o di un'altra analisi) dentro la revisione."""
+    valori = {campo: getattr(sorgente, campo) for campo in _CAMPI_STIMA}
+    valori.update(
+        revisione=revisione,
+        codice=sorgente.codice,
+        modulo=sorgente.modulo,
+        requisito=_requisito_equivalente(sorgente.requisito, revisione),
+    )
+    valori.update(extra)
+    nuova = SchedaAnalisi.objects.create(**valori)
+    nuova.condizioni.set(sorgente.condizioni.all())
+    nuova.pericoli.set(sorgente.pericoli.all())
+    nuova.norme.set(sorgente.norme.all())
+    for misura in sorgente.misure.all():
+        MisuraAnalisi.objects.create(
+            scheda=nuova, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma
+        )
+    return nuova
+
+
+def _requisito_equivalente(requisito, revisione):
+    riferimento = revisione.analisi.macchina.commessa.riferimento
+    if requisito.riferimento_id == riferimento.pk:
+        return requisito
+    return RequisitoRESS.objects.get(riferimento=riferimento, codice=requisito.codice)
+
+
+def _crea_applicabilita(revisione, precedente=None):
+    riferimento = revisione.analisi.macchina.commessa.riferimento
+    esistenti = {}
+    if precedente:
+        esistenti = {a.requisito_id: a for a in precedente.applicabilita.all()}
+    for requisito in RequisitoRESS.objects.filter(riferimento=riferimento):
+        vecchia = esistenti.get(requisito.pk)
+        ApplicabilitaRequisito.objects.create(
+            revisione=revisione,
+            requisito=requisito,
+            applicabile=vecchia.applicabile if vecchia else True,
+            motivazione=vecchia.motivazione if vecchia else "",
+        )
+
+
+def _metodo_corrente():
+    metodo = MetodoStima.corrente()
+    if not metodo:
+        raise ValidationError("Nessun metodo di stima attivo: importare la libreria.")
+    return metodo
+
+
+@transaction.atomic
+def crea_analisi_da_libreria(macchina, utente):
+    """Revisione 0 con le schede dei moduli attivati dalle caratteristiche della macchina."""
+    richiedi_ruolo(utente, COMPILATORE)
+    analisi = Analisi.objects.create(macchina=macchina, origine=Analisi.Origine.LIBRERIA)
+    revisione = Revisione.objects.create(
+        analisi=analisi, numero=0, motivo="Prima emissione", metodo=_metodo_corrente(), compilata_da=utente
+    )
+    schede = SchedaModello.objects.filter(modulo__in=moduli_attivi(macchina)).select_related(
+        "modulo", "requisito"
+    )
+    for scheda in schede:
+        _copia_scheda(scheda, revisione, origine=scheda, decisione=SchedaAnalisi.Decisione.PROPOSTA)
+    _crea_applicabilita(revisione)
+    return analisi
+
+
+@transaction.atomic
+def crea_analisi_da_copia(macchina, revisione_sorgente, utente):
+    """Revisione 0 copiata da un'altra analisi: le scelte vanno riconfermate."""
+    richiedi_ruolo(utente, COMPILATORE)
+    analisi = Analisi.objects.create(
+        macchina=macchina, origine=Analisi.Origine.COPIA, copiata_da=revisione_sorgente
+    )
+    revisione = Revisione.objects.create(
+        analisi=analisi,
+        numero=0,
+        motivo=f"Prima emissione, copiata da {revisione_sorgente}",
+        metodo=_metodo_corrente(),
+        compilata_da=utente,
+    )
+    for scheda in revisione_sorgente.schede.filter(decisione__in=_DECISIONI_ATTIVE):
+        _copia_scheda(scheda, revisione, origine=scheda.origine, decisione=SchedaAnalisi.Decisione.PROPOSTA)
+    _crea_applicabilita(revisione, precedente=revisione_sorgente)
+    return analisi
+
+
+_DECISIONI_ATTIVE = (
+    SchedaAnalisi.Decisione.PROPOSTA,
+    SchedaAnalisi.Decisione.CONFERMATA,
+    SchedaAnalisi.Decisione.MODIFICATA,
+    SchedaAnalisi.Decisione.AGGIUNTA,
+)
+
+
+@transaction.atomic
+def nuova_revisione(analisi, utente, motivo):
+    """Apre una nuova bozza copiando l'ultima revisione approvata, scelte comprese."""
+    richiedi_ruolo(utente, COMPILATORE)
+    if not motivo.strip():
+        raise ValidationError("Il motivo della revisione è obbligatorio.")
+    corrente = analisi.revisione_corrente
+    if corrente.stato != Revisione.Stato.APPROVATA:
+        raise ValidationError("Si può aprire una nuova revisione solo dopo l'approvazione della precedente.")
+    revisione = Revisione.objects.create(
+        analisi=analisi,
+        numero=corrente.numero + 1,
+        motivo=motivo,
+        metodo=_metodo_corrente(),
+        compilata_da=utente,
+    )
+    for scheda in corrente.schede.all():
+        _copia_scheda(
+            scheda,
+            revisione,
+            origine=scheda.origine,
+            decisione=scheda.decisione,
+            motivazione=scheda.motivazione,
+            decisa_da=scheda.decisa_da,
+            decisa_il=scheda.decisa_il,
+        )
+    _crea_applicabilita(revisione, precedente=corrente)
+    return revisione
+
+
+# ---------------------------------------------------------------------------
+# Decisione sulle schede proposte
+# ---------------------------------------------------------------------------
+
+
+def decidi_scheda(scheda, utente, decisione, motivazione=""):
+    richiedi_ruolo(utente, COMPILATORE)
+    scheda.decisione = decisione
+    scheda.motivazione = motivazione
+    scheda.decisa_da = utente
+    scheda.decisa_il = timezone.now()
+    scheda.full_clean(exclude=["condizioni", "pericoli", "norme"])
+    scheda.save()
+
+
+# ---------------------------------------------------------------------------
+# Flusso di approvazione
+# ---------------------------------------------------------------------------
+
+
+def _verifica_stato(revisione, *stati):
+    if revisione.stato not in stati:
+        raise ValidationError(f"Operazione non possibile: la revisione è {revisione.get_stato_display().lower()}.")
+
+
+def invia_in_verifica(revisione, utente):
+    richiedi_ruolo(utente, COMPILATORE)
+    _verifica_stato(revisione, Revisione.Stato.BOZZA)
+    revisione.stato = Revisione.Stato.IN_VERIFICA
+    revisione.inviata_il = timezone.now()
+    revisione.verificata_da = None
+    revisione.verificata_il = None
+    revisione.save()
+
+
+def rimanda_in_bozza(revisione, utente, nota):
+    if not (ha_ruolo(utente, VERIFICATORE) or ha_ruolo(utente, APPROVATORE)):
+        raise PermissionDenied("Serve il ruolo Verificatore o Approvatore.")
+    _verifica_stato(revisione, Revisione.Stato.IN_VERIFICA)
+    if not nota.strip():
+        raise ValidationError("Scrivi cosa va corretto.")
+    revisione.stato = Revisione.Stato.BOZZA
+    revisione.nota_verifica = nota
+    revisione.verificata_da = None
+    revisione.verificata_il = None
+    revisione.save()
+
+
+def segna_verificata(revisione, utente):
+    richiedi_ruolo(utente, VERIFICATORE)
+    _verifica_stato(revisione, Revisione.Stato.IN_VERIFICA)
+    revisione.verificata_da = utente
+    revisione.verificata_il = timezone.now()
+    revisione.save()
+
+
+@transaction.atomic
+def approva(revisione, utente):
+    richiedi_ruolo(utente, APPROVATORE)
+    _verifica_stato(revisione, Revisione.Stato.IN_VERIFICA)
+    if not revisione.verificata_da_id:
+        raise ValidationError("La revisione deve essere prima verificata.")
+    if revisione.compilata_da_id == utente.pk:
+        raise PermissionDenied("Chi ha compilato la revisione non può approvarla.")
+    revisione.analisi.revisioni.filter(stato=Revisione.Stato.APPROVATA).update(
+        stato=Revisione.Stato.SOSTITUITA
+    )
+    revisione.stato = Revisione.Stato.APPROVATA
+    revisione.approvata_da = utente
+    revisione.approvata_il = timezone.now()
+    revisione.save()
+
+
+# ---------------------------------------------------------------------------
+# Controlli di completezza (segnalano, non bloccano)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class Anomalia:
+    tipo: str
+    messaggio: str
+    scheda: SchedaAnalisi | None = None
+
+
+def controlli(revisione):
+    anomalie = []
+    schede = list(
+        revisione.schede.select_related("requisito", "revisione__metodo").prefetch_related("misure")
+    )
+    attive = [s for s in schede if s.attiva]
+
+    requisiti_con_scheda = {s.requisito_id for s in attive}
+    for a in revisione.applicabilita.select_related("requisito"):
+        if a.applicabile and a.requisito_id not in requisiti_con_scheda:
+            anomalie.append(
+                Anomalia(
+                    "requisito",
+                    f"Requisito {a.requisito.codice} {a.requisito.titolo}: nessuna scheda e non segnato come non applicabile.",
+                )
+            )
+        if not a.applicabile and not a.motivazione.strip():
+            anomalie.append(
+                Anomalia("requisito", f"Requisito {a.requisito.codice}: non applicabile senza motivazione.")
+            )
+
+    for s in schede:
+        if s.decisione == SchedaAnalisi.Decisione.PROPOSTA:
+            anomalie.append(Anomalia("decisione", "Proposta non ancora confermata, modificata o scartata.", s))
+    for s in attive:
+        if s.ha_stima_iniziale and not s.ha_stima_finale:
+            anomalie.append(Anomalia("stima", "Stima iniziale presente ma stima finale mancante.", s))
+        if s.ha_stima_finale and s.esito_finale != Esito.OK and not s.testo_istruzioni.strip():
+            anomalie.append(
+                Anomalia("stima", "Esito finale non verde senza rischio residuo indicato per le istruzioni.", s)
+            )
+    return anomalie

@@ -1,0 +1,94 @@
+{% extends "rischi/base.html" %}
+{% load rischi_extra %}
+{% block titolo %}{{ analisi.macchina.commessa.numero }} rev. {{ revisione.numero }}{% endblock %}
+{% block contenuto %}
+{% with m=analisi.macchina c=analisi.macchina.commessa %}
+<div class="intestazione">
+  <div>
+    <h1>Commessa {{ c.numero }} · {{ m.modello|default:m.denominazione }}</h1>
+    <p class="sotto">{{ c.cliente }} · {{ m.get_tipo_display }}{% if m.matricola %} · matricola {{ m.matricola }}{% endif %} · {{ c.riferimento }}</p>
+  </div>
+  <span class="stato grande {{ revisione.stato|lower }}">Rev. {{ revisione.numero }} · {{ revisione.get_stato_display }}</span>
+</div>
+{% endwith %}
+
+<section class="riquadro griglia-2">
+  <div>
+    <h2>Revisione {{ revisione.numero }}</h2>
+    <dl class="dati">
+      <dt>Motivo</dt><dd>{{ revisione.motivo|default:"–" }}</dd>
+      <dt>Compilata da</dt><dd>{{ revisione.compilata_da.get_full_name|default:revisione.compilata_da.username }} · {{ revisione.creata_il|date:"d/m/Y" }}</dd>
+      <dt>Verificata da</dt><dd>{% if revisione.verificata_da %}{{ revisione.verificata_da.get_full_name|default:revisione.verificata_da.username }} · {{ revisione.verificata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      <dt>Approvata da</dt><dd>{% if revisione.approvata_da %}{{ revisione.approvata_da.get_full_name|default:revisione.approvata_da.username }} · {{ revisione.approvata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      <dt>Metodo</dt><dd>{{ revisione.metodo }}</dd>
+    </dl>
+    {% if revisione.nota_verifica and revisione.stato == "BOZZA" %}<div class="messaggio warning"><strong>Da correggere:</strong> {{ revisione.nota_verifica|linebreaksbr }}</div>{% endif %}
+    {% if revisioni|length > 1 %}
+    <p>Revisioni: {% for r in revisioni %}<a href="{% url 'analisi_revisione' analisi.pk r.numero %}"{% if r == revisione %} class="attuale"{% endif %}>{{ r.numero }} ({{ r.get_stato_display|lower }})</a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+    {% endif %}
+  </div>
+  <div class="azioni">
+    <h2>Azioni</h2>
+    {% if ultima %}
+    {% if revisione.stato == "BOZZA" and puo.compilare %}
+      <a class="bottone" href="{% url 'applicabilita' revisione.pk %}">Applicabilità dei requisiti</a>
+      <a class="bottone" href="{% url 'nuova_scheda' revisione.pk %}">Aggiungi scheda</a>
+      <form method="post" action="{% url 'azione_revisione' revisione.pk 'invia' %}">{% csrf_token %}<button class="primario">Invia in verifica</button></form>
+    {% elif revisione.stato == "IN_VERIFICA" %}
+      {% if puo.verificare and not revisione.verificata_da %}
+      <form method="post" action="{% url 'azione_revisione' revisione.pk 'verifica' %}">{% csrf_token %}<button class="primario">Segna come verificata</button></form>
+      {% endif %}
+      {% if puo.approvare and revisione.verificata_da %}
+      <form method="post" action="{% url 'azione_revisione' revisione.pk 'approva' %}">{% csrf_token %}<button class="primario">Approva</button></form>
+      {% endif %}
+      {% if puo.verificare or puo.approvare %}
+      <form method="post" action="{% url 'azione_revisione' revisione.pk 'rimanda' %}">{% csrf_token %}
+        <textarea name="nota" rows="2" placeholder="Cosa va corretto"></textarea>
+        <button>Rimanda in bozza</button></form>
+      {% endif %}
+    {% elif revisione.stato == "APPROVATA" and puo.compilare %}
+      <form method="post" action="{% url 'azione_revisione' revisione.pk 'nuova' %}">{% csrf_token %}
+        <textarea name="nota" rows="2" placeholder="Motivo della nuova revisione" required></textarea>
+        <button class="primario">Apri nuova revisione</button></form>
+    {% else %}
+      <p class="sotto">Nessuna azione disponibile per il tuo ruolo.</p>
+    {% endif %}
+    {% else %}
+      <p class="sotto">Revisione storica: sola lettura.</p>
+    {% endif %}
+  </div>
+</section>
+
+<p class="riepilogo">{{ conteggi.totali }} schede · {{ conteggi.da_decidere }} da decidere · {{ conteggi.scartate }} scartate</p>
+
+{% if anomalie %}
+<details class="riquadro anomalie" {% if revisione.stato == "IN_VERIFICA" %}open{% endif %}>
+  <summary>Controlli di completezza: {{ anomalie|length }} segnalazioni</summary>
+  <ul>{% for a in anomalie %}<li>{% if a.scheda %}<a href="#scheda-{{ a.scheda.pk }}">{{ a.scheda.codice|default:"scheda" }}</a>: {% endif %}{{ a.messaggio }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+{% for modulo, schede in gruppi %}
+<section class="modulo-gruppo">
+<h2>{{ modulo.nome }} <small>{{ schede|length }} schede</small></h2>
+<table class="tabella schede">
+<thead><tr><th>Scheda</th><th>Requisito</th><th>Zona</th><th>Iniziale</th><th>Finale</th><th>Decisione</th><th></th></tr></thead>
+<tbody>
+{% for s in schede %}
+<tr id="scheda-{{ s.pk }}" class="{% if not s.attiva %}scartata{% endif %}{% if s.pk in anomalie_per_scheda %} con-anomalia{% endif %}">
+  <td><a href="{% url 'scheda' s.pk %}">{{ s.codice|default:"nuova" }}</a></td>
+  <td>{{ s.requisito.codice }} {{ s.requisito.titolo }}</td>
+  <td>{{ s.zona_impianto }}</td>
+  <td>{% esito s.se_iniziale s.cl_iniziale s.esito_iniziale %}</td>
+  <td>{% esito s.se_finale s.cl_finale s.esito_finale %}</td>
+  <td><span class="decisione {{ s.decisione|lower }}">{{ s.get_decisione_display }}</span></td>
+  <td>{% if s.decisione == "PROPOSTA" and revisione.modificabile and puo.compilare %}<form method="post" action="{% url 'conferma_scheda' s.pk %}">{% csrf_token %}<button class="piccolo">Conferma</button></form>{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</section>
+{% empty %}
+<p class="vuoto">Nessuna scheda in questa revisione.</p>
+{% endfor %}
+{% endblock %}

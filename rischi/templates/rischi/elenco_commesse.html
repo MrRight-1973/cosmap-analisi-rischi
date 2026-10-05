@@ -1,0 +1,27 @@
+{% extends "rischi/base.html" %}
+{% block titolo %}Commesse{% endblock %}
+{% block contenuto %}
+<div class="intestazione">
+  <h1>Commesse</h1>
+  <a class="bottone primario" href="{% url 'nuova_commessa' %}">Nuova commessa</a>
+</div>
+{% if righe %}
+<table class="tabella">
+<thead><tr><th>Commessa</th><th>Cliente</th><th>Macchina</th><th>Matricola</th><th>Revisione</th><th>Stato</th></tr></thead>
+<tbody>
+{% for r in righe %}
+<tr>
+  <td>{% if r.analisi %}<a href="{% url 'analisi' r.analisi.pk %}">{{ r.commessa.numero }}</a>{% else %}{{ r.commessa.numero }}{% endif %}</td>
+  <td>{{ r.commessa.cliente }}</td>
+  <td>{{ r.macchina.modello|default:r.macchina.denominazione }}</td>
+  <td>{{ r.macchina.matricola|default:"–" }}</td>
+  <td>{% if r.revisione %}{{ r.revisione.numero }}{% else %}–{% endif %}</td>
+  <td>{% if r.revisione %}<span class="stato {{ r.revisione.stato|lower }}">{{ r.revisione.get_stato_display }}</span>{% else %}Senza analisi{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class="vuoto">Nessuna commessa. Crea la prima con "Nuova commessa".</p>
+{% endif %}
+{% endblock %}

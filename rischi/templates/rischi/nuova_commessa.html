@@ -1,0 +1,32 @@
+{% extends "rischi/base.html" %}
+{% block titolo %}Nuova commessa{% endblock %}
+{% block contenuto %}
+<h1>Nuova commessa</h1>
+<form method="post" class="modulo">{% csrf_token %}
+{{ form.non_field_errors }}
+<fieldset><legend>Commessa</legend>
+  {% include "rischi/_campo.html" with f=form.numero %}
+  {% include "rischi/_campo.html" with f=form.cliente %}
+  {% include "rischi/_campo.html" with f=form.nuovo_cliente %}
+  {% include "rischi/_campo.html" with f=form.paese_cliente %}
+  {% include "rischi/_campo.html" with f=form.anno %}
+  {% include "rischi/_campo.html" with f=form.descrizione %}
+  {% include "rischi/_campo.html" with f=form.paese_destinazione %}
+  {% include "rischi/_campo.html" with f=form.riferimento %}
+</fieldset>
+<fieldset><legend>Macchina</legend>
+  {% include "rischi/_campo.html" with f=form.denominazione %}
+  {% include "rischi/_campo.html" with f=form.modello %}
+  {% include "rischi/_campo.html" with f=form.matricola %}
+  {% include "rischi/_campo.html" with f=form.anno_costruzione %}
+  {% include "rischi/_campo.html" with f=form.tipo %}
+  {% include "rischi/_campo.html" with f=form.materiali %}
+  {% include "rischi/_campo.html" with f=form.caratteristiche %}
+</fieldset>
+<fieldset><legend>Partenza dell'analisi</legend>
+  {% include "rischi/_campo.html" with f=form.origine %}
+  {% include "rischi/_campo.html" with f=form.copia_da %}
+</fieldset>
+<button class="primario">Crea commessa e analisi</button>
+</form>
+{% endblock %}
