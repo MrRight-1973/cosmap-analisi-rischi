@@ -20,7 +20,7 @@ from .forms import (
     NuovaCommessaForm,
     SchedaForm,
 )
-from .models import Cliente, Commessa, DocumentoGenerato, Macchina, RegistroModifica, Revisione, SchedaAnalisi
+from .models import Analisi, Cliente, Commessa, DocumentoGenerato, Macchina, RegistroModifica, Revisione, SchedaAnalisi
 
 
 def _errore(request, eccezione):
@@ -122,6 +122,7 @@ def analisi(request, pk, numero=None):
             "approvare": servizi.ha_ruolo(utente, servizi.APPROVATORE),
         },
         "ultima": revisione == revisioni[0],
+        "eliminabile": servizi.eliminabile(revisione.analisi.macchina.commessa),
         "documenti": revisione.documenti.select_related("generato_da")[:20],
     }
     return render(request, "rischi/analisi.html", contesto)
@@ -153,6 +154,24 @@ def azione_revisione(request, pk, azione):
     except (PermissionDenied, ValidationError) as e:
         _errore(request, e)
     return redirect("analisi", pk=revisione.analisi_id)
+
+
+@login_required
+@require_POST
+def elimina_commessa(request, pk):
+    commessa = get_object_or_404(Commessa, pk=pk)
+    if request.POST.get("conferma", "").strip() != commessa.numero:
+        messages.error(request, f"Per eliminare la commessa scrivi il suo numero: {commessa.numero}.")
+        analisi = Analisi.objects.filter(macchina__commessa=commessa).first()
+        return redirect("analisi", pk=analisi.pk) if analisi else redirect("elenco_commesse")
+    try:
+        servizi.elimina_commessa(commessa, request.user)
+    except (PermissionDenied, ValidationError) as e:
+        _errore(request, e)
+        analisi = Analisi.objects.filter(macchina__commessa=commessa).first()
+        return redirect("analisi", pk=analisi.pk) if analisi else redirect("elenco_commesse")
+    messages.success(request, f"Commessa {commessa.numero} eliminata.")
+    return redirect("elenco_commesse")
 
 
 def _salva_scheda(request, scheda, revisione, nuova):

@@ -34,6 +34,19 @@ MODELLI_REGISTRATI = (
 )
 
 
+_CONTENUTI = (m.SchedaAnalisi, m.MisuraAnalisi, m.ApplicabilitaRequisito)
+
+
+class senza_registro_contenuti:
+    """Non registra una per una schede, misure e applicabilità eliminate insieme alla commessa."""
+
+    def __enter__(self):
+        _locale.silenzio = True
+
+    def __exit__(self, *exc):
+        _locale.silenzio = False
+
+
 def utente_corrente():
     return getattr(_locale, "utente", None)
 
@@ -110,6 +123,8 @@ def _registra_salvataggio(sender, instance, created, **kwargs):
 @receiver(post_delete)
 def _registra_eliminazione(sender, instance, **kwargs):
     if sender not in MODELLI_REGISTRATI:
+        return
+    if sender in _CONTENUTI and getattr(_locale, "silenzio", False):
         return
     m.RegistroModifica.objects.create(
         utente=utente_corrente(),

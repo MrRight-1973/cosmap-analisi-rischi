@@ -457,3 +457,41 @@ class AmministrazioneLibreriaTest(BaseConLibreria):
         self.assertContains(risposta, "non può restare senza modulo")
         altra.refresh_from_db()
         self.assertEqual(altra.modulo, robot)
+
+
+class EliminaCommessaTest(BaseConLibreria):
+    def setUp(self):
+        self.analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina("26-99"), self.compilatore)
+        self.commessa = self.analisi.macchina.commessa
+        self.url = reverse("elimina_commessa", args=[self.commessa.pk])
+
+    def test_bozza_si_elimina_con_il_numero(self):
+        self.client.force_login(self.compilatore)
+        self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Elimina commessa")
+        self.client.post(self.url, {"conferma": "sbagliato"})
+        self.assertTrue(Commessa.objects.filter(pk=self.commessa.pk).exists())
+
+        risposta = self.client.post(self.url, {"conferma": "26-99"})
+        self.assertRedirects(risposta, reverse("elenco_commesse"))
+        self.assertFalse(Commessa.objects.filter(numero="26-99").exists())
+        self.assertFalse(SchedaAnalisi.objects.exists())
+        eliminate = RegistroModifica.objects.filter(azione=RegistroModifica.Azione.ELIMINA)
+        self.assertTrue(eliminate.filter(tabella="commessa").exists())
+        self.assertFalse(eliminate.filter(tabella="scheda dell'analisi").exists())
+
+    def test_approvata_resta_protetta(self):
+        rev = self.analisi.revisione_corrente
+        servizi.invia_in_verifica(rev, self.compilatore)
+        servizi.segna_verificata(rev, self.verificatore)
+        servizi.approva(rev, self.approvatore)
+        self.client.force_login(self.compilatore)
+        self.assertNotContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Elimina commessa")
+        self.client.post(self.url, {"conferma": "26-99"})
+        self.assertTrue(Commessa.objects.filter(pk=self.commessa.pk).exists())
+        with self.assertRaises(ValidationError):
+            servizi.elimina_commessa(self.commessa, self.compilatore)
+
+    def test_serve_il_compilatore(self):
+        with self.assertRaises(PermissionDenied):
+            servizi.elimina_commessa(self.commessa, self.verificatore)
+        self.assertTrue(Commessa.objects.filter(pk=self.commessa.pk).exists())

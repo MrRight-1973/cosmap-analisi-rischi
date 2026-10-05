@@ -29,6 +29,10 @@ button, .bottone { font: inherit; padding: 6px 14px; border-radius: 6px; border:
 .primario { background: var(--primario); border-color: var(--primario); color: #fff; }
 button.link { border: 0; background: none; color: var(--primario); padding: 0; }
 button.piccolo { padding: 2px 8px; font-size: 13px; }
+.pericolo { background: var(--rich); border-color: var(--rich); color: var(--carta); }
+details.elimina { margin-top: 18px; }
+details.elimina summary { cursor: pointer; color: var(--rich); }
+details.elimina input { display: block; margin: 6px 0; }
 .in-linea { display: inline; }
 .tabella { width: 100%; border-collapse: collapse; background: var(--carta); border: 1px solid var(--bordo); }
 .tabella th, .tabella td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--bordo); vertical-align: top; }
