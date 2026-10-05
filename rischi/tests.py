@@ -366,3 +366,25 @@ class AmministrazioneCaratteristicheTest(BaseConLibreria):
         macchina = self.nuova_macchina("28-01", "Robot antropomorfo")
         analisi = servizi.crea_analisi_da_libreria(macchina, self.compilatore)
         self.assertTrue(analisi.revisione_corrente.schede.filter(modulo=robot).exists())
+
+    def test_schede_si_scelgono_dal_modulo(self):
+        from .models import Modulo, SchedaModello
+
+        admin_utente = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(admin_utente)
+        robot = Modulo.objects.get(nome__startswith="Gruppo di smerigliatura")
+        altra = SchedaModello.objects.exclude(modulo=robot).first()
+        proprie = list(robot.schede.values_list("pk", flat=True))
+        url = reverse("admin:rischi_modulo_change", args=[robot.pk])
+        dati = {"nome": robot.nome, "descrizione": robot.descrizione, "attivo": "on", "ordine": robot.ordine}
+
+        self.assertContains(self.client.get(url), "Schede del modulo")
+        risposta = self.client.post(url, {**dati, "schede": proprie + [altra.pk]})
+        self.assertEqual(risposta.status_code, 302)
+        altra.refresh_from_db()
+        self.assertEqual(altra.modulo, robot)
+
+        risposta = self.client.post(url, {**dati, "schede": proprie})
+        self.assertContains(risposta, "non può restare senza modulo")
+        altra.refresh_from_db()
+        self.assertEqual(altra.modulo, robot)

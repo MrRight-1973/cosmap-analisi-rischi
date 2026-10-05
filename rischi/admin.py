@@ -19,12 +19,74 @@ class SchedaModelloAdmin(admin.ModelAdmin):
     inlines = [MisuraModelloInline]
 
 
+class SceltaScheda(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, scheda):
+        return f"{scheda.codice} – {scheda.requisito.codice} {scheda.requisito.titolo} ({scheda.modulo.nome})"
+
+
+class ModuloForm(forms.ModelForm):
+    schede = SceltaScheda(
+        m.SchedaModello.objects.select_related("modulo", "requisito"),
+        required=False,
+        widget=FilteredSelectMultiple("schede", is_stacked=False),
+        label="Schede del modulo",
+        help_text="Ogni scheda appartiene a un solo modulo: sceglierne una di un altro modulo la sposta qui. "
+        "Tra parentesi il modulo attuale.",
+    )
+
+    class Meta:
+        model = m.Modulo
+        exclude = ["caratteristiche"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields["schede"].initial = self.instance.schede.all()
+
+    def clean(self):
+        dati = super().clean()
+        if self.instance.pk and "schede" in dati:
+            tolte = self.instance.schede.exclude(pk__in=[s.pk for s in dati["schede"]])
+            if tolte.exists():
+                self.add_error(
+                    "schede",
+                    "Una scheda non può restare senza modulo: per togliere "
+                    + ", ".join(s.codice for s in tolte)
+                    + " sceglila dalla pagina dell'altro modulo.",
+                )
+        return dati
+
+    def _assegna_schede(self, modulo):
+        for scheda in self.cleaned_data["schede"]:
+            if scheda.modulo_id != modulo.pk:
+                scheda.modulo = modulo
+                scheda.save()
+
+    def save(self, commit=True):
+        modulo = super().save(commit=commit)
+        if commit:
+            self._assegna_schede(modulo)
+        else:
+            vecchio_save_m2m = self.save_m2m
+
+            def save_m2m():
+                vecchio_save_m2m()
+                self._assegna_schede(modulo)
+
+            self.save_m2m = save_m2m
+        return modulo
+
+
 @admin.register(m.Modulo)
 class ModuloAdmin(admin.ModelAdmin):
-    list_display = ("nome", "sempre_attivo", "attivato_da", "attivo", "ordine")
+    form = ModuloForm
+    list_display = ("nome", "sempre_attivo", "attivato_da", "numero_schede", "attivo", "ordine")
     list_editable = ("ordine",)
-    exclude = ("caratteristiche",)
     readonly_fields = ("attivato_da",)
+
+    @admin.display(description="schede")
+    def numero_schede(self, obj):
+        return obj.schede.count()
 
     @admin.display(description="attivato da")
     def attivato_da(self, obj):
