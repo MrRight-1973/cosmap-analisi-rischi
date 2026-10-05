@@ -6,6 +6,8 @@ from .models import (
     LegislazioneUE,
     Cliente,
     Commessa,
+    Figura,
+    FiguraMacchina,
     Macchina,
     MisuraAnalisi,
     Modulo,
@@ -153,6 +155,7 @@ class SchedaForm(forms.ModelForm):
         "zona_pericolosa",
         "condizioni",
         "pericoli",
+        "soggetti",
         "se_iniziale",
         "fr_iniziale",
         "pr_iniziale",
@@ -175,6 +178,7 @@ class SchedaForm(forms.ModelForm):
             "zona_pericolosa",
             "condizioni",
             "pericoli",
+            "soggetti",
             "se_iniziale",
             "fr_iniziale",
             "pr_iniziale",
@@ -197,12 +201,21 @@ class SchedaForm(forms.ModelForm):
             "condizioni": forms.CheckboxSelectMultiple,
             "pericoli": forms.SelectMultiple(attrs={"size": 8}),
             "norme": forms.SelectMultiple(attrs={"size": 8}),
+            "soggetti": forms.CheckboxSelectMultiple,
         }
 
-    def __init__(self, *args, riferimento=None, metodo=None, **kwargs):
+    def __init__(self, *args, riferimento=None, metodo=None, macchina=None, **kwargs):
         super().__init__(*args, **kwargs)
         if riferimento:
             self.fields["requisito"].queryset = RequisitoRESS.objects.filter(riferimento=riferimento)
+        descrizioni_figure = macchina.descrizioni_figure() if macchina else {}
+        self.fields["soggetti"].label_from_instance = lambda f: (
+            f"{f.nome} – {descrizioni_figure[f.pk]}" if descrizioni_figure.get(f.pk) else f.nome
+        )
+        self.fields["soggetti"].help_text = (
+            "Chi è esposto al pericolo: operatori (RESS 1.1.1 d) e persone esposte (RESS 1.1.1 c). "
+            "Le descrizioni si cambiano nei dati della macchina."
+        )
         for nome, campo in self.fields.items():
             if nome[:2] in ("se", "fr", "pr", "av") and nome.endswith(("_iniziale", "_finale")):
                 campo.label = ETICHETTE_FATTORI[nome[:2]]
@@ -227,6 +240,16 @@ MisureFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
     widgets={"testo": forms.Textarea(attrs={"rows": 4}), "ordine": forms.NumberInput(attrs={"style": "width:4em"})},
+)
+
+
+FigureMacchinaFormSet = inlineformset_factory(
+    Macchina,
+    FiguraMacchina,
+    fields=["figura", "descrizione"],
+    extra=1,
+    can_delete=True,
+    widgets={"descrizione": forms.Textarea(attrs={"rows": 1})},
 )
 
 

@@ -162,7 +162,7 @@ def _schede_attive(revisione):
     return list(
         revisione.schede.exclude(decisione=SchedaAnalisi.Decisione.SCARTATA)
         .select_related("modulo", "requisito", "revisione__metodo")
-        .prefetch_related("misure__norma", "pericoli", "condizioni", "norme")
+        .prefetch_related("misure__norma", "pericoli", "condizioni", "norme", "soggetti")
     )
 
 
@@ -332,6 +332,28 @@ def valutazione(revisione):
         [4, 7, 4],
     )
 
+    doc.add_heading("Soggetti", level=1)
+    doc.add_paragraph(
+        "Operatori (RESS 1.1.1 d): persone incaricate di installare, far funzionare, regolare, pulire, "
+        "riparare o spostare la macchina. Persone esposte (RESS 1.1.1 c): chiunque si trovi interamente "
+        "o in parte in una zona pericolosa."
+    )
+    descrizioni_figure = macchina.descrizioni_figure()
+    figure_usate = {f for s in _schede_attive(revisione) for f in s.soggetti.all()}
+    figure_usate |= {f.figura for f in macchina.figure.select_related("figura")}
+    if figure_usate:
+        _tabella(
+            doc,
+            ["Tipo", "Figura", "Chi è su questa macchina"],
+            [
+                [f.get_tipo_display(), f.nome, descrizioni_figure.get(f.pk) or f.descrizione]
+                for f in sorted(figure_usate, key=lambda f: (f.ordine, f.nome))
+            ],
+            [5, 4, 8],
+        )
+    else:
+        doc.add_paragraph("Soggetti non ancora indicati.")
+
     doc.add_heading("Metodo di stima", level=1)
     doc.add_paragraph(
         f"{metodo.versione}. Gravità Se da 1 a 4; classe Cl = Fr + Pr + Av (frequenza di esposizione, "
@@ -373,6 +395,7 @@ def valutazione(revisione):
             doc.add_heading(f"{s.codice or 'Scheda'} – {s.requisito.codice} {s.requisito.titolo}", level=3)
             _coppia(doc, "Zona", " – ".join(v for v in (s.zona_impianto, s.zona_pericolosa) if v))
             _coppia(doc, "Condizioni operative", ", ".join(c.nome for c in s.condizioni.all()))
+            _coppia(doc, "Soggetti esposti", ", ".join(f.nome for f in s.soggetti.all()))
             pericoli = list(s.pericoli.all())
             if pericoli:
                 doc.add_paragraph().add_run("Pericoli").bold = True

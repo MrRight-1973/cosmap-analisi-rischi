@@ -209,6 +209,27 @@ class CondizioneOperativa(models.Model):
         return self.nome
 
 
+class Figura(models.Model):
+    """Soggetto che può essere esposto ai pericoli (definizioni c e d del RESS 1.1.1)."""
+
+    class Tipo(models.TextChoices):
+        OPERATORE = "OPERATORE", "Operatore (RESS 1.1.1 d)"
+        ESPOSTA = "ESPOSTA", "Persona esposta (RESS 1.1.1 c)"
+
+    nome = models.CharField(max_length=80, unique=True)
+    tipo = models.CharField(max_length=10, choices=Tipo.choices, default=Tipo.OPERATORE)
+    descrizione = models.TextField(blank=True, help_text="Descrizione standard, proposta nelle nuove commesse.")
+    ordine = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "figura"
+        verbose_name_plural = "figure (soggetti esposti)"
+        ordering = ["ordine", "nome"]
+
+    def __str__(self):
+        return self.nome
+
+
 class Modulo(models.Model):
     nome = models.CharField(max_length=150, unique=True)
     descrizione = models.TextField(blank=True)
@@ -289,6 +310,7 @@ class SchedaModello(Stima):
     condizioni = models.ManyToManyField(CondizioneOperativa, blank=True)
     pericoli = models.ManyToManyField(Pericolo, blank=True)
     norme = models.ManyToManyField(Norma, blank=True)
+    soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti")
     scheda_originale = models.CharField(max_length=40, blank=True, help_text="Riferimento alla valutazione di origine.")
     stato = models.CharField(max_length=10, choices=Stato.choices, default=Stato.BOZZA)
 
@@ -424,9 +446,32 @@ class Macchina(models.Model):
     class Meta:
         verbose_name_plural = "macchine"
 
+    def descrizioni_figure(self):
+        """{figura_id: descrizione concreta per questa macchina}."""
+        return {f.figura_id: f.descrizione for f in self.figure.all()}
+
     def __str__(self):
         base = self.modello or self.denominazione
         return f"{base} matr. {self.matricola}" if self.matricola else base
+
+
+class FiguraMacchina(models.Model):
+    """Chi è concretamente una figura su questa macchina (es. operatore: addetto al carico bancali)."""
+
+    macchina = models.ForeignKey(Macchina, on_delete=models.CASCADE, related_name="figure")
+    figura = models.ForeignKey(Figura, on_delete=models.PROTECT)
+    descrizione = models.TextField(
+        blank=True, help_text="Es. \"Mulettista che transita nella corsia adiacente\"."
+    )
+
+    class Meta:
+        verbose_name = "figura della macchina"
+        verbose_name_plural = "figure della macchina"
+        unique_together = [("macchina", "figura")]
+        ordering = ["figura__ordine", "figura__nome"]
+
+    def __str__(self):
+        return f"{self.figura}: {self.descrizione}" if self.descrizione else str(self.figura)
 
 
 class Analisi(models.Model):
@@ -542,6 +587,7 @@ class SchedaAnalisi(ContenutoRevisione, Stima):
     condizioni = models.ManyToManyField(CondizioneOperativa, blank=True)
     pericoli = models.ManyToManyField(Pericolo, blank=True)
     norme = models.ManyToManyField(Norma, blank=True)
+    soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti")
     decisione = models.CharField(max_length=10, choices=Decisione.choices, default=Decisione.PROPOSTA)
     motivazione = models.TextField(blank=True)
     decisa_da = models.ForeignKey(

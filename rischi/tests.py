@@ -495,3 +495,88 @@ class EliminaCommessaTest(BaseConLibreria):
         with self.assertRaises(PermissionDenied):
             servizi.elimina_commessa(self.commessa, self.verificatore)
         self.assertTrue(Commessa.objects.filter(pk=self.commessa.pk).exists())
+
+
+class SoggettiEspostiTest(TestCase):
+    """Soggetti esposti (RESS 1.1.1 c e d): libreria, macchina, schede, controlli e documento."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        cls.compilatore = crea_utente("mario", servizi.COMPILATORE)
+        commessa = Commessa.objects.create(
+            numero="26-50", cliente=Cliente.objects.create(ragione_sociale="Prova"), anno=2026,
+            riferimento=RiferimentoNormativo.objects.get(),
+        )
+        cls.macchina = Macchina.objects.create(commessa=commessa, denominazione="Linea", matricola="S1")
+        cls.macchina.moduli.set(servizi.moduli_proposti() | Modulo.objects.filter(nome__startswith="Tavola"))
+        cls.analisi = servizi.crea_analisi_da_libreria(cls.macchina, cls.compilatore)
+
+    def test_libreria_precompila_i_soggetti(self):
+        from .models import Figura
+
+        self.assertEqual(Figura.objects.count(), 8)
+        carico = SchedaModello.objects.get(codice="NL-034")
+        self.assertIn("Operatore di conduzione", [f.nome for f in carico.soggetti.all()])
+        quadro = SchedaModello.objects.get(codice="NL-070")
+        self.assertEqual([f.nome for f in quadro.soggetti.all()], ["Manutentore elettrico"])
+
+    def test_soggetti_copiati_e_figure_della_macchina(self):
+        rev = self.analisi.revisione_corrente
+        scheda = rev.schede.get(codice="NL-034")
+        self.assertIn("Operatore di conduzione", [f.nome for f in scheda.soggetti.all()])
+        figure = {f.figura.nome: f.descrizione for f in self.macchina.figure.select_related("figura")}
+        self.assertIn("Operatore di conduzione", figure)
+        self.assertTrue(figure["Operatore di conduzione"])
+
+    def test_controllo_schede_senza_soggetti(self):
+        rev = self.analisi.revisione_corrente
+        self.assertFalse([a for a in servizi.controlli(rev) if a.tipo == "soggetti"])
+        scheda = rev.schede.get(codice="NL-034")
+        scheda.soggetti.clear()
+        segnalate = [a.scheda for a in servizi.controlli(rev) if a.tipo == "soggetti"]
+        self.assertEqual(segnalate, [scheda])
+
+    def test_descrizione_per_macchina_e_documento(self):
+        from . import documenti
+        from .models import Figura
+
+        self.client.force_login(self.compilatore)
+        url = reverse("macchina", args=[self.macchina.pk])
+        figure = list(self.macchina.figure.all())
+        dati = {
+            "denominazione": "Linea", "matricola": "S1", "tipo": "MACCHINA",
+            "moduli": [m.pk for m in self.macchina.moduli.all()],
+            "figure-TOTAL_FORMS": len(figure) + 1, "figure-INITIAL_FORMS": len(figure),
+            "figure-MIN_NUM_FORMS": 0, "figure-MAX_NUM_FORMS": 1000,
+        }
+        for i, f in enumerate(figure):
+            dati.update({f"figure-{i}-id": f.pk, f"figure-{i}-figura": f.figura_id, f"figure-{i}-descrizione": f.descrizione})
+        operatore = next(i for i, f in enumerate(figure) if f.figura.nome == "Operatore di conduzione")
+        dati[f"figure-{operatore}-descrizione"] = "Addetto alla conduzione linea e carico bancali"
+        terzi = next(i for i, f in enumerate(figure) if f.figura.nome == "Terzi di passaggio")
+        dati[f"figure-{terzi}-descrizione"] = "Mulettista che transita nella corsia adiacente"
+        risposta = self.client.post(url, dati)
+        self.assertEqual(risposta.status_code, 302)
+        self.assertEqual(
+            self.macchina.figure.get(figura=Figura.objects.get(nome="Terzi di passaggio")).descrizione,
+            "Mulettista che transita nella corsia adiacente",
+        )
+
+        scheda = self.analisi.revisione_corrente.schede.get(codice="NL-034")
+        pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
+        self.assertContains(pagina, "Addetto alla conduzione linea e carico bancali")
+
+        testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
+        self.assertIn("Soggetti esposti", testo)
+        self.assertIn("Mulettista che transita nella corsia adiacente", testo)
+        self.assertIn("Persona esposta (RESS 1.1.1 c)", testo)
+
+    def test_completa_soggetti_nelle_bozze(self):
+        rev = self.analisi.revisione_corrente
+        for scheda in rev.schede.all():
+            scheda.soggetti.clear()
+        self.macchina.figure.all().delete()
+        call_command("completa_soggetti", stdout=io.StringIO())
+        self.assertFalse([a for a in servizi.controlli(rev) if a.tipo == "soggetti"])
+        self.assertTrue(self.macchina.figure.filter(figura__nome="Operatore di conduzione").exists())
