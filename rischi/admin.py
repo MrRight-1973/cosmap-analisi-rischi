@@ -36,7 +36,7 @@ class ModuloForm(forms.ModelForm):
 
     class Meta:
         model = m.Modulo
-        exclude = ["caratteristiche"]
+        fields = "__all__"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,64 +80,12 @@ class ModuloForm(forms.ModelForm):
 @admin.register(m.Modulo)
 class ModuloAdmin(admin.ModelAdmin):
     form = ModuloForm
-    list_display = ("nome", "sempre_attivo", "attivato_da", "numero_schede", "attivo", "ordine")
+    list_display = ("nome", "condizione", "sempre_attivo", "numero_schede", "attivo", "ordine")
     list_editable = ("ordine",)
-    readonly_fields = ("attivato_da",)
 
     @admin.display(description="schede")
     def numero_schede(self, obj):
         return obj.schede.count()
-
-    @admin.display(description="attivato da")
-    def attivato_da(self, obj):
-        if obj.sempre_attivo:
-            return "sempre"
-        return ", ".join(c.nome for c in obj.caratteristiche.all()) or "nessuna caratteristica"
-
-
-class CaratteristicaForm(forms.ModelForm):
-    moduli = forms.ModelMultipleChoiceField(
-        m.Modulo.objects.filter(sempre_attivo=False),
-        required=False,
-        widget=FilteredSelectMultiple("moduli", is_stacked=False),
-        label="Moduli da attivare",
-        help_text="Quando la macchina ha questa caratteristica, l'analisi propone le schede di questi moduli.",
-    )
-
-    class Meta:
-        model = m.Caratteristica
-        fields = ["nome", "descrizione"]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance.pk:
-            self.fields["moduli"].initial = self.instance.moduli.all()
-
-    def save(self, commit=True):
-        caratteristica = super().save(commit=commit)
-        if commit:
-            caratteristica.moduli.set(self.cleaned_data["moduli"])
-        else:
-            vecchio_save_m2m = self.save_m2m
-
-            def save_m2m():
-                vecchio_save_m2m()
-                caratteristica.moduli.set(self.cleaned_data["moduli"])
-
-            self.save_m2m = save_m2m
-        return caratteristica
-
-
-@admin.register(m.Caratteristica)
-class CaratteristicaAdmin(admin.ModelAdmin):
-    form = CaratteristicaForm
-    list_display = ("nome", "moduli_attivati")
-    search_fields = ("nome",)
-
-    @admin.display(description="moduli attivati")
-    def moduli_attivati(self, obj):
-        return ", ".join(mo.nome for mo in obj.moduli.all())
-
 
 
 @admin.register(m.RequisitoRESS)

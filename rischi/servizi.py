@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from .models import (
@@ -45,13 +44,13 @@ def richiedi_ruolo(utente, ruolo):
 
 
 def moduli_attivi(macchina):
-    """Moduli sempre attivi più quelli attivati dalle caratteristiche della macchina."""
-    caratteristiche = macchina.caratteristiche.all()
-    return (
-        Modulo.objects.filter(attivo=True)
-        .filter(Q(sempre_attivo=True) | Q(caratteristiche__in=caratteristiche))
-        .distinct()
-    )
+    """Moduli scelti per la macchina."""
+    return macchina.moduli.filter(attivo=True)
+
+
+def moduli_proposti():
+    """Moduli già selezionati per una nuova commessa."""
+    return Modulo.objects.filter(attivo=True, sempre_attivo=True)
 
 
 _CAMPI_STIMA = (
@@ -122,7 +121,7 @@ def _metodo_corrente():
 
 @transaction.atomic
 def crea_analisi_da_libreria(macchina, utente):
-    """Revisione 0 con le schede dei moduli attivati dalle caratteristiche della macchina."""
+    """Revisione 0 con le schede dei moduli scelti per la macchina."""
     richiedi_ruolo(utente, COMPILATORE)
     analisi = Analisi.objects.create(macchina=macchina, origine=Analisi.Origine.LIBRERIA)
     revisione = Revisione.objects.create(
@@ -153,8 +152,42 @@ def crea_analisi_da_copia(macchina, revisione_sorgente, utente):
     )
     for scheda in revisione_sorgente.schede.filter(decisione__in=_DECISIONI_ATTIVE):
         _copia_scheda(scheda, revisione, origine=scheda.origine, decisione=SchedaAnalisi.Decisione.PROPOSTA)
+    macchina.moduli.set(revisione_sorgente.analisi.macchina.moduli.all())
     _crea_applicabilita(revisione, precedente=revisione_sorgente)
     return analisi
+
+
+@transaction.atomic
+def cambia_moduli(macchina, moduli, utente):
+    """Cambia i moduli della macchina e allinea la revisione in bozza.
+
+    Le schede dei moduli aggiunti entrano come proposte; quelle dei moduli tolti
+    escono solo se ancora da decidere, le altre restano e vanno scartate a mano.
+    Restituisce (aggiunte, tolte, rimaste).
+    """
+    richiedi_ruolo(utente, COMPILATORE)
+    analisi = getattr(macchina, "analisi", None)
+    revisione = analisi.revisione_corrente if analisi else None
+    if revisione and not revisione.modificabile:
+        raise ValidationError("I moduli si cambiano solo con una revisione in bozza.")
+    prima = set(macchina.moduli.all())
+    dopo = set(moduli)
+    macchina.moduli.set(dopo)
+    if not revisione:
+        return 0, 0, 0
+    aggiunti, tolti = dopo - prima, prima - dopo
+    presenti = set(revisione.schede.values_list("codice", flat=True))
+    aggiunte = 0
+    for scheda in SchedaModello.objects.filter(modulo__in=aggiunti).exclude(codice__in=presenti):
+        _copia_scheda(scheda, revisione, origine=scheda, decisione=SchedaAnalisi.Decisione.PROPOSTA)
+        aggiunte += 1
+    da_togliere = revisione.schede.filter(modulo__in=tolti)
+    rimaste = da_togliere.exclude(decisione=SchedaAnalisi.Decisione.PROPOSTA).count()
+    tolte = 0
+    for scheda in da_togliere.filter(decisione=SchedaAnalisi.Decisione.PROPOSTA):
+        scheda.delete()
+        tolte += 1
+    return aggiunte, tolte, rimaste
 
 
 _DECISIONI_ATTIVE = (

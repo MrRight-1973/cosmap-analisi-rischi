@@ -9,12 +9,12 @@ from django.urls import reverse
 
 from . import servizi
 from .models import (
-    Caratteristica,
     Cliente,
     Commessa,
     Esito,
     Macchina,
     MetodoStima,
+    Modulo,
     RegistroModifica,
     Revisione,
     RevisioneBloccata,
@@ -44,12 +44,14 @@ class BaseConLibreria(TestCase):
         cls.riferimento = RiferimentoNormativo.objects.get()
         cls.cliente = Cliente.objects.create(ragione_sociale="Kohler")
 
-    def nuova_macchina(self, numero="25-20", *caratteristiche):
+    def nuova_macchina(self, numero="25-20", *moduli):
         commessa = Commessa.objects.create(
             numero=numero, cliente=self.cliente, anno=2020, riferimento=self.riferimento
         )
         macchina = Macchina.objects.create(commessa=commessa, denominazione="Impianto di prova", matricola="X1")
-        macchina.caratteristiche.set(Caratteristica.objects.filter(nome__in=caratteristiche))
+        macchina.moduli.set(servizi.moduli_proposti())
+        if moduli:
+            macchina.moduli.add(*Modulo.objects.filter(nome__startswith=moduli[0]))
         return macchina
 
 
@@ -75,13 +77,14 @@ class ImportTest(BaseConLibreria):
 
 
 class CreazioneAnalisiTest(BaseConLibreria):
-    def test_solo_moduli_attivati(self):
+    def test_solo_moduli_scelti(self):
         sempre = SchedaModello.objects.filter(modulo__sempre_attivo=True).count()
         analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
         self.assertEqual(analisi.revisione_corrente.schede.count(), sempre)
 
-        tavola = "Tavola rotante con carico/scarico manuale"
-        con_tavola = SchedaModello.objects.filter(modulo__caratteristiche__nome=tavola).count()
+        tavola = "Tavola rotante"
+        con_tavola = SchedaModello.objects.filter(modulo__nome__startswith=tavola).count()
+        self.assertTrue(con_tavola)
         altra = servizi.crea_analisi_da_libreria(self.nuova_macchina("26-01", tavola), self.compilatore)
         self.assertEqual(altra.revisione_corrente.schede.count(), sempre + con_tavola)
 
@@ -210,7 +213,7 @@ class PagineTest(BaseConLibreria):
                 "denominazione": "Tavola rotante",
                 "tipo": "MACCHINA",
                 "origine": "LIBRERIA",
-                "caratteristiche": [Caratteristica.objects.first().pk],
+                "moduli": [m.pk for m in servizi.moduli_proposti()],
             },
         )
         analisi = Commessa.objects.get(numero="27-01").macchine.get().analisi
@@ -343,32 +346,53 @@ class DocumentiTest(BaseConLibreria):
         self.assertTrue(DocumentoGenerato.objects.get(tipo="VALUTAZIONE").definitivo)
 
 
-class AmministrazioneCaratteristicheTest(BaseConLibreria):
-    def test_moduli_si_scelgono_dalla_caratteristica(self):
-        from .models import Modulo
+class ModuliDellaMacchinaTest(BaseConLibreria):
+    def setUp(self):
+        self.macchina = self.nuova_macchina()
+        self.analisi = servizi.crea_analisi_da_libreria(self.macchina, self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+        self.tavola = Modulo.objects.filter(nome__startswith="Tavola rotante").first()
 
-        admin_utente = User.objects.create_superuser("capo", password="prova-prova-123")
-        self.client.force_login(admin_utente)
-        robot = Modulo.objects.get(nome__startswith="Gruppo di smerigliatura")
-        zona = Modulo.objects.get(nome__startswith="Zona smerigliatura")
+    def test_aggiunge_e_toglie_moduli(self):
+        moduli = list(self.macchina.moduli.all())
+        aggiunte, tolte, rimaste = servizi.cambia_moduli(self.macchina, moduli + [self.tavola], self.compilatore)
+        self.assertEqual(aggiunte, SchedaModello.objects.filter(modulo=self.tavola).count())
+        self.assertEqual((tolte, rimaste), (0, 0))
+
+        decisa = self.rev.schede.filter(modulo=self.tavola).first()
+        servizi.decidi_scheda(decisa, self.compilatore, SchedaAnalisi.Decisione.CONFERMATA, "")
+        aggiunte, tolte, rimaste = servizi.cambia_moduli(self.macchina, moduli, self.compilatore)
+        self.assertEqual((aggiunte, rimaste), (0, 1))
+        self.assertEqual(self.rev.schede.filter(modulo=self.tavola).count(), 1)
+        self.assertNotIn(self.tavola, self.macchina.moduli.all())
+
+    def test_non_si_cambiano_con_revisione_approvata(self):
+        servizi.invia_in_verifica(self.rev, self.compilatore)
+        servizi.segna_verificata(self.rev, self.verificatore)
+        servizi.approva(self.rev, self.approvatore)
+        with self.assertRaises(ValidationError):
+            servizi.cambia_moduli(self.macchina, [self.tavola], self.compilatore)
+
+    def test_dalla_pagina_della_macchina(self):
+        self.client.force_login(self.compilatore)
+        url = reverse("macchina", args=[self.macchina.pk])
+        self.assertContains(self.client.get(url), "Moduli della libreria")
         risposta = self.client.post(
-            reverse("admin:rischi_caratteristica_add"),
-            {"nome": "Robot antropomorfo", "descrizione": "", "moduli": [robot.pk, zona.pk]},
+            url,
+            {
+                "denominazione": self.macchina.denominazione,
+                "tipo": self.macchina.tipo,
+                "moduli": [m.pk for m in self.macchina.moduli.all()] + [self.tavola.pk],
+            },
         )
-        self.assertEqual(risposta.status_code, 302)
-        nuova = Caratteristica.objects.get(nome="Robot antropomorfo")
-        self.assertEqual(set(nuova.moduli.all()), {robot, zona})
+        self.assertRedirects(risposta, reverse("analisi", args=[self.analisi.pk]))
+        self.assertIn(self.tavola, self.macchina.moduli.all())
+        self.assertTrue(self.rev.schede.filter(modulo=self.tavola).exists())
 
-        pagina = self.client.get(reverse("admin:rischi_caratteristica_change", args=[nuova.pk]))
-        self.assertContains(pagina, "Moduli da attivare")
-        self.assertContains(self.client.get(reverse("admin:rischi_modulo_changelist")), "Robot antropomorfo")
 
-        macchina = self.nuova_macchina("28-01", "Robot antropomorfo")
-        analisi = servizi.crea_analisi_da_libreria(macchina, self.compilatore)
-        self.assertTrue(analisi.revisione_corrente.schede.filter(modulo=robot).exists())
-
+class AmministrazioneLibreriaTest(BaseConLibreria):
     def test_schede_si_scelgono_dal_modulo(self):
-        from .models import Modulo, SchedaModello
+
 
         admin_utente = User.objects.create_superuser("capo", password="prova-prova-123")
         self.client.force_login(admin_utente)
@@ -376,7 +400,13 @@ class AmministrazioneCaratteristicheTest(BaseConLibreria):
         altra = SchedaModello.objects.exclude(modulo=robot).first()
         proprie = list(robot.schede.values_list("pk", flat=True))
         url = reverse("admin:rischi_modulo_change", args=[robot.pk])
-        dati = {"nome": robot.nome, "descrizione": robot.descrizione, "attivo": "on", "ordine": robot.ordine}
+        dati = {
+            "nome": robot.nome,
+            "descrizione": robot.descrizione,
+            "condizione": robot.condizione,
+            "attivo": "on",
+            "ordine": robot.ordine,
+        }
 
         self.assertContains(self.client.get(url), "Schede del modulo")
         risposta = self.client.post(url, {**dati, "schede": proprie + [altra.pk]})
