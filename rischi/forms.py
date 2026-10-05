@@ -4,6 +4,7 @@ from django.forms import inlineformset_factory, modelformset_factory
 from .models import (
     ApplicabilitaRequisito,
     Caratteristica,
+    LegislazioneUE,
     Cliente,
     Commessa,
     Macchina,
@@ -44,6 +45,19 @@ class NuovaCommessaForm(forms.Form):
     anno_costruzione = forms.IntegerField(min_value=2000, max_value=2100, required=False)
     tipo = forms.ChoiceField(choices=Macchina.Tipo.choices, label="Tipo")
     materiali = forms.CharField(label="Materiali lavorati", widget=forms.Textarea(attrs={"rows": 2}), required=False)
+    funzione = forms.CharField(
+        label="Funzione",
+        widget=forms.Textarea(attrs={"rows": 2}),
+        required=False,
+        help_text="Come compare nella dichiarazione, es. \"lucidatura automatica di rubinetteria in ottone\".",
+    )
+    altre_legislazioni = forms.ModelMultipleChoiceField(
+        LegislazioneUE.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Altra legislazione UE applicabile",
+        initial=lambda: LegislazioneUE.objects.filter(predefinita=True),
+    )
     caratteristiche = forms.ModelMultipleChoiceField(
         Caratteristica.objects.all(),
         widget=forms.CheckboxSelectMultiple,
@@ -73,6 +87,28 @@ class NuovaCommessaForm(forms.Form):
         if dati.get("origine") == "COPIA" and not dati.get("copia_da"):
             self.add_error("copia_da", "Scegli l'analisi da copiare.")
         return dati
+
+
+class MacchinaForm(forms.ModelForm):
+    class Meta:
+        model = Macchina
+        fields = [
+            "denominazione",
+            "modello",
+            "matricola",
+            "anno_costruzione",
+            "tipo",
+            "funzione",
+            "materiali",
+            "altre_legislazioni",
+            "organismo_notificato",
+        ]
+        widgets = {
+            "funzione": forms.Textarea(attrs={"rows": 2}),
+            "materiali": forms.Textarea(attrs={"rows": 2}),
+            "organismo_notificato": forms.Textarea(attrs={"rows": 2}),
+            "altre_legislazioni": forms.CheckboxSelectMultiple,
+        }
 
 
 class SchedaForm(forms.ModelForm):

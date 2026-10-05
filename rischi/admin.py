@@ -21,7 +21,7 @@ class SchedaModelloAdmin(admin.ModelAdmin):
 class ModuloAdmin(admin.ModelAdmin):
     list_display = ("nome", "sempre_attivo", "attivo", "ordine")
     list_editable = ("ordine",)
-    filter_horizontal = ("caratteristiche",)
+
 
 
 @admin.register(m.RequisitoRESS)
@@ -74,7 +74,7 @@ class RegistroAdmin(admin.ModelAdmin):
         return False
 
 
-for modello in (m.Pericolo, m.CondizioneOperativa, m.Caratteristica, m.RiferimentoNormativo, m.Cliente, m.Fabbricante):
+for modello in (m.Pericolo, m.CondizioneOperativa, m.Caratteristica, m.RiferimentoNormativo, m.Cliente, m.Fabbricante, m.LegislazioneUE):
     admin.site.register(modello)
 
 
@@ -87,4 +87,4 @@ class CommessaAdmin(admin.ModelAdmin):
 @admin.register(m.Macchina)
 class MacchinaAdmin(admin.ModelAdmin):
     list_display = ("commessa", "denominazione", "modello", "matricola", "tipo")
-    filter_horizontal = ("caratteristiche",)
+

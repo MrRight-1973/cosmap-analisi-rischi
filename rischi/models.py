@@ -335,6 +335,8 @@ class Fabbricante(models.Model):
 
     ragione_sociale = models.CharField(max_length=200)
     indirizzo = models.TextField()
+    partita_iva = models.CharField("partita IVA", max_length=20, blank=True)
+    luogo = models.CharField("luogo di emissione delle dichiarazioni", max_length=100, blank=True)
     persona_fascicolo = models.CharField(
         "persona autorizzata a costituire il fascicolo tecnico", max_length=200, blank=True
     )
@@ -348,6 +350,27 @@ class Fabbricante(models.Model):
 
     def __str__(self):
         return self.ragione_sociale
+
+    @classmethod
+    def corrente(cls):
+        return cls.objects.first()
+
+
+class LegislazioneUE(models.Model):
+    """Altra normativa di armonizzazione da citare nella dichiarazione (es. EMC, RoHS)."""
+
+    codice = models.CharField(max_length=40, unique=True, help_text="Es. 2014/30/UE")
+    titolo = models.CharField(max_length=300)
+    titolo_en = models.CharField("titolo in inglese", max_length=300, blank=True)
+    predefinita = models.BooleanField(default=False, help_text="Proposta per le nuove macchine.")
+
+    class Meta:
+        verbose_name = "legislazione UE"
+        verbose_name_plural = "legislazioni UE"
+        ordering = ["codice"]
+
+    def __str__(self):
+        return f"{self.codice} {self.titolo}"
 
 
 class Cliente(models.Model):
@@ -392,7 +415,17 @@ class Macchina(models.Model):
     anno_costruzione = models.PositiveSmallIntegerField(null=True, blank=True)
     tipo = models.CharField(max_length=10, choices=Tipo.choices, default=Tipo.MACCHINA)
     materiali = models.TextField("materiali lavorati", blank=True)
+    funzione = models.TextField(
+        blank=True, help_text="Denominazione generica e funzione, come compare nella dichiarazione."
+    )
     caratteristiche = models.ManyToManyField(Caratteristica, blank=True, related_name="macchine")
+    altre_legislazioni = models.ManyToManyField(
+        LegislazioneUE, blank=True, help_text="Oltre al Regolamento (UE) 2023/1230."
+    )
+    organismo_notificato = models.TextField(
+        blank=True,
+        help_text="Solo per le macchine dell'Allegato I del Regolamento: nome, numero, procedura e certificato.",
+    )
 
     class Meta:
         verbose_name_plural = "macchine"
@@ -590,6 +623,8 @@ class DocumentoGenerato(models.Model):
 
     revisione = models.ForeignKey(Revisione, on_delete=models.PROTECT, related_name="documenti")
     tipo = models.CharField(max_length=15, choices=Tipo.choices)
+    lingua = models.CharField(max_length=2, default="it")
+    definitivo = models.BooleanField(default=False, help_text="Generato da una revisione approvata.")
     file = models.FileField(upload_to="documenti/%Y/")
     generato_il = models.DateTimeField(auto_now_add=True)
     generato_da = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")

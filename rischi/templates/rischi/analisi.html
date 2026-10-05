@@ -6,7 +6,7 @@
 <div class="intestazione">
   <div>
     <h1>Commessa {{ c.numero }} · {{ m.modello|default:m.denominazione }}</h1>
-    <p class="sotto">{{ c.cliente }} · {{ m.get_tipo_display }}{% if m.matricola %} · matricola {{ m.matricola }}{% endif %} · {{ c.riferimento }}</p>
+    <p class="sotto"><a href="{% url 'macchina' m.pk %}">Dati della macchina</a> · {{ c.cliente }} · {{ m.get_tipo_display }}{% if m.matricola %} · matricola {{ m.matricola }}{% endif %} · {{ c.riferimento }}</p>
   </div>
   <span class="stato grande {{ revisione.stato|lower }}">Rev. {{ revisione.numero }} · {{ revisione.get_stato_display }}</span>
 </div>
@@ -57,6 +57,22 @@
       <p class="sotto">Revisione storica: sola lettura.</p>
     {% endif %}
   </div>
+</section>
+
+<section class="riquadro">
+  <h2>Documenti</h2>
+  {% if revisione.stato != "APPROVATA" %}<p class="sotto">La revisione non è approvata: i documenti escono con la scritta BOZZA.</p>{% endif %}
+  <div class="documenti">
+    <form method="post" action="{% url 'genera_documento' revisione.pk 'valutazione' %}">{% csrf_token %}<button>Valutazione dei rischi</button></form>
+    <form method="post" action="{% url 'genera_documento' revisione.pk 'residui' %}">{% csrf_token %}<button>Rischi residui per il manuale</button></form>
+    <form method="post" action="{% url 'genera_documento' revisione.pk 'dichiarazione' %}">{% csrf_token %}<input type="hidden" name="lingua" value="it"><button>Dichiarazione UE (italiano)</button></form>
+    <form method="post" action="{% url 'genera_documento' revisione.pk 'dichiarazione' %}">{% csrf_token %}<input type="hidden" name="lingua" value="en"><button>Dichiarazione UE (inglese)</button></form>
+  </div>
+  {% if documenti %}
+  <table class="tabella"><thead><tr><th>Documento</th><th>Lingua</th><th>Generato</th><th></th></tr></thead><tbody>
+  {% for d in documenti %}<tr><td>{{ d.get_tipo_display }}{% if not d.definitivo %} <span class="etichetta">bozza</span>{% endif %}</td><td>{{ d.lingua }}</td><td>{{ d.generato_il|date:"d/m/Y H:i" }} · {{ d.generato_da.get_full_name|default:d.generato_da.username }}</td><td><a href="{% url 'scarica_documento' d.pk %}">Scarica</a></td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
 </section>
 
 <p class="riepilogo">{{ conteggi.totali }} schede · {{ conteggi.da_decidere }} da decidere · {{ conteggi.scartate }} scartate</p>

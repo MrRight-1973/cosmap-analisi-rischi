@@ -4,13 +4,16 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.core.files.base import ContentFile
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from . import servizi
-from .forms import ApplicabilitaFormSet, MisureFormSet, NuovaCommessaForm, SchedaForm
-from .models import Cliente, Commessa, Macchina, RegistroModifica, Revisione, SchedaAnalisi
+from . import documenti
+from .forms import ApplicabilitaFormSet, MacchinaForm, MisureFormSet, NuovaCommessaForm, SchedaForm
+from .models import Cliente, Commessa, DocumentoGenerato, Macchina, RegistroModifica, Revisione, SchedaAnalisi
 
 
 def _errore(request, eccezione):
@@ -62,8 +65,10 @@ def nuova_commessa(request):
                     anno_costruzione=d["anno_costruzione"],
                     tipo=d["tipo"],
                     materiali=d["materiali"],
+                    funzione=d["funzione"],
                 )
                 macchina.caratteristiche.set(d["caratteristiche"])
+                macchina.altre_legislazioni.set(d["altre_legislazioni"])
                 if d["origine"] == "COPIA":
                     analisi = servizi.crea_analisi_da_copia(macchina, d["copia_da"], request.user)
                 else:
@@ -110,6 +115,7 @@ def analisi(request, pk, numero=None):
             "approvare": servizi.ha_ruolo(utente, servizi.APPROVATORE),
         },
         "ultima": revisione == revisioni[0],
+        "documenti": revisione.documenti.select_related("generato_da")[:20],
     }
     return render(request, "rischi/analisi.html", contesto)
 
@@ -244,3 +250,58 @@ def applicabilita(request, revisione_pk):
 def registro(request):
     voci = RegistroModifica.objects.select_related("utente")[:300]
     return render(request, "rischi/registro.html", {"voci": voci})
+
+
+@login_required
+def macchina(request, pk):
+    macchina = get_object_or_404(Macchina.objects.select_related("commessa"), pk=pk)
+    analisi = getattr(macchina, "analisi", None)
+    modificabile = servizi.ha_ruolo(request.user, servizi.COMPILATORE) and (
+        not analisi or analisi.revisione_corrente.modificabile
+    )
+    form = MacchinaForm(request.POST or None, instance=macchina)
+    if not modificabile:
+        for campo in form.fields.values():
+            campo.disabled = True
+    if request.method == "POST":
+        if not modificabile:
+            raise PermissionDenied("Dati della macchina modificabili solo con una revisione in bozza.")
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Dati della macchina salvati.")
+            return redirect("analisi", pk=analisi.pk) if analisi else redirect("elenco_commesse")
+    return render(request, "rischi/macchina.html", {"form": form, "macchina": macchina, "analisi": analisi, "modificabile": modificabile})
+
+
+NOMI_FILE = {
+    "DICHIARAZIONE": "Dichiarazione_UE",
+    "VALUTAZIONE": "Valutazione_rischi",
+    "RESIDUI": "Rischi_residui",
+}
+
+
+@login_required
+@require_POST
+def genera_documento(request, pk, tipo):
+    revisione = get_object_or_404(Revisione.objects.select_related("analisi__macchina__commessa"), pk=pk)
+    tipo = tipo.upper()
+    if tipo not in documenti.GENERATORI:
+        raise ValidationError("Tipo di documento sconosciuto.")
+    lingua = request.POST.get("lingua", "it") if tipo == "DICHIARAZIONE" else "it"
+    if lingua not in documenti.TESTI:
+        lingua = "it"
+    contenuto = documenti.genera(tipo, revisione, lingua)
+    definitivo = revisione.stato == Revisione.Stato.APPROVATA
+    numero = revisione.analisi.macchina.commessa.numero.replace("/", "-")
+    nome = f"{NOMI_FILE[tipo]}_{numero}_rev{revisione.numero}{'' if definitivo else '_BOZZA'}_{lingua}.docx"
+    documento = DocumentoGenerato(
+        revisione=revisione, tipo=tipo, lingua=lingua, definitivo=definitivo, generato_da=request.user
+    )
+    documento.file.save(nome, ContentFile(contenuto), save=True)
+    return FileResponse(documento.file.open("rb"), as_attachment=True, filename=nome)
+
+
+@login_required
+def scarica_documento(request, pk):
+    documento = get_object_or_404(DocumentoGenerato, pk=pk)
+    return FileResponse(documento.file.open("rb"), as_attachment=True, filename=documento.file.name.rsplit("/", 1)[-1])

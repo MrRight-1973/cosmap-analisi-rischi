@@ -254,3 +254,90 @@ class PagineTest(BaseConLibreria):
         self.assertEqual(scheda.se_finale, 2)
         self.assertEqual(scheda.decisione, SchedaAnalisi.Decisione.MODIFICATA)
         self.assertEqual(scheda.misure.first().tipo, "PROT")
+
+
+class DocumentiTest(BaseConLibreria):
+    def setUp(self):
+        import tempfile
+
+        from django.test import override_settings
+
+        self.media = tempfile.TemporaryDirectory()
+        self.impostazioni = override_settings(MEDIA_ROOT=self.media.name)
+        self.impostazioni.enable()
+        macchina = self.nuova_macchina()
+        macchina.modello = "TR 5/4 CNC"
+        macchina.funzione = "Lucidatura automatica di rubinetteria"
+        macchina.save()
+        from .models import LegislazioneUE
+
+        macchina.altre_legislazioni.set(LegislazioneUE.objects.filter(predefinita=True))
+        self.analisi = servizi.crea_analisi_da_libreria(macchina, self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+
+    def tearDown(self):
+        self.impostazioni.disable()
+        self.media.cleanup()
+
+    @staticmethod
+    def leggi(contenuto):
+        import io
+
+        import docx
+
+        d = docx.Document(io.BytesIO(contenuto))
+        parti = [p.text for p in d.paragraphs] + [c.text for t in d.tables for r in t.rows for c in r.cells]
+        parti += [p.text for s in d.sections for p in s.header.paragraphs]
+        return "\n".join(parti)
+
+    def approva(self):
+        servizi.invia_in_verifica(self.rev, self.compilatore)
+        servizi.segna_verificata(self.rev, self.verificatore)
+        servizi.approva(self.rev, self.approvatore)
+
+    def test_dichiarazione_bozza_e_definitiva(self):
+        from . import documenti
+
+        bozza = self.leggi(documenti.dichiarazione(self.rev))
+        self.assertIn("BOZZA", bozza)
+        self.assertIn("Regolamento (UE) 2023/1230", bozza)
+        self.assertIn("C.O.S.M.A.P. s.r.l.", bozza)
+        self.assertIn("2014/30/UE", bozza)
+        self.assertIn("Lucidatura automatica di rubinetteria", bozza)
+        self.assertIn("EN ISO 12100", bozza)
+
+        self.approva()
+        definitiva = self.leggi(documenti.dichiarazione(self.rev, "en"))
+        self.assertNotIn("DRAFT", definitiva)
+        self.assertIn("EU Declaration of Conformity", definitiva)
+        self.assertIn("Saccolongo", definitiva)
+
+    def test_valutazione_e_residui(self):
+        from . import documenti
+
+        scheda = self.rev.schede.exclude(testo_istruzioni="").first()
+        servizi.decidi_scheda(scheda, self.compilatore, SchedaAnalisi.Decisione.SCARTATA, "Non presente sulla macchina")
+        valutazione = self.leggi(documenti.valutazione(self.rev))
+        self.assertIn("Metodo di stima", valutazione)
+        self.assertIn("Non presente sulla macchina", valutazione)
+        self.assertIn("Misure richieste", valutazione)
+        residui = self.leggi(documenti.rischi_residui(self.rev))
+        self.assertIn("Rischi residui", residui)
+        altra = self.rev.schede.exclude(pk=scheda.pk).exclude(testo_istruzioni="").first()
+        self.assertIn(altra.testo_istruzioni[:40], residui)
+
+    def test_genera_da_pagina_e_archivia(self):
+        from .models import DocumentoGenerato
+
+        self.client.force_login(self.compilatore)
+        risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "dichiarazione"]), {"lingua": "en"})
+        self.assertEqual(risposta.status_code, 200)
+        self.assertIn("_BOZZA_en.docx", risposta["Content-Disposition"])
+        documento = DocumentoGenerato.objects.get()
+        self.assertFalse(documento.definitivo)
+        self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Scarica")
+        self.assertEqual(self.client.get(reverse("scarica_documento", args=[documento.pk])).status_code, 200)
+
+        self.approva()
+        self.client.post(reverse("genera_documento", args=[self.rev.pk, "valutazione"]))
+        self.assertTrue(DocumentoGenerato.objects.get(tipo="VALUTAZIONE").definitivo)
