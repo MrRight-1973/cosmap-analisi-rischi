@@ -19,7 +19,10 @@ La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
 
 1. Importa la libreria da un file Excel: `dati/Libreria_nuova_Cosmap.xlsx` (scritta da zero
    sul Regolamento 2023/1230, misure classificate per tipo, stime da validare) oppure la
-   libreria precedente `dati/Libreria_analisi_rischi_Cosmap.xlsx`.
+   libreria precedente `dati/Libreria_analisi_rischi_Cosmap.xlsx`. La libreria nuova si
+   modifica nel sorgente `dati/genera_libreria_nuova.py` e si rigenera con
+   `python dati/genera_libreria_nuova.py`; `dati/confronta_librerie.py` produce il confronto
+   con la libreria precedente (`dati/Confronto_librerie.xlsx`).
 2. Crea una commessa con la sua macchina: si scelgono i moduli della libreria e
    l'analisi propone le loro schede, oppure si copia un'analisi già approvata.
    I moduli si cambiano anche dopo, dai dati della macchina, finché la revisione
