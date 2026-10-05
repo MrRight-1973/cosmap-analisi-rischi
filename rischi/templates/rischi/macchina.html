@@ -1,0 +1,14 @@
+{% extends "rischi/base.html" %}
+{% block titolo %}Macchina {{ macchina }}{% endblock %}
+{% block contenuto %}
+{% if analisi %}<p><a href="{% url 'analisi' analisi.pk %}">← Commessa {{ macchina.commessa.numero }}</a></p>{% endif %}
+<h1>Dati della macchina</h1>
+<p class="sotto">Questi dati compaiono nella dichiarazione UE di conformità.</p>
+{% if not modificabile %}<div class="messaggio info">Sola lettura: si modificano solo con una revisione in bozza e il ruolo di compilatore.</div>{% endif %}
+<form method="post" class="modulo">{% csrf_token %}
+<fieldset><legend>Macchina</legend>
+{% for f in form %}{% include "rischi/_campo.html" %}{% endfor %}
+</fieldset>
+{% if modificabile %}<button class="primario">Salva</button>{% endif %}
+</form>
+{% endblock %}

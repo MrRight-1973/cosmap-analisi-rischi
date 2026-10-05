@@ -12,5 +12,8 @@ urlpatterns = [
     path("revisioni/<int:pk>/azione/<slug:azione>/", views.azione_revisione, name="azione_revisione"),
     path("schede/<int:pk>/", views.scheda, name="scheda"),
     path("schede/<int:pk>/conferma/", views.decisione_rapida, name="conferma_scheda"),
+    path("macchine/<int:pk>/", views.macchina, name="macchina"),
+    path("revisioni/<int:pk>/documenti/<slug:tipo>/", views.genera_documento, name="genera_documento"),
+    path("documenti/<int:pk>/", views.scarica_documento, name="scarica_documento"),
     path("registro/", views.registro, name="registro"),
 ]

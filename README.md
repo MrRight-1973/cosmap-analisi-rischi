@@ -26,9 +26,15 @@ La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
 5. Prima della verifica segnala: requisiti senza scheda, stime finali mancanti,
    esiti non verdi senza rischio residuo, proposte non decise.
 6. Flusso Bozza → In verifica → Approvata, con rimando in bozza e nuova revisione.
+7. Genera in Word la valutazione dei rischi, l'elenco dei rischi residui per il
+   manuale e la dichiarazione UE di conformità (italiano o inglese). Ogni
+   documento generato resta archiviato; da una revisione non approvata esce
+   con la scritta BOZZA.
 
-Non ancora fatto: generazione dei documenti (valutazione, rischi residui,
-dichiarazione UE).
+La dichiarazione elenca come "norme armonizzate" solo le norme segnate come
+armonizzate nella libreria; le altre norme citate nelle schede compaiono come
+"altre norme". I testi fissi della dichiarazione vanno confrontati con
+l'Allegato V del Regolamento prima dell'uso.
 
 Le misure importate dal file Excel sono un unico testo per scheda, con tipo
 "Da classificare": vanno divise e classificate durante la revisione della libreria.

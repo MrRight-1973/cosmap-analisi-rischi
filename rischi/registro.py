@@ -30,6 +30,7 @@ MODELLI_REGISTRATI = (
     m.MetodoStima,
     m.CellaMatrice,
     m.Fabbricante,
+    m.LegislazioneUE,
 )
 
 

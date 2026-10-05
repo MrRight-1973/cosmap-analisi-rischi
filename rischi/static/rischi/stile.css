@@ -63,3 +63,5 @@ button.piccolo { padding: 2px 8px; font-size: 13px; }
 .campo select[multiple], .campo input[type=text], .campo-zona_pericolosa textarea { width: 100%; }
 .campo-condizioni > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 16px; }
 .campo-condizioni label { color: var(--testo); font-size: 14px; }
+.documenti { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.campo-altre_legislazioni label, .campo-caratteristiche label { color: var(--testo); font-size: 14px; }
