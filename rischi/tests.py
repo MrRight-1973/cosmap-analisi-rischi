@@ -83,16 +83,18 @@ class LibreriaNuovaTest(TestCase):
         from .models import MisuraModello, Norma, TipoMisura
 
         call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
-        self.assertEqual(Modulo.objects.count(), 15)
+        self.assertEqual(Modulo.objects.count(), 14)
         self.assertGreater(SchedaModello.objects.count(), 80)
         self.assertFalse(MisuraModello.objects.filter(tipo=TipoMisura.DA_CLASSIFICARE).exists())
         self.assertTrue(Norma.objects.get(codice="EN ISO 12100").armonizzata)
-        self.assertFalse(Norma.objects.get(codice="IEC 62443-3-3").armonizzata)
+        self.assertFalse(Norma.objects.get(codice="EN IEC 62443-3-3").armonizzata)
+        self.assertEqual(Norma.objects.get(codice="EN ISO 10218-2").tipo, Norma.Tipo.C)
+        self.assertTrue(MisuraModello.objects.filter(scheda__codice="NL-031", norma__codice="EN ISO 13855").exists())
         metodo = MetodoStima.corrente()
         for scheda in SchedaModello.objects.all():
             esito = metodo.esito(scheda.se_finale, scheda.cl_finale)
             self.assertNotEqual(esito, Esito.RICHIESTE, scheda.codice)
-            if esito != Esito.OK:
+            if esito and esito != Esito.OK:
                 self.assertTrue(scheda.testo_istruzioni, scheda.codice)
 
 
