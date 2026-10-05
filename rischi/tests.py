@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 
 from django.conf import settings
@@ -37,7 +38,7 @@ def crea_utente(nome, *ruoli):
 class BaseConLibreria(TestCase):
     @classmethod
     def setUpTestData(cls):
-        call_command("importa_libreria", str(LIBRERIA), stdout=open("/dev/null", "w"))
+        call_command("importa_libreria", str(LIBRERIA), stdout=io.StringIO())
         cls.compilatore = crea_utente("mario", servizi.COMPILATORE)
         cls.verificatore = crea_utente("lucia", servizi.VERIFICATORE)
         cls.approvatore = crea_utente("titolare", servizi.APPROVATORE)
@@ -70,7 +71,7 @@ class ImportTest(BaseConLibreria):
             self.assertEqual([metodo.esito(se, cl) for cl in (4, 6, 9, 12, 15)], esiti)
 
     def test_reimport_non_duplica(self):
-        call_command("importa_libreria", str(LIBRERIA), stdout=open("/dev/null", "w"))
+        call_command("importa_libreria", str(LIBRERIA), stdout=io.StringIO())
         self.assertEqual(SchedaModello.objects.count(), 78)
 
 
@@ -333,11 +334,14 @@ class DocumentiTest(BaseConLibreria):
         risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "dichiarazione"]), {"lingua": "en"})
         self.assertEqual(risposta.status_code, 200)
         self.assertIn("_BOZZA_en.docx", risposta["Content-Disposition"])
+        risposta.close()  # su Windows un file aperto non si può cancellare
         documento = DocumentoGenerato.objects.get()
         self.assertFalse(documento.definitivo)
         self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Scarica")
-        self.assertEqual(self.client.get(reverse("scarica_documento", args=[documento.pk])).status_code, 200)
+        scaricato = self.client.get(reverse("scarica_documento", args=[documento.pk]))
+        self.assertEqual(scaricato.status_code, 200)
+        scaricato.close()
 
         self.approva()
-        self.client.post(reverse("genera_documento", args=[self.rev.pk, "valutazione"]))
+        self.client.post(reverse("genera_documento", args=[self.rev.pk, "valutazione"])).close()
         self.assertTrue(DocumentoGenerato.objects.get(tipo="VALUTAZIONE").definitivo)
