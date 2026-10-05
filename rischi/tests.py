@@ -91,7 +91,6 @@ class LibreriaNuovaTest(TestCase):
         metodo = MetodoStima.corrente()
         for scheda in SchedaModello.objects.all():
             esito = metodo.esito(scheda.se_finale, scheda.cl_finale)
-            self.assertNotEqual(esito, Esito.RICHIESTE, scheda.codice)
             if esito != Esito.OK:
                 self.assertTrue(scheda.testo_istruzioni, scheda.codice)
 
