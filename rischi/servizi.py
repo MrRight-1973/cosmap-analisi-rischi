@@ -6,6 +6,8 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from .registro import senza_registro_contenuti
+
 from .models import (
     Analisi,
     ApplicabilitaRequisito,
@@ -299,6 +301,44 @@ def approva(revisione, utente):
     revisione.approvata_da = utente
     revisione.approvata_il = timezone.now()
     revisione.save()
+
+
+@transaction.atomic
+def elimina_commessa(commessa, utente):
+    """Elimina una commessa mai approvata con macchine, analisi, schede e documenti.
+
+    Le commesse con una revisione approvata (o sostituita) restano protette.
+    Nel registro restano commessa, macchine, analisi e revisioni eliminate,
+    non ogni singola scheda o misura.
+    """
+    richiedi_ruolo(utente, COMPILATORE)
+    revisioni = Revisione.objects.filter(analisi__macchina__commessa=commessa)
+    if revisioni.filter(stato__in=(Revisione.Stato.APPROVATA, Revisione.Stato.SOSTITUITA)).exists():
+        raise ValidationError(
+            f"La commessa {commessa.numero} ha una revisione approvata: non si può eliminare."
+        )
+    for revisione in revisioni:
+        for documento in revisione.documenti.all():
+            documento.file.delete(save=False)
+            documento.delete()
+        with senza_registro_contenuti():
+            MisuraAnalisi.objects.filter(scheda__revisione=revisione).delete()
+            revisione.schede.all().delete()
+            revisione.applicabilita.all().delete()
+        revisione.delete()
+    for macchina in commessa.macchine.all():
+        analisi = getattr(macchina, "analisi", None)
+        if analisi:
+            analisi.delete()
+        macchina.delete()
+    commessa.delete()
+
+
+def eliminabile(commessa):
+    return not Revisione.objects.filter(
+        analisi__macchina__commessa=commessa,
+        stato__in=(Revisione.Stato.APPROVATA, Revisione.Stato.SOSTITUITA),
+    ).exists()
 
 
 # ---------------------------------------------------------------------------

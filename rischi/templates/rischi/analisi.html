@@ -56,6 +56,18 @@
     {% else %}
       <p class="sotto">Revisione storica: sola lettura.</p>
     {% endif %}
+    {% if eliminabile and puo.compilare %}
+    <details class="elimina">
+      <summary>Elimina commessa</summary>
+      {% with c=analisi.macchina.commessa %}
+      <form method="post" action="{% url 'elimina_commessa' c.pk %}">{% csrf_token %}
+        <p class="sotto">Cancella la commessa con macchina, analisi, schede e documenti generati. Non si può annullare. Scrivi <strong>{{ c.numero }}</strong> per confermare.</p>
+        <input name="conferma" autocomplete="off" required>
+        <button class="pericolo">Elimina definitivamente</button>
+      </form>
+      {% endwith %}
+    </details>
+    {% endif %}
   </div>
 </section>
 
