@@ -201,30 +201,14 @@ class CondizioneOperativa(models.Model):
         return self.nome
 
 
-class Caratteristica(models.Model):
-    """Caratteristica della macchina che attiva uno o più moduli."""
-
-    nome = models.CharField(max_length=150, unique=True)
-    descrizione = models.TextField(blank=True)
-
-    class Meta:
-        verbose_name = "caratteristica macchina"
-        verbose_name_plural = "caratteristiche macchina"
-        ordering = ["nome"]
-
-    def __str__(self):
-        return self.nome
-
-
 class Modulo(models.Model):
     nome = models.CharField(max_length=150, unique=True)
     descrizione = models.TextField(blank=True)
-    sempre_attivo = models.BooleanField(default=False)
-    caratteristiche = models.ManyToManyField(
-        Caratteristica,
-        blank=True,
-        related_name="moduli",
-        help_text="Il modulo si attiva se la macchina ha almeno una di queste caratteristiche.",
+    condizione = models.CharField(
+        "quando serve", max_length=200, blank=True, help_text="Indicazione per chi sceglie i moduli della commessa."
+    )
+    sempre_attivo = models.BooleanField(
+        "proposto sempre", default=False, help_text="Già selezionato quando si crea una nuova commessa."
     )
     attivo = models.BooleanField(default=True)
     ordine = models.PositiveSmallIntegerField(default=0)
@@ -418,7 +402,9 @@ class Macchina(models.Model):
     funzione = models.TextField(
         blank=True, help_text="Denominazione generica e funzione, come compare nella dichiarazione."
     )
-    caratteristiche = models.ManyToManyField(Caratteristica, blank=True, related_name="macchine")
+    moduli = models.ManyToManyField(
+        Modulo, blank=True, related_name="macchine", help_text="Moduli della libreria attivati per questa macchina."
+    )
     altre_legislazioni = models.ManyToManyField(
         LegislazioneUE, blank=True, help_text="Oltre al Regolamento (UE) 2023/1230."
     )

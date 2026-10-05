@@ -6,7 +6,7 @@
 <div class="intestazione">
   <div>
     <h1>Commessa {{ c.numero }} · {{ m.modello|default:m.denominazione }}</h1>
-    <p class="sotto"><a href="{% url 'macchina' m.pk %}">Dati della macchina</a> · {{ c.cliente }} · {{ m.get_tipo_display }}{% if m.matricola %} · matricola {{ m.matricola }}{% endif %} · {{ c.riferimento }}</p>
+    <p class="sotto"><a href="{% url 'macchina' m.pk %}">Dati della macchina e moduli</a> · {{ c.cliente }} · {{ m.get_tipo_display }}{% if m.matricola %} · matricola {{ m.matricola }}{% endif %} · {{ c.riferimento }}</p>
   </div>
   <span class="stato grande {{ revisione.stato|lower }}">Rev. {{ revisione.numero }} · {{ revisione.get_stato_display }}</span>
 </div>
