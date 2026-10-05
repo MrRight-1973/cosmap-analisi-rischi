@@ -62,6 +62,9 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+Su Windows (PowerShell), se l'attivazione dell'ambiente è bloccata, si può
+usare direttamente `.\.venv\Scripts\python manage.py ...` al posto di `python manage.py ...`.
+
 Aprire http://127.0.0.1:8000, entrare con l'utente creato e, da
 "Libreria e utenti", creare gli utenti assegnando i gruppi
 Compilatore / Verificatore / Approvatore.
