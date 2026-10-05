@@ -1,8 +1,10 @@
-"""Importa la libreria dal file Excel Libreria_analisi_rischi_Cosmap.xlsx.
+"""Importa la libreria da un file Excel (Libreria_nuova_Cosmap.xlsx o la libreria precedente).
 
-Uso:  python manage.py importa_libreria dati/Libreria_analisi_rischi_Cosmap.xlsx
+Uso:  python manage.py importa_libreria dati/Libreria_nuova_Cosmap.xlsx
 
 Si può rilanciare: le righe esistenti vengono aggiornate per codice.
+Se il file ha il foglio "Misure", le misure si leggono da lì, una per riga con il
+loro tipo; altrimenti la colonna delle misure diventa un'unica misura "Da classificare".
 """
 
 import re
@@ -111,6 +113,7 @@ class Command(BaseCommand):
         self.importa_requisiti(wb["RESS-Regolamento"])
         self.importa_norme(wb["Norme"])
         self.importa_moduli(wb["Moduli"])
+        self.misure = self.leggi_misure(wb["Misure"]) if "Misure" in wb.sheetnames else None
         self.importa_schede(wb["Libreria"])
 
     # -- Metodo ---------------------------------------------------------------
@@ -190,15 +193,17 @@ class Command(BaseCommand):
             codice = testo(r[0])
             if not codice or len(codice) > 60:
                 continue
-            Norma.objects.update_or_create(
-                codice=codice,
-                defaults={
-                    "edizione_citata": testo(r[1]),
-                    "titolo": testo(r[2])[:300],
-                    "edizione_vigente": testo(r[3]),
-                    "nota": testo(r[4]),
-                },
-            )
+            valori = {
+                "edizione_citata": testo(r[1]),
+                "titolo": testo(r[2])[:300],
+                "edizione_vigente": testo(r[3]),
+                "nota": testo(r[4]),
+            }
+            if len(r) > 6:
+                valori["armonizzata"] = testo(r[5]).lower() in ("sì", "si", "x")
+                if testo(r[6]) in Norma.Tipo.values:
+                    valori["tipo"] = testo(r[6])
+            Norma.objects.update_or_create(codice=codice, defaults=valori)
             n += 1
         self.stdout.write(f"Norme: {n}")
 
@@ -243,6 +248,24 @@ class Command(BaseCommand):
             )
             n += 1
         self.stdout.write(f"Moduli: {n}")
+
+    # -- Misure ---------------------------------------------------------------
+
+    def leggi_misure(self, ws):
+        """{codice scheda: [(ordine, tipo, testo, norma)]} dal foglio Misure."""
+        misure = {}
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            codice, testo_misura = testo(r[0]), testo(r[4])
+            if not codice or not testo_misura:
+                continue
+            tipo = testo(r[2]) if testo(r[2]) in TipoMisura.values else TipoMisura.DA_CLASSIFICARE
+            norma = None
+            if testo(r[5]):
+                norma, _ = Norma.objects.get_or_create(
+                    codice=testo(r[5]), defaults={"nota": "Aggiunta dall'import: completare i dati."}
+                )
+            misure.setdefault(codice, []).append((intero(r[1]) or 0, tipo, testo_misura, norma))
+        return misure
 
     # -- Schede ---------------------------------------------------------------
 
@@ -317,9 +340,15 @@ class Command(BaseCommand):
             scheda.pericoli.set(self.pericoli(r[COL["pericoli"]]))
             scheda.norme.set(self.norme_citate(r[COL["norme"]]))
             scheda.misure.all().delete()
-            misure = testo(r[COL["misure"]])
-            if misure:
-                MisuraModello.objects.create(scheda=scheda, tipo=TipoMisura.DA_CLASSIFICARE, testo=misure)
+            if self.misure is not None:
+                for ordine, tipo, testo_misura, norma in self.misure.get(codice, []):
+                    MisuraModello.objects.create(
+                        scheda=scheda, ordine=ordine, tipo=tipo, testo=testo_misura, norma=norma
+                    )
+            else:
+                misure = testo(r[COL["misure"]])
+                if misure:
+                    MisuraModello.objects.create(scheda=scheda, tipo=TipoMisura.DA_CLASSIFICARE, testo=misure)
             n += 1
         self.stdout.write(f"Schede modello: {n}, pericoli: {Pericolo.objects.count()}, norme: {Norma.objects.count()}")
         for avviso in avvisi:

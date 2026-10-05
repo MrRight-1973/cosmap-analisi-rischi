@@ -76,6 +76,26 @@ class ImportTest(BaseConLibreria):
         self.assertEqual(SchedaModello.objects.count(), 78)
 
 
+class LibreriaNuovaTest(TestCase):
+    def test_import_con_misure_classificate(self):
+        import io
+
+        from .models import MisuraModello, Norma, TipoMisura
+
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        self.assertEqual(Modulo.objects.count(), 15)
+        self.assertGreater(SchedaModello.objects.count(), 80)
+        self.assertFalse(MisuraModello.objects.filter(tipo=TipoMisura.DA_CLASSIFICARE).exists())
+        self.assertTrue(Norma.objects.get(codice="EN ISO 12100").armonizzata)
+        self.assertFalse(Norma.objects.get(codice="IEC 62443-3-3").armonizzata)
+        metodo = MetodoStima.corrente()
+        for scheda in SchedaModello.objects.all():
+            esito = metodo.esito(scheda.se_finale, scheda.cl_finale)
+            self.assertNotEqual(esito, Esito.RICHIESTE, scheda.codice)
+            if esito != Esito.OK:
+                self.assertTrue(scheda.testo_istruzioni, scheda.codice)
+
+
 class CreazioneAnalisiTest(BaseConLibreria):
     def test_solo_moduli_scelti(self):
         sempre = SchedaModello.objects.filter(modulo__sempre_attivo=True).count()
