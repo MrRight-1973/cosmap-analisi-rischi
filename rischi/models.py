@@ -58,6 +58,14 @@ class MetodoStima(models.Model):
         )
         return cella.esito if cella else None
 
+    def descrizioni(self):
+        """{(fattore, valore): descrizione}; più righe con lo stesso valore sono unite con " / "."""
+        risultato = {}
+        for scala in self.scale.order_by("pk"):
+            chiave = (scala.fattore, scala.valore)
+            risultato[chiave] = f"{risultato[chiave]} / {scala.descrizione}" if chiave in risultato else scala.descrizione
+        return risultato
+
 
 class ScalaFattore(models.Model):
     class Fattore(models.TextChoices):

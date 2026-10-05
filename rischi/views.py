@@ -157,7 +157,9 @@ def azione_revisione(request, pk, azione):
 
 def _salva_scheda(request, scheda, revisione, nuova):
     form = SchedaForm(
-        request.POST or None, instance=scheda, riferimento=revisione.analisi.macchina.commessa.riferimento
+        request.POST or None, instance=scheda,
+        riferimento=revisione.analisi.macchina.commessa.riferimento,
+        metodo=revisione.metodo,
     )
     misure = MisureFormSet(request.POST or None, instance=scheda, prefix="misure")
     modificabile = revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
