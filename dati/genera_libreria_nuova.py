@@ -828,11 +828,12 @@ def soggetti_scheda(scheda):
 for scheda in SCHEDE:
     scheda["soggetti"] = soggetti_scheda(scheda)
 
-# Codici: sigla del modulo e numero progressivo nel modulo, nell'ordine delle schede
+# Codici: sigla del modulo, punto RESS e indice per le schede dello stesso RESS nel modulo
 _contatori = {}
 for scheda in SCHEDE:
-    _contatori[scheda["modulo"]] = _contatori.get(scheda["modulo"], 0) + 1
-    scheda["codice"] = f"{SIGLE[scheda['modulo']]}-{_contatori[scheda['modulo']]:02d}"
+    chiave = (scheda["modulo"], scheda["ress"])
+    _contatori[chiave] = _contatori.get(chiave, 0) + 1
+    scheda["codice"] = f"{SIGLE[scheda['modulo']]}-{scheda['ress']}-{_contatori[chiave]}"
 
 # ---------------------------------------------------------------------------
 # Scrittura del file
@@ -885,7 +886,7 @@ def genera():
         "le misure di protezione riducono la probabilità (Pr) e la possibilità di evitare il danno (Av).",
         "Le misure sono nel foglio Misure, una per riga, con il tipo (PROG progettazione, PROT protezione,",
         "INFO informazioni) e la norma di riferimento. La colonna misure del foglio Libreria è solo una sintesi.",
-        "Codici delle schede: sigla del modulo e numero nel modulo (es. GEN-01, TAV-03); sigle nel foglio Moduli.",
+        "Codici delle schede: sigla del modulo, punto RESS e indice (es. TAV-1.3.8.2-1); sigle nel foglio Moduli.",
         "Codici dei pericoli a due cifre (es. 1.01) per non confondersi con quelli della prima estrazione.",
         "Soggetti esposti proposti in base a condizioni operative e pericoli (ultima colonna del foglio Libreria):",
         "operatori secondo il RESS 1.1.1 d) e persone esposte secondo il RESS 1.1.1 c).",
