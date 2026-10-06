@@ -16,7 +16,7 @@ from xml.sax.saxutils import escape
 
 from django.utils import timezone
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
@@ -216,14 +216,26 @@ class Pdf:
         """Paragrafo con marcatura già pronta (le parti variabili vanno passate da _pulito)."""
         self.storia.append(Paragraph(html, self.stili[stile]))
 
-    def testata(self, testo):
-        """Fascia colorata a tutta larghezza con il titolo di una scheda."""
-        tabella = Table([[Paragraph(_pulito(testo), self.stili["testata"])]], colWidths=[A4[0] - 4 * cm])
-        tabella.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#DDE4EE")),
-            ("LINEBELOW", (0, 0), (-1, -1), 1, colors.HexColor("#5F6B7A")),
+    def testata(self, testo, a_destra="", sfondo="#DDE4EE", stile="testata"):
+        """Fascia a tutta larghezza: titolo a sinistra, codice a destra."""
+        destra = ParagraphStyle("destra", parent=self.stili[stile], alignment=TA_RIGHT)
+        larghezza = A4[0] - 4 * cm
+        tabella = Table(
+            [[Paragraph(_pulito(testo), self.stili[stile]), Paragraph(_pulito(a_destra), destra)]],
+            colWidths=[larghezza - 3 * cm, 3 * cm],
+        )
+        stile_tabella = [
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ]))
+        ]
+        if sfondo:
+            stile_tabella += [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(sfondo)),
+                ("LINEBELOW", (0, 0), (-1, -1), 1, colors.HexColor("#5F6B7A")),
+            ]
+        else:
+            stile_tabella.append(("LEFTPADDING", (0, 0), (0, -1), 0))
+        tabella.setStyle(TableStyle(stile_tabella))
         self.storia.append(tabella)
         self.spazio(1.5)
 
@@ -492,17 +504,17 @@ def _riepilogo(doc, schede):
     for indice, s in enumerate(schede, start=1):
         esiti = [s.esito_iniziale, s.esito_finale]
         righe.append([
-            s.codice or "–", f"{s.requisito.codice} {s.requisito.titolo}", s.zona_pericolosa or s.zona_impianto,
-            *(ESITI_TESTO.get(e, "–") for e in esiti),
+            f"{s.requisito.codice} {s.requisito.titolo}", s.zona_pericolosa or s.zona_impianto,
+            *(ESITI_TESTO.get(e, "–") for e in esiti), s.codice or "–",
         ])
-        sfondi.update({(colonna, indice): ESITI_COLORE[e] for colonna, e in enumerate(esiti, start=3) if e})
-    doc.tabella(["Scheda", "Requisito", "Zona pericolosa", "Esito iniziale", "Esito finale"], righe, [1.8, 5.1, 5.1, 3, 3], sfondi)
+        sfondi.update({(colonna, indice): ESITI_COLORE[e] for colonna, e in enumerate(esiti, start=2) if e})
+    doc.tabella(["Requisito", "Zona pericolosa", "Esito iniziale", "Esito finale", "Scheda"], righe, [5.1, 5.1, 3, 3, 1.8], sfondi)
 
 
 def _scheda(doc, s, descrizioni):
     pericoli = "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all())
     doc.insieme(
-        lambda: doc.testata(f"{s.codice or 'Scheda'}   ·   {s.requisito.codice} {s.requisito.titolo}"),
+        lambda: doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice),
         lambda: doc.dettagli([
             ("Zona dell'impianto", s.zona_impianto),
             ("Zona pericolosa (1.1.1 b)", s.zona_pericolosa),
@@ -638,9 +650,9 @@ def valutazione(revisione):
         doc.nuova_pagina()
         doc.titoletto("Schede proposte e scartate")
         doc.tabella(
-            ["Scheda", "Requisito", "Motivazione"],
-            [[s.codice, f"{s.requisito.codice} {s.requisito.titolo}", s.motivazione] for s in scartate],
-            [2.5, 6, 8.5],
+            ["Requisito", "Motivazione", "Scheda"],
+            [[f"{s.requisito.codice} {s.requisito.titolo}", s.motivazione, s.codice] for s in scartate],
+            [6, 8.5, 2.5],
         )
     return doc.salva()
 
@@ -666,8 +678,8 @@ def rischi_residui(revisione):
         for s in gruppo:
             esito = f"  [{ESITI_TESTO[s.esito_finale]}]" if s.esito_finale and s.esito_finale != Esito.OK else ""
             doc.insieme(
-                lambda s=s, esito=esito: doc.grassetto_testo(
-                    f"{s.codice + '  ·  ' if s.codice else ''}{s.requisito.codice} {s.requisito.titolo}", esito
+                lambda s=s, esito=esito: doc.testata(
+                    f"{s.requisito.codice} {s.requisito.titolo}{esito}", s.codice, sfondo="", stile=3
                 ),
                 lambda s=s: doc.p(s.testo_istruzioni),
             )

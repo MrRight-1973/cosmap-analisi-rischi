@@ -108,15 +108,15 @@ def allinea_figure(macchina, revisione, descrizioni=None):
         )
 
 
-def codice_scheda(revisione, modulo, requisito, escludi=None):
-    """Codice di una scheda aggiunta o spostata nell'analisi: primo indice libero tra le schede
-    della revisione e quelle della libreria con lo stesso modulo e requisito."""
+def codice_scheda(revisione, modulo, escludi=None):
+    """Codice di una scheda aggiunta o spostata nell'analisi: numero successivo nel modulo,
+    contando le schede della revisione e quelle della libreria."""
     usati = list(SchedaModello.objects.values_list("codice", flat=True))
     schede = revisione.schede.all()
     if escludi:
         schede = schede.exclude(pk=escludi)
     usati += list(schede.values_list("codice", flat=True))
-    return prossimo_codice(modulo, requisito, usati)
+    return prossimo_codice(modulo, usati)
 
 
 def _requisito_equivalente(requisito, revisione):

@@ -90,7 +90,7 @@ class LibreriaNuovaTest(TestCase):
         self.assertTrue(Norma.objects.get(codice="EN ISO 12100").armonizzata)
         self.assertFalse(Norma.objects.get(codice="EN IEC 62443-3-3").armonizzata)
         self.assertEqual(Norma.objects.get(codice="EN ISO 10218-2").tipo, Norma.Tipo.C)
-        self.assertTrue(MisuraModello.objects.filter(scheda__codice="CAB-1.4.3-1", norma__codice="EN ISO 13855").exists())
+        self.assertTrue(MisuraModello.objects.filter(scheda__codice="CAB-05", norma__codice="EN ISO 13855").exists())
         metodo = MetodoStima.corrente()
         for scheda in SchedaModello.objects.all():
             esito = metodo.esito(scheda.se_finale, scheda.cl_finale)
@@ -443,11 +443,11 @@ class CodiciPerModuloTest(TestCase):
         call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
         tavola = Modulo.objects.get(nome__startswith="Tavola")
         self.assertEqual(tavola.sigla, "TAV")
-        for scheda in tavola.schede.select_related("requisito"):
-            self.assertTrue(scheda.codice.startswith(f"TAV-{scheda.requisito.codice}-"), scheda.codice)
-        robot = Modulo.objects.get(sigla="ROB")
-        doppie = robot.schede.filter(requisito__codice="1.3.8.2").values_list("codice", flat=True)
-        self.assertEqual(sorted(doppie), ["ROB-1.3.8.2-1", "ROB-1.3.8.2-2"])
+        codici = sorted(tavola.schede.values_list("codice", flat=True))
+        self.assertEqual(codici, [f"TAV-{n:02d}" for n in range(1, len(codici) + 1)])
+        # L'ordine di visualizzazione segue il requisito RESS, non il numero della scheda
+        requisiti = [s.requisito.ordine for s in Modulo.objects.get(sigla="ELE").schede.all()]
+        self.assertEqual(requisiti, sorted(requisiti))
         self.assertFalse(SchedaModello.objects.filter(codice__startswith="NL-").exists())
 
 
@@ -508,14 +508,14 @@ class SoggettiEspostiTest(TestCase):
         from .models import Figura
 
         self.assertEqual(Figura.objects.count(), 8)
-        carico = SchedaModello.objects.get(codice="TAV-1.3.8.2-1")
+        carico = SchedaModello.objects.get(codice="TAV-01")
         self.assertIn("Operatore di conduzione", [f.nome for f in carico.soggetti.all()])
-        quadro = SchedaModello.objects.get(codice="ELE-1.5.1-1")
+        quadro = SchedaModello.objects.get(codice="ELE-01")
         self.assertEqual([f.nome for f in quadro.soggetti.all()], ["Manutentore elettrico"])
 
     def test_soggetti_copiati_e_figure_della_macchina(self):
         rev = self.analisi.revisione_corrente
-        scheda = rev.schede.get(codice="TAV-1.3.8.2-1")
+        scheda = rev.schede.get(codice="TAV-01")
         self.assertIn("Operatore di conduzione", [f.nome for f in scheda.soggetti.all()])
         figure = {f.figura.nome: f.descrizione for f in self.macchina.figure.select_related("figura")}
         self.assertIn("Operatore di conduzione", figure)
@@ -524,7 +524,7 @@ class SoggettiEspostiTest(TestCase):
     def test_controllo_schede_senza_soggetti(self):
         rev = self.analisi.revisione_corrente
         self.assertFalse([a for a in servizi.controlli(rev) if a.tipo == "soggetti"])
-        scheda = rev.schede.get(codice="TAV-1.3.8.2-1")
+        scheda = rev.schede.get(codice="TAV-01")
         scheda.soggetti.clear()
         segnalate = [a.scheda for a in servizi.controlli(rev) if a.tipo == "soggetti"]
         self.assertEqual(segnalate, [scheda])
@@ -555,7 +555,7 @@ class SoggettiEspostiTest(TestCase):
             "Mulettista che transita nella corsia adiacente",
         )
 
-        scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-1.3.8.2-1")
+        scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-01")
         # Nella scheda le figure compaiono solo con il nome; la descrizione sta nei dati della macchina
         pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
         self.assertContains(pagina, "Operatore di conduzione")
@@ -578,7 +578,7 @@ class SoggettiEspostiTest(TestCase):
 
 
 class CodiceAutomaticoTest(TestCase):
-    """Il codice delle schede modello si genera da solo: SIGLA-RESS-indice."""
+    """Il codice delle schede modello si genera da solo: SIGLA-NN."""
 
     @classmethod
     def setUpTestData(cls):
@@ -599,13 +599,13 @@ class CodiceAutomaticoTest(TestCase):
         requisito = RequisitoRESS.objects.get(codice="1.3.8.2")
         risposta = self.client.post(reverse("admin:rischi_schedamodello_add"), self.dati(tavola, requisito))
         self.assertEqual(risposta.status_code, 302)
-        nuova = SchedaModello.objects.get(codice="TAV-1.3.8.2-2")
+        nuova = SchedaModello.objects.get(codice="TAV-06")
 
         cabina = Modulo.objects.get(sigla="CAB")
         url = reverse("admin:rischi_schedamodello_change", args=[nuova.pk])
         self.assertEqual(self.client.post(url, self.dati(cabina, requisito)).status_code, 302)
         nuova.refresh_from_db()
-        self.assertEqual(nuova.codice, "CAB-1.3.8.2-1")
+        self.assertEqual(nuova.codice, "CAB-08")
 
     def test_modulo_senza_sigla(self):
         from .models import RequisitoRESS
@@ -623,11 +623,11 @@ class CodiceAutomaticoTest(TestCase):
 
         elettrico = Modulo.objects.get(sigla="ELE")
         scheda = SchedaModello.objects.create(modulo=elettrico, requisito=RequisitoRESS.objects.get(codice="1.5.1"))
-        self.assertEqual(scheda.codice, "ELE-1.5.1-3")
+        self.assertEqual(scheda.codice, "ELE-05")
 
 
 class CodiceSchedeAggiunteTest(TestCase):
-    """Anche le schede aggiunte a mano nell'analisi prendono il codice SIGLA-RESS-indice."""
+    """Anche le schede aggiunte a mano nell'analisi prendono il codice SIGLA-NN."""
 
     @classmethod
     def setUpTestData(cls):
@@ -658,20 +658,21 @@ class CodiceSchedeAggiunteTest(TestCase):
         )
         self.assertEqual(risposta.status_code, 302, getattr(risposta, "context", None) and risposta.context["form"].errors)
         nuova = rev.schede.get(decisione=SchedaAnalisi.Decisione.AGGIUNTA)
-        self.assertEqual(nuova.codice, "TAV-1.3.8.2-2")
+        self.assertEqual(nuova.codice, "TAV-06")
 
-        # Una seconda scheda sullo stesso requisito prende l'indice successivo
-        self.client.post(reverse("nuova_scheda", args=[rev.pk]), self.dati(tavola, RequisitoRESS.objects.get(codice="1.3.8.2")))
-        self.assertTrue(rev.schede.filter(codice="TAV-1.3.8.2-3").exists())
+        # Una seconda scheda nel modulo prende il numero successivo
+        self.client.post(reverse("nuova_scheda", args=[rev.pk]), self.dati(tavola, RequisitoRESS.objects.get(codice="1.1.6")))
+        self.assertTrue(rev.schede.filter(codice="TAV-07").exists())
 
-        # Cambiando requisito il codice si ricalcola; cambiando solo il testo resta
+        # Cambiando requisito il codice resta; cambiando modulo prende il numero successivo nel nuovo modulo
         url = reverse("scheda", args=[nuova.pk])
         self.client.post(url, self.dati(tavola, RequisitoRESS.objects.get(codice="1.1.6")))
         nuova.refresh_from_db()
-        self.assertEqual(nuova.codice, "TAV-1.1.6-2")
-        self.client.post(url, {**self.dati(tavola, RequisitoRESS.objects.get(codice="1.1.6")), "note": "Solo testo"})
+        self.assertEqual(nuova.codice, "TAV-06")
+        generale = Modulo.objects.get(sigla="GEN")
+        self.client.post(url, self.dati(generale, RequisitoRESS.objects.get(codice="1.1.6")))
         nuova.refresh_from_db()
-        self.assertEqual(nuova.codice, "TAV-1.1.6-2")
+        self.assertEqual(nuova.codice, "GEN-17")
 
     def test_modulo_senza_sigla(self):
         from .models import RequisitoRESS
