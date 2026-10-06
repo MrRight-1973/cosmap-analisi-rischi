@@ -180,7 +180,6 @@ def _salva_scheda(request, scheda, revisione, nuova):
         request.POST or None, instance=scheda,
         riferimento=revisione.analisi.macchina.commessa.riferimento,
         metodo=revisione.metodo,
-        macchina=revisione.analisi.macchina,
     )
     misure = MisureFormSet(request.POST or None, instance=scheda, prefix="misure")
     modificabile = revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
@@ -358,12 +357,12 @@ def genera_documento(request, pk, tipo):
     contenuto = documenti.genera(tipo, revisione, lingua)
     definitivo = revisione.stato == Revisione.Stato.APPROVATA
     numero = revisione.analisi.macchina.commessa.numero.replace("/", "-")
-    nome = f"{NOMI_FILE[tipo]}_{numero}_rev{revisione.numero}{'' if definitivo else '_BOZZA'}_{lingua}.docx"
+    nome = f"{NOMI_FILE[tipo]}_{numero}_rev{revisione.numero}{'' if definitivo else '_BOZZA'}_{lingua}.pdf"
     documento = DocumentoGenerato(
         revisione=revisione, tipo=tipo, lingua=lingua, definitivo=definitivo, generato_da=request.user
     )
     documento.file.save(nome, ContentFile(contenuto), save=True)
-    return FileResponse(documento.file.open("rb"), as_attachment=True, filename=nome)
+    return FileResponse(documento.file.open("rb"), as_attachment=False, filename=nome, content_type="application/pdf")
 
 
 @login_required

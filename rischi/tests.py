@@ -307,14 +307,11 @@ class DocumentiTest(BaseConLibreria):
 
     @staticmethod
     def leggi(contenuto):
-        import io
+        """Testo del PDF su una riga, con gli spazi normalizzati (gli a capo diventano spazi)."""
+        from pypdf import PdfReader
 
-        import docx
-
-        d = docx.Document(io.BytesIO(contenuto))
-        parti = [p.text for p in d.paragraphs] + [c.text for t in d.tables for r in t.rows for c in r.cells]
-        parti += [p.text for s in d.sections for p in s.header.paragraphs]
-        return "\n".join(parti)
+        testo = " ".join(pagina.extract_text() for pagina in PdfReader(io.BytesIO(contenuto)).pages)
+        return " ".join(testo.split())
 
     def approva(self):
         servizi.invia_in_verifica(self.rev, self.compilatore)
@@ -371,7 +368,8 @@ class DocumentiTest(BaseConLibreria):
         self.client.force_login(self.compilatore)
         risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "dichiarazione"]), {"lingua": "en"})
         self.assertEqual(risposta.status_code, 200)
-        self.assertIn("_BOZZA_en.docx", risposta["Content-Disposition"])
+        self.assertIn("_BOZZA_en.pdf", risposta["Content-Disposition"])
+        self.assertEqual(risposta["Content-Type"], "application/pdf")
         risposta.close()  # su Windows un file aperto non si può cancellare
         documento = DocumentoGenerato.objects.get()
         self.assertFalse(documento.definitivo)
@@ -564,8 +562,11 @@ class SoggettiEspostiTest(TestCase):
         )
 
         scheda = self.analisi.revisione_corrente.schede.get(codice="NL-034")
+        # Nella scheda le figure compaiono solo con il nome; la descrizione sta nei dati della macchina
         pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
-        self.assertContains(pagina, "Addetto alla conduzione linea e carico bancali")
+        self.assertContains(pagina, "Operatore di conduzione")
+        self.assertNotContains(pagina, "Addetto alla conduzione linea e carico bancali")
+        self.assertContains(self.client.get(url), "Addetto alla conduzione linea e carico bancali")
 
         testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
         self.assertIn("Soggetti esposti", testo)
