@@ -322,7 +322,7 @@ class SchedaModello(Stima):
     class Meta:
         verbose_name = "scheda modello"
         verbose_name_plural = "schede modello"
-        ordering = ["codice"]
+        ordering = ["modulo__ordine", "requisito__ordine", "codice"]
 
     def __str__(self):
         return f"{self.codice} – {self.requisito.codice} {self.requisito.titolo}"

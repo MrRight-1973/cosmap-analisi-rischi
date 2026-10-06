@@ -90,7 +90,7 @@ class LibreriaNuovaTest(TestCase):
         self.assertTrue(Norma.objects.get(codice="EN ISO 12100").armonizzata)
         self.assertFalse(Norma.objects.get(codice="EN IEC 62443-3-3").armonizzata)
         self.assertEqual(Norma.objects.get(codice="EN ISO 10218-2").tipo, Norma.Tipo.C)
-        self.assertTrue(MisuraModello.objects.filter(scheda__codice="CAB-05", norma__codice="EN ISO 13855").exists())
+        self.assertTrue(MisuraModello.objects.filter(scheda__codice="CAB-1.4.3-1", norma__codice="EN ISO 13855").exists())
         metodo = MetodoStima.corrente()
         for scheda in SchedaModello.objects.all():
             esito = metodo.esito(scheda.se_finale, scheda.cl_finale)
@@ -443,8 +443,11 @@ class CodiciPerModuloTest(TestCase):
         call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
         tavola = Modulo.objects.get(nome__startswith="Tavola")
         self.assertEqual(tavola.sigla, "TAV")
-        codici = sorted(tavola.schede.values_list("codice", flat=True))
-        self.assertEqual(codici, [f"TAV-{n:02d}" for n in range(1, len(codici) + 1)])
+        for scheda in tavola.schede.select_related("requisito"):
+            self.assertTrue(scheda.codice.startswith(f"TAV-{scheda.requisito.codice}-"), scheda.codice)
+        robot = Modulo.objects.get(sigla="ROB")
+        doppie = robot.schede.filter(requisito__codice="1.3.8.2").values_list("codice", flat=True)
+        self.assertEqual(sorted(doppie), ["ROB-1.3.8.2-1", "ROB-1.3.8.2-2"])
         self.assertFalse(SchedaModello.objects.filter(codice__startswith="NL-").exists())
 
 
@@ -505,14 +508,14 @@ class SoggettiEspostiTest(TestCase):
         from .models import Figura
 
         self.assertEqual(Figura.objects.count(), 8)
-        carico = SchedaModello.objects.get(codice="TAV-01")
+        carico = SchedaModello.objects.get(codice="TAV-1.3.8.2-1")
         self.assertIn("Operatore di conduzione", [f.nome for f in carico.soggetti.all()])
-        quadro = SchedaModello.objects.get(codice="ELE-01")
+        quadro = SchedaModello.objects.get(codice="ELE-1.5.1-1")
         self.assertEqual([f.nome for f in quadro.soggetti.all()], ["Manutentore elettrico"])
 
     def test_soggetti_copiati_e_figure_della_macchina(self):
         rev = self.analisi.revisione_corrente
-        scheda = rev.schede.get(codice="TAV-01")
+        scheda = rev.schede.get(codice="TAV-1.3.8.2-1")
         self.assertIn("Operatore di conduzione", [f.nome for f in scheda.soggetti.all()])
         figure = {f.figura.nome: f.descrizione for f in self.macchina.figure.select_related("figura")}
         self.assertIn("Operatore di conduzione", figure)
@@ -521,7 +524,7 @@ class SoggettiEspostiTest(TestCase):
     def test_controllo_schede_senza_soggetti(self):
         rev = self.analisi.revisione_corrente
         self.assertFalse([a for a in servizi.controlli(rev) if a.tipo == "soggetti"])
-        scheda = rev.schede.get(codice="TAV-01")
+        scheda = rev.schede.get(codice="TAV-1.3.8.2-1")
         scheda.soggetti.clear()
         segnalate = [a.scheda for a in servizi.controlli(rev) if a.tipo == "soggetti"]
         self.assertEqual(segnalate, [scheda])
@@ -552,7 +555,7 @@ class SoggettiEspostiTest(TestCase):
             "Mulettista che transita nella corsia adiacente",
         )
 
-        scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-01")
+        scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-1.3.8.2-1")
         # Nella scheda le figure compaiono solo con il nome; la descrizione sta nei dati della macchina
         pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
         self.assertContains(pagina, "Operatore di conduzione")
