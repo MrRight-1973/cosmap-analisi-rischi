@@ -22,7 +22,17 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import KeepTogether, ListFlowable, ListItem, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import (
+    KeepTogether,
+    ListFlowable,
+    ListItem,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 from .models import Esito, Fabbricante, Revisione, SchedaAnalisi
 
@@ -144,16 +154,23 @@ class Pdf:
         normale, grassetto, _ = _carattere_registrato()
         self.titolo, self.bozza, self.pagina = titolo, bozza, pagina
         self.grassetto = grassetto
-        base = ParagraphStyle("base", fontName=normale, fontSize=9.5, leading=12.5, spaceAfter=3)
+        base = ParagraphStyle("base", fontName=normale, fontSize=10, leading=13.5, spaceAfter=3)
         self.stili = {
             "base": base,
-            "cella": ParagraphStyle("cella", parent=base, fontSize=8.5, leading=10.5, spaceAfter=0),
+            "cella": ParagraphStyle("cella", parent=base, fontSize=9, leading=11.5, spaceAfter=0),
+            "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, fontSize=9, leading=11.5,
+                                        textColor=colors.HexColor("#4A5563"), spaceAfter=0),
+            "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=11, leading=14, spaceAfter=0),
+            "sottotitolo_misure": ParagraphStyle("sottotitolo_misure", parent=base, fontName=grassetto, fontSize=9,
+                                                 leading=12, textColor=colors.HexColor("#4A5563"), spaceBefore=3, spaceAfter=1,
+                                                 keepWithNext=1),
             "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=17, leading=21, spaceAfter=8),
             "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=16, leading=20, alignment=TA_CENTER, spaceAfter=4),
             "centro": ParagraphStyle("centro", parent=base, alignment=TA_CENTER),
             1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceBefore=10, spaceAfter=5),
             2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=11.5, leading=14, spaceBefore=8, spaceAfter=4),
-            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=10, leading=13, spaceBefore=8, spaceAfter=3),
+            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=10, leading=13, spaceBefore=8, spaceAfter=3,
+                              keepWithNext=1),
         }
         self.storia = []
 
@@ -172,6 +189,16 @@ class Pdf:
     def coppia(self, etichetta, valore):
         self.storia.append(Paragraph(f"<b>{_pulito(etichetta)}:</b> {_pulito(valore or '–')}", self.stili["base"]))
 
+    def elenco_html(self, voci):
+        voci = [v for v in voci if v]
+        if voci:
+            self.storia.append(
+                ListFlowable(
+                    [ListItem(Paragraph(v, self.stili["base"]), leftIndent=12) for v in voci],
+                    bulletType="bullet", start="•", leftIndent=12, bulletFontSize=8,
+                )
+            )
+
     def elenco(self, voci):
         voci = [v for v in voci if v]
         if voci:
@@ -182,6 +209,53 @@ class Pdf:
                 )
             )
 
+    def nuova_pagina(self):
+        self.storia.append(PageBreak())
+
+    def p_html(self, html, stile="base"):
+        """Paragrafo con marcatura già pronta (le parti variabili vanno passate da _pulito)."""
+        self.storia.append(Paragraph(html, self.stili[stile]))
+
+    def testata(self, testo):
+        """Fascia colorata a tutta larghezza con il titolo di una scheda."""
+        tabella = Table([[Paragraph(_pulito(testo), self.stili["testata"])]], colWidths=[A4[0] - 4 * cm])
+        tabella.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#DDE4EE")),
+            ("LINEBELOW", (0, 0), (-1, -1), 1, colors.HexColor("#5F6B7A")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        self.storia.append(tabella)
+        self.spazio(1.5)
+
+    def dettagli(self, righe):
+        """Coppie etichetta/valore in due colonne; le righe senza valore non compaiono."""
+        dati = [
+            [Paragraph(_pulito(etichetta), self.stili["etichetta"]), Paragraph(_pulito(valore), self.stili["cella"])]
+            for etichetta, valore in righe if valore
+        ]
+        if not dati:
+            return
+        tabella = Table(dati, colWidths=[4.6 * cm, A4[0] - 4 * cm - 4.6 * cm], hAlign="LEFT")
+        tabella.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+            ("LEFTPADDING", (0, 0), (0, -1), 0),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.25, colors.HexColor("#D5DAE1")),
+        ]))
+        self.storia.append(tabella)
+        self.spazio(2)
+
+    def riquadro(self, titolo, testo, colore="#F3F4F6"):
+        contenuto = Paragraph(f"<b>{_pulito(titolo)}</b><br/>{_pulito(testo)}", self.stili["cella"])
+        tabella = Table([[contenuto]], colWidths=[A4[0] - 4 * cm])
+        tabella.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(colore)),
+            ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#9AA3AE")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        self.storia.append(tabella)
+        self.spazio(2)
+
     def spazio(self, altezza=4):
         self.storia.append(Spacer(1, altezza * mm))
 
@@ -191,7 +265,10 @@ class Pdf:
         dati = []
         if intestazioni:
             dati.append([Paragraph(f"<b>{_pulito(t)}</b>", cella) for t in intestazioni])
-        dati += [[Paragraph(_pulito("" if v is None else v), cella) for v in riga] for riga in righe]
+        dati += [
+            [v if isinstance(v, Paragraph) else Paragraph(_pulito("" if v is None else v), cella) for v in riga]
+            for riga in righe
+        ]
         larghezza_utile = A4[0] - 4 * cm
         if larghezze:
             totale = sum(larghezze)
@@ -372,9 +449,33 @@ def _valore(descrizioni, fattore, valore):
     return f"{valore} – {descrizione}" if descrizione else str(valore)
 
 
+def _cella_valore(doc, descrizioni, fattore, valore):
+    """Numero in grassetto, descrizione più piccola in grigio."""
+    if valore is None:
+        return Paragraph("–", doc.stili["cella"])
+    descrizione = descrizioni.get((fattore, valore))
+    coda = f' <font size="7.5" color="#5F6B7A">– {_pulito(descrizione)}</font>' if descrizione else ""
+    return Paragraph(f"<b>{valore}</b>{coda}", doc.stili["cella"])
+
+
+NOMI_FATTORI = {
+    "Se": "Gravità",
+    "Fr": "Frequenza di esposizione",
+    "Pr": "Probabilità dell'evento",
+    "Av": "Possibilità di evitare",
+}
+TIPI_MISURA = [
+    ("PROG", "Progettazione intrinsecamente sicura"),
+    ("PROT", "Protezione e misure complementari (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)"),
+    ("INFO", "Informazioni per l'uso"),
+    ("DACL", "Da classificare"),
+]
+
+
 def _tabella_stima(doc, scheda, descrizioni):
     righe = [
-        [fattore] + [_valore(descrizioni, fattore, getattr(scheda, f"{fattore.lower()}_{quale}")) for quale in ("iniziale", "finale")]
+        [f"{fattore} – {NOMI_FATTORI[fattore]}"]
+        + [_cella_valore(doc, descrizioni, fattore, getattr(scheda, f"{fattore.lower()}_{quale}")) for quale in ("iniziale", "finale")]
         for fattore in FATTORI
     ]
     righe.append(["Cl"] + [_valore({}, "", getattr(scheda, f"cl_{quale}")) for quale in ("iniziale", "finale")])
@@ -382,7 +483,58 @@ def _tabella_stima(doc, scheda, descrizioni):
     righe.append(["Esito"] + [ESITI_TESTO.get(e, "–") for e in esiti])
     ultima = len(righe)
     sfondi = {(colonna, ultima): ESITI_COLORE[e] for colonna, e in enumerate(esiti, start=1) if e}
-    doc.tabella(["Stima del rischio (RESS 1.1.1 e)", "Iniziale", "Finale"], righe, [3, 7, 7], sfondi)
+    doc.tabella(["Stima (1.1.1 e)", "Iniziale", "Finale"], righe, [4.2, 6.4, 6.4], sfondi)
+
+
+def _riepilogo(doc, schede):
+    """Una riga per scheda con gli esiti colorati: la panoramica dell'analisi."""
+    righe, sfondi = [], {}
+    for indice, s in enumerate(schede, start=1):
+        esiti = [s.esito_iniziale, s.esito_finale]
+        righe.append([
+            s.codice or "–", f"{s.requisito.codice} {s.requisito.titolo}", s.zona_pericolosa or s.zona_impianto,
+            *(ESITI_TESTO.get(e, "–") for e in esiti),
+        ])
+        sfondi.update({(colonna, indice): ESITI_COLORE[e] for colonna, e in enumerate(esiti, start=3) if e})
+    doc.tabella(["Scheda", "Requisito", "Zona pericolosa", "Esito iniziale", "Esito finale"], righe, [1.8, 5.1, 5.1, 3, 3], sfondi)
+
+
+def _scheda(doc, s, descrizioni):
+    pericoli = "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all())
+    doc.insieme(
+        lambda: doc.testata(f"{s.codice or 'Scheda'}   ·   {s.requisito.codice} {s.requisito.titolo}"),
+        lambda: doc.dettagli([
+            ("Zona dell'impianto", s.zona_impianto),
+            ("Zona pericolosa (1.1.1 b)", s.zona_pericolosa),
+            ("Condizioni operative", ", ".join(c.nome for c in s.condizioni.all())),
+            ("Soggetti esposti (1.1.1 c, d)", ", ".join(f.nome for f in s.soggetti.all())),
+            ("Pericoli (1.1.1 a)", pericoli),
+        ]),
+    )
+    if s.ha_stima_iniziale or s.ha_stima_finale:
+        doc.insieme(lambda: _tabella_stima(doc, s, descrizioni))
+    misure = list(s.misure.all())
+    if misure:
+        doc.p("Misure di protezione", 3)
+        for tipo, titolo in TIPI_MISURA:
+            del_tipo = [m for m in misure if m.tipo == tipo]
+            if del_tipo:
+                doc.p(titolo, "sottotitolo_misure")
+                doc.elenco_html(
+                    _pulito(m.testo) + (f' <font color="#6B7280">({_pulito(m.norma)})</font>' if m.norma else "")
+                    for m in del_tipo
+                )
+    if s.testo_istruzioni:
+        da_segnalare = s.esito_finale and s.esito_finale != Esito.OK
+        doc.riquadro(
+            "Informazioni per le istruzioni / rischio residuo",
+            s.testo_istruzioni,
+            ESITI_COLORE[Esito.SUGGERITE] if da_segnalare else "#F3F4F6",
+        )
+    norme = ", ".join(n.codice for n in s.norme.all())
+    if norme:
+        doc.p_html(f'<font color="#6B7280">Norme: {_pulito(norme)}</font>', "cella")
+    doc.spazio(5)
 
 
 def valutazione(revisione):
@@ -471,35 +623,19 @@ def valutazione(revisione):
     else:
         doc.p("Tutti i requisiti sono considerati applicabili.")
 
-    doc.titoletto("Schede di valutazione")
-    for modulo, gruppo in groupby(_schede_attive(revisione), key=lambda s: s.modulo):
-        doc.titoletto(modulo.nome, 2)
+    schede = _schede_attive(revisione)
+    doc.titoletto("Riepilogo delle schede")
+    _riepilogo(doc, schede)
+
+    for modulo, gruppo in groupby(schede, key=lambda s: s.modulo):
+        doc.nuova_pagina()
+        doc.titoletto(f"Modulo: {modulo.nome}" + (f" ({modulo.sigla})" if modulo.sigla else ""))
         for s in gruppo:
-            doc.insieme(
-                lambda s=s: doc.titoletto(f"{s.codice or 'Scheda'} – {s.requisito.codice} {s.requisito.titolo}", 3),
-                lambda s=s: doc.coppia("Zona dell'impianto", s.zona_impianto),
-                lambda s=s: doc.coppia("Zona pericolosa (RESS 1.1.1 b)", s.zona_pericolosa),
-            )
-            doc.coppia("Condizioni operative", ", ".join(c.nome for c in s.condizioni.all()))
-            doc.coppia("Soggetti esposti (RESS 1.1.1 c, d)", ", ".join(f.nome for f in s.soggetti.all()))
-            pericoli = list(s.pericoli.all())
-            if pericoli:
-                doc.grassetto_testo("Pericoli (RESS 1.1.1 a)")
-                doc.elenco(f"{p.codice} {p.descrizione}" for p in pericoli)
-            if s.ha_stima_iniziale or s.ha_stima_finale:
-                _tabella_stima(doc, s, descrizioni)
-            misure = list(s.misure.all())
-            if misure:
-                doc.grassetto_testo("Misure di protezione (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)")
-                doc.elenco(m.testo + (f" ({m.norma})" if m.norma else "") for m in misure)
-            if s.testo_istruzioni:
-                doc.coppia("Informazioni per le istruzioni / rischio residuo", s.testo_istruzioni)
-            norme = ", ".join(n.codice for n in s.norme.all())
-            if norme:
-                doc.coppia("Norme", norme)
+            _scheda(doc, s, descrizioni)
 
     scartate = revisione.schede.filter(decisione=SchedaAnalisi.Decisione.SCARTATA).select_related("requisito")
     if scartate:
+        doc.nuova_pagina()
         doc.titoletto("Schede proposte e scartate")
         doc.tabella(
             ["Scheda", "Requisito", "Motivazione"],
@@ -530,7 +666,9 @@ def rischi_residui(revisione):
         for s in gruppo:
             esito = f"  [{ESITI_TESTO[s.esito_finale]}]" if s.esito_finale and s.esito_finale != Esito.OK else ""
             doc.insieme(
-                lambda s=s, esito=esito: doc.grassetto_testo(f"{s.requisito.codice} {s.requisito.titolo}", esito),
+                lambda s=s, esito=esito: doc.grassetto_testo(
+                    f"{s.codice + '  ·  ' if s.codice else ''}{s.requisito.codice} {s.requisito.titolo}", esito
+                ),
                 lambda s=s: doc.p(s.testo_istruzioni),
             )
     return doc.salva()

@@ -232,6 +232,11 @@ class Figura(models.Model):
 
 class Modulo(models.Model):
     nome = models.CharField(max_length=150, unique=True)
+    sigla = models.CharField(
+        max_length=6,
+        blank=True,
+        help_text="Lettere iniziali dei codici delle schede del modulo, es. GEN per GEN-01, GEN-02…",
+    )
     descrizione = models.TextField(blank=True)
     condizione = models.CharField(
         "quando serve", max_length=200, blank=True, help_text="Indicazione per chi sceglie i moduli della commessa."

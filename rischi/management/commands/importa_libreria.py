@@ -246,6 +246,7 @@ class Command(BaseCommand):
                     "condizione": "" if condizione.lower() == "sempre" else condizione[:200],
                     "sempre_attivo": condizione.lower() == "sempre",
                     "ordine": ordine,
+                    **({"sigla": testo(r[5])[:6]} if len(r) > 5 and testo(r[5]) else {}),
                 },
             )
             n += 1

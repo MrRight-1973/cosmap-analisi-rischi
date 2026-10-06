@@ -60,7 +60,7 @@ def esito_finale(scheda):
 
 def main():
     vecchie = leggi_vecchia()
-    nuove = [dict(s, codice=f"NL-{i:03d}") for i, s in enumerate(nuova.SCHEDE, start=1)]
+    nuove = nuova.SCHEDE
     wb = openpyxl.Workbook()
     grassetto = Font(bold=True)
     fondo = PatternFill("solid", fgColor="DDE4EE")
