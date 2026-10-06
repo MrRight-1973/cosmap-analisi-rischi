@@ -87,14 +87,11 @@ class ModuloAdmin(admin.ModelAdmin):
         """Cambiando la sigla, le schede modello del modulo prendono la nuova sigla e tengono il numero."""
         vecchia = m.Modulo.objects.get(pk=obj.pk).sigla if change else ""
         super().save_model(request, obj, form, change)
-        if change and vecchia and obj.sigla != vecchia:
-            rinominate = 0
-            for scheda in obj.schede.all():
-                if scheda.codice.startswith(f"{vecchia}-"):
-                    scheda.codice = f"{obj.sigla}-{scheda.codice[len(vecchia) + 1:]}"
-                    scheda.save(update_fields=["codice"])
-                    rinominate += 1
-            messages.info(request, f"Sigla cambiata da {vecchia} a {obj.sigla}: aggiornati i codici di {rinominate} schede modello.")
+        if change and obj.sigla != vecchia:
+            rinominate = obj.allinea_codici_schede()
+            messages.info(
+                request, f"Sigla cambiata da {vecchia or '–'} a {obj.sigla}: aggiornati i codici di {rinominate} schede modello."
+            )
 
     @admin.display(description="schede del modulo")
     def elenco_schede(self, obj):

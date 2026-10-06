@@ -740,3 +740,14 @@ class LibreriaAmministrazioneTest(TestCase):
         risposta = self.client.post(url, self.dati_modulo(tavola, "CAB"))
         self.assertContains(risposta, "già usata da un altro modulo")
         self.assertTrue(tavola.schede.filter(codice="TRT-01").exists())
+
+    def test_cambio_sigla_con_schede_di_un_prefisso_diverso(self):
+        # Le schede hanno ancora la sigla di partenza, la sigla del modulo è già stata cambiata prima
+        self.client.force_login(self.capo)
+        lucidatura = Modulo.objects.get(sigla="LUC")
+        Modulo.objects.filter(pk=lucidatura.pk).update(sigla="UPL")
+        lucidatura.refresh_from_db()
+        url = reverse("admin:rischi_modulo_change", args=[lucidatura.pk])
+        self.assertEqual(self.client.post(url, self.dati_modulo(lucidatura, "UPP")).status_code, 302)
+        codici = sorted(lucidatura.schede.values_list("codice", flat=True))
+        self.assertEqual(codici, [f"UPP-{n:02d}" for n in range(1, len(codici) + 1)])
