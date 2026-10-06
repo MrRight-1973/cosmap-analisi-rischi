@@ -21,6 +21,7 @@ from .models import (
     Revisione,
     SchedaAnalisi,
     SchedaModello,
+    prossimo_codice,
 )
 
 # ---------------------------------------------------------------------------
@@ -105,6 +106,17 @@ def allinea_figure(macchina, revisione, descrizioni=None):
             figura=figura,
             defaults={"descrizione": descrizioni.get(figura.pk, figura.descrizione)},
         )
+
+
+def codice_scheda(revisione, modulo, escludi=None):
+    """Codice di una scheda aggiunta o spostata nell'analisi: numero successivo nel modulo,
+    contando le schede della revisione e quelle della libreria."""
+    usati = list(SchedaModello.objects.values_list("codice", flat=True))
+    schede = revisione.schede.all()
+    if escludi:
+        schede = schede.exclude(pk=escludi)
+    usati += list(schede.values_list("codice", flat=True))
+    return prossimo_codice(modulo, usati)
 
 
 def _requisito_equivalente(requisito, revisione):

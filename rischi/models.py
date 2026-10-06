@@ -304,13 +304,22 @@ class Stima(models.Model):
         return self.se_finale is not None and self.cl_finale is not None
 
 
+def prossimo_codice(modulo, codici_usati):
+    """SIGLA-NN con il numero successivo al più alto già usato nel modulo (es. GEN-17)."""
+    if not modulo.sigla:
+        raise ValidationError({"modulo": f"Il modulo \"{modulo}\" non ha la sigla: impostala nella pagina del modulo."})
+    prefisso = f"{modulo.sigla}-"
+    numeri = [int(c[len(prefisso):]) for c in codici_usati if c.startswith(prefisso) and c[len(prefisso):].isdigit()]
+    return f"{prefisso}{max(numeri, default=0) + 1:02d}"
+
+
 class SchedaModello(Stima):
     class Stato(models.TextChoices):
         BOZZA = "BOZZA", "Bozza"
         VALIDATA = "VALIDATA", "Validata"
 
     codice = models.CharField(
-        max_length=20, unique=True, help_text="Si genera da solo: sigla del modulo, punto RESS e indice (es. TAV-1.3.8.2-1)."
+        max_length=20, unique=True, help_text="Si genera da solo: sigla del modulo e numero progressivo (es. TAV-03)."
     )
     modulo = models.ForeignKey(Modulo, on_delete=models.PROTECT, related_name="schede")
     requisito = models.ForeignKey(RequisitoRESS, on_delete=models.PROTECT, related_name="schede_modello")
@@ -330,27 +339,16 @@ class SchedaModello(Stima):
         return f"{self.codice} – {self.requisito.codice} {self.requisito.titolo}"
 
     @classmethod
-    def prossimo_codice(cls, modulo, requisito, escludi=None):
-        """Primo codice libero SIGLA-RESS-indice per il modulo e il requisito."""
-        if not modulo.sigla:
-            raise ValidationError(
-                {"modulo": f"Il modulo \"{modulo}\" non ha la sigla: impostala nella pagina del modulo."}
-            )
-        prefisso = f"{modulo.sigla}-{requisito.codice}-"
-        usati = cls.objects.filter(codice__startswith=prefisso)
+    def prossimo_codice(cls, modulo, escludi=None):
+        """Numero successivo nel modulo; l'ordine di visualizzazione lo dà il requisito."""
+        usati = cls.objects.all()
         if escludi:
             usati = usati.exclude(pk=escludi)
-        indici = [int(c[len(prefisso):]) for c in usati.values_list("codice", flat=True) if c[len(prefisso):].isdigit()]
-        return f"{prefisso}{max(indici, default=0) + 1}"
-
-    def codice_coerente(self):
-        """Il codice corrisponde al modulo e al requisito attuali."""
-        prefisso = f"{self.modulo.sigla}-{self.requisito.codice}-"
-        return bool(self.modulo.sigla) and self.codice.startswith(prefisso) and self.codice[len(prefisso):].isdigit()
+        return prossimo_codice(modulo, usati.values_list("codice", flat=True))
 
     def save(self, *args, **kwargs):
         if not self.codice:
-            self.codice = self.prossimo_codice(self.modulo, self.requisito)
+            self.codice = self.prossimo_codice(self.modulo)
         super().save(*args, **kwargs)
 
 
