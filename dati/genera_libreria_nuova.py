@@ -296,6 +296,9 @@ MODULI = [
     (PNE, "Se presente impianto pneumatico", "Gruppo di trattamento aria, valvole, attuatori."),
     (INF, "Sempre", "Avvertenze, segnali, marcatura, manuale di istruzioni."),
 ]
+# Sigla del modulo: prima parte dei codici delle schede (GEN-01, GEN-02, ...)
+SIGLE = {GEN: "GEN", PAS: "PAS", CMD: "CMD", CAB: "CAB", TAV: "TAV", ZSM: "ZSM", PAL: "PAL",
+         GSM: "ROB", TRA: "TRA", ZPU: "ZPU", LUC: "LUC", ELE: "ELE", PNE: "PNE", INF: "INF"}
 
 # ---------------------------------------------------------------------------
 # Schede
@@ -825,6 +828,12 @@ def soggetti_scheda(scheda):
 for scheda in SCHEDE:
     scheda["soggetti"] = soggetti_scheda(scheda)
 
+# Codici: sigla del modulo e numero progressivo nel modulo, nell'ordine delle schede
+_contatori = {}
+for scheda in SCHEDE:
+    _contatori[scheda["modulo"]] = _contatori.get(scheda["modulo"], 0) + 1
+    scheda["codice"] = f"{SIGLE[scheda['modulo']]}-{_contatori[scheda['modulo']]:02d}"
+
 # ---------------------------------------------------------------------------
 # Scrittura del file
 # ---------------------------------------------------------------------------
@@ -876,6 +885,7 @@ def genera():
         "le misure di protezione riducono la probabilità (Pr) e la possibilità di evitare il danno (Av).",
         "Le misure sono nel foglio Misure, una per riga, con il tipo (PROG progettazione, PROT protezione,",
         "INFO informazioni) e la norma di riferimento. La colonna misure del foglio Libreria è solo una sintesi.",
+        "Codici delle schede: sigla del modulo e numero nel modulo (es. GEN-01, TAV-03); sigle nel foglio Moduli.",
         "Codici dei pericoli a due cifre (es. 1.01) per non confondersi con quelli della prima estrazione.",
         "Soggetti esposti proposti in base a condizioni operative e pericoli (ultima colonna del foglio Libreria):",
         "operatori secondo il RESS 1.1.1 d) e persone esposte secondo il RESS 1.1.1 c).",
@@ -909,7 +919,7 @@ def genera():
         if s["si"]:
             note = (note + " " if note else "") + "Stima proposta, da validare."
         ws.append([
-            f"NL-{n:03d}", s["ress"], titoli[s["ress"]], "", s["zona"], s["modulo"], condizioni_modulo[s["modulo"]],
+            s["codice"], s["ress"], titoli[s["ress"]], "", s["zona"], s["modulo"], condizioni_modulo[s["modulo"]],
             s["zp"], s["cond"], "\n".join(f"{codice_pericolo(c)} {PERICOLI[c]}" for c in s["per"]),
             *(s["si"] or (None,) * 4), cl_i, es_i,
             testo_misure(s["mis"]), s["istr"],
@@ -930,18 +940,18 @@ def genera():
     }
     for n, s in enumerate(SCHEDE, start=1):
         for ordine, (tipo, testo, norma) in enumerate(s["mis"], start=1):
-            ws.append([f"NL-{n:03d}", ordine, tipo, descrizione_tipo[tipo], testo, norma])
+            ws.append([s["codice"], ordine, tipo, descrizione_tipo[tipo], testo, norma])
     for riga in ws.iter_rows(min_row=2):
         riga[4].alignment = Alignment(wrap_text=True, vertical="top")
 
     # Moduli
     ws = wb.create_sheet("Moduli")
     intestazione(ws, ["Modulo", "Schede in libreria", "Condizione di attivazione proposta",
-                      "Schede con esito finale non verde", "Note"], [50, 10, 50, 12, 70])
+                      "Schede con esito finale non verde", "Note", "Sigla"], [50, 10, 50, 12, 70, 8])
     for nome, condizione, descrizione in MODULI:
         schede = [s for s in SCHEDE if s["modulo"] == nome]
         non_verdi = sum(1 for s in schede if s["sf"] and esito(s["sf"])[1] != "OK")
-        ws.append([nome, len(schede), condizione, non_verdi, descrizione])
+        ws.append([nome, len(schede), condizione, non_verdi, descrizione, SIGLE[nome]])
 
     # RESS
     ws = wb.create_sheet("RESS-Regolamento")
