@@ -254,6 +254,27 @@ class Modulo(models.Model):
     def __str__(self):
         return self.nome
 
+    def allinea_codici_schede(self):
+        """Dà a tutte le schede modello del modulo la sigla attuale, tenendo il numero (LUC-03 -> UPL-03).
+
+        Vale qualunque sia il prefisso attuale delle schede; se il codice nuovo è già usato
+        la scheda prende il primo numero libero del modulo. Restituisce quante schede sono cambiate.
+        """
+        if not self.sigla:
+            return 0
+        cambiate = 0
+        for scheda in self.schede.order_by("codice"):
+            prefisso, _, numero = scheda.codice.rpartition("-")
+            if prefisso == self.sigla or not numero.isdigit():
+                continue
+            nuovo = f"{self.sigla}-{numero}"
+            if SchedaModello.objects.filter(codice=nuovo).exclude(pk=scheda.pk).exists():
+                nuovo = SchedaModello.prossimo_codice(self, escludi=scheda.pk)
+            scheda.codice = nuovo
+            scheda.save(update_fields=["codice"])
+            cambiate += 1
+        return cambiate
+
 
 class TipoMisura(models.TextChoices):
     PROGETTAZIONE = "PROG", "Progettazione intrinsecamente sicura"
