@@ -1,4 +1,5 @@
-from django.contrib import admin
+from django import forms
+from django.contrib import admin, messages
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
@@ -10,13 +11,41 @@ class MisuraModelloInline(admin.StackedInline):
     extra = 0
 
 
+class SchedaModelloForm(forms.ModelForm):
+    class Meta:
+        model = m.SchedaModello
+        exclude = ("codice",)
+
+    def clean(self):
+        dati = super().clean()
+        modulo = dati.get("modulo")
+        if modulo and not modulo.sigla:
+            self.add_error("modulo", f"Il modulo \"{modulo}\" non ha la sigla: impostala nella pagina del modulo.")
+        return dati
+
+
 @admin.register(m.SchedaModello)
 class SchedaModelloAdmin(admin.ModelAdmin):
+    form = SchedaModelloForm
     list_display = ("codice", "modulo", "requisito", "zona_impianto", "stato")
     list_filter = ("modulo", "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
     filter_horizontal = ("condizioni", "pericoli", "norme", "soggetti")
+    readonly_fields = ("codice",)
     inlines = [MisuraModelloInline]
+
+    def save_model(self, request, obj, form, change):
+        """Codice automatico: alla creazione e quando cambiano modulo o requisito."""
+        vecchio = obj.codice
+        if not change:
+            obj.codice = ""
+        elif not obj.codice_coerente():
+            obj.codice = m.SchedaModello.prossimo_codice(obj.modulo, obj.requisito, escludi=obj.pk)
+        super().save_model(request, obj, form, change)
+        if change and obj.codice != vecchio:
+            messages.info(request, f"Codice aggiornato da {vecchio} a {obj.codice} (modulo o requisito cambiati).")
+        elif not change:
+            messages.info(request, f"Codice assegnato: {obj.codice}.")
 
 
 @admin.register(m.Modulo)
