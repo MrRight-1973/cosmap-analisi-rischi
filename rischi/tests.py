@@ -575,3 +575,52 @@ class SoggettiEspostiTest(TestCase):
         call_command("completa_soggetti", stdout=io.StringIO())
         self.assertFalse([a for a in servizi.controlli(rev) if a.tipo == "soggetti"])
         self.assertTrue(self.macchina.figure.filter(figura__nome="Operatore di conduzione").exists())
+
+
+class CodiceAutomaticoTest(TestCase):
+    """Il codice delle schede modello si genera da solo: SIGLA-RESS-indice."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        cls.capo = User.objects.create_superuser("capo", password="prova-prova-123")
+
+    def dati(self, modulo, requisito):
+        return {
+            "modulo": modulo.pk, "requisito": requisito.pk, "stato": "BOZZA",
+            "misure-TOTAL_FORMS": 0, "misure-INITIAL_FORMS": 0, "misure-MIN_NUM_FORMS": 0, "misure-MAX_NUM_FORMS": 1000,
+        }
+
+    def test_nuova_scheda_e_cambio_di_modulo(self):
+        from .models import RequisitoRESS
+
+        self.client.force_login(self.capo)
+        tavola = Modulo.objects.get(sigla="TAV")
+        requisito = RequisitoRESS.objects.get(codice="1.3.8.2")
+        risposta = self.client.post(reverse("admin:rischi_schedamodello_add"), self.dati(tavola, requisito))
+        self.assertEqual(risposta.status_code, 302)
+        nuova = SchedaModello.objects.get(codice="TAV-1.3.8.2-2")
+
+        cabina = Modulo.objects.get(sigla="CAB")
+        url = reverse("admin:rischi_schedamodello_change", args=[nuova.pk])
+        self.assertEqual(self.client.post(url, self.dati(cabina, requisito)).status_code, 302)
+        nuova.refresh_from_db()
+        self.assertEqual(nuova.codice, "CAB-1.3.8.2-1")
+
+    def test_modulo_senza_sigla(self):
+        from .models import RequisitoRESS
+
+        self.client.force_login(self.capo)
+        senza = Modulo.objects.create(nome="Modulo senza sigla")
+        risposta = self.client.post(
+            reverse("admin:rischi_schedamodello_add"), self.dati(senza, RequisitoRESS.objects.get(codice="1.1.3"))
+        )
+        self.assertContains(risposta, "non ha la sigla")
+        self.assertFalse(SchedaModello.objects.filter(modulo=senza).exists())
+
+    def test_codice_dal_modello(self):
+        from .models import RequisitoRESS
+
+        elettrico = Modulo.objects.get(sigla="ELE")
+        scheda = SchedaModello.objects.create(modulo=elettrico, requisito=RequisitoRESS.objects.get(codice="1.5.1"))
+        self.assertEqual(scheda.codice, "ELE-1.5.1-3")
