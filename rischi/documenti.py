@@ -1,4 +1,4 @@
-"""Generazione dei documenti Word di una revisione.
+"""Generazione dei documenti PDF di una revisione.
 
 - Dichiarazione UE di conformità (Regolamento (UE) 2023/1230, Allegato V parte A)
 - Valutazione dei rischi
@@ -11,14 +11,18 @@ responsabilità resta di chi firma.
 
 import io
 from itertools import groupby
+from pathlib import Path
+from xml.sax.saxutils import escape
 
 from django.utils import timezone
-from docx import Document
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-from docx.shared import Cm, Pt, RGBColor
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import cm, mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import KeepTogether, ListFlowable, ListItem, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .models import Esito, Fabbricante, Revisione, SchedaAnalisi
 
@@ -54,6 +58,7 @@ TESTI = {
         "nome_qualifica": "Nome e qualifica",
         "firma": "Firma",
         "bozza": "BOZZA – revisione non approvata, documento non valido",
+        "pagina": "Pagina",
     },
     "en": {
         "titolo": "EU Declaration of Conformity",
@@ -82,80 +87,162 @@ TESTI = {
         "nome_qualifica": "Name and function",
         "firma": "Signature",
         "bozza": "DRAFT – revision not approved, document not valid",
+        "pagina": "Page",
     },
 }
 
 ESITI_TESTO = {Esito.OK: "OK", Esito.SUGGERITE: "Misure suggerite", Esito.RICHIESTE: "Misure richieste"}
-ESITI_COLORE = {Esito.OK: "E6F4E7", Esito.SUGGERITE: "FFF6D6", Esito.RICHIESTE: "FDE8E6"}
+ESITI_COLORE = {Esito.OK: "#E6F4E7", Esito.SUGGERITE: "#FFF6D6", Esito.RICHIESTE: "#FDE8E6"}
+
+# ---------------------------------------------------------------------------
+# Carattere: un TrueType con tutti i simboli (≤, ≥, …) se disponibile,
+# altrimenti Helvetica con i soli caratteri dell'Europa occidentale.
+# ---------------------------------------------------------------------------
+
+_CARATTERI_CANDIDATI = [
+    ("C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/arialbd.ttf"),
+    ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+    ("/usr/share/fonts/dejavu/DejaVuSans.ttf", "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"),
+    ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
+    ("/Library/Fonts/Arial.ttf", "/Library/Fonts/Arial Bold.ttf"),
+]
+_carattere = None
+
+
+def _carattere_registrato():
+    """(normale, grassetto, unicode completo) – registra il carattere una sola volta."""
+    global _carattere
+    if _carattere is None:
+        _carattere = ("Helvetica", "Helvetica-Bold", False)
+        for normale, grassetto in _CARATTERI_CANDIDATI:
+            if Path(normale).exists() and Path(grassetto).exists():
+                pdfmetrics.registerFont(TTFont("Testo", normale))
+                pdfmetrics.registerFont(TTFont("Testo-Grassetto", grassetto))
+                pdfmetrics.registerFontFamily("Testo", normal="Testo", bold="Testo-Grassetto")
+                _carattere = ("Testo", "Testo-Grassetto", True)
+                break
+    return _carattere
+
+
+def _pulito(testo):
+    """Testo sicuro per i paragrafi: caratteri speciali e a capo."""
+    testo = "" if testo is None else str(testo)
+    if not _carattere_registrato()[2]:
+        testo = testo.replace("≤", "<=").replace("≥", ">=").encode("cp1252", "replace").decode("cp1252")
+    return escape(testo).replace("\n", "<br/>")
 
 
 # ---------------------------------------------------------------------------
-# Utilità
+# Documento PDF
 # ---------------------------------------------------------------------------
 
 
-def _documento():
-    doc = Document()
-    sezione = doc.sections[0]
-    sezione.page_height, sezione.page_width = Cm(29.7), Cm(21.0)
-    for margine in ("left_margin", "right_margin"):
-        setattr(sezione, margine, Cm(2.0))
-    sezione.top_margin = sezione.bottom_margin = Cm(1.8)
-    stile = doc.styles["Normal"]
-    stile.font.name = "Calibri"
-    stile.font.size = Pt(10.5)
-    return doc
+class Pdf:
+    """Documento A4 con intestazione BOZZA (se serve) e numero di pagina."""
+
+    def __init__(self, titolo, bozza="", pagina="Pagina"):
+        normale, grassetto, _ = _carattere_registrato()
+        self.titolo, self.bozza, self.pagina = titolo, bozza, pagina
+        self.grassetto = grassetto
+        base = ParagraphStyle("base", fontName=normale, fontSize=9.5, leading=12.5, spaceAfter=3)
+        self.stili = {
+            "base": base,
+            "cella": ParagraphStyle("cella", parent=base, fontSize=8.5, leading=10.5, spaceAfter=0),
+            "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=17, leading=21, spaceAfter=8),
+            "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=16, leading=20, alignment=TA_CENTER, spaceAfter=4),
+            "centro": ParagraphStyle("centro", parent=base, alignment=TA_CENTER),
+            1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceBefore=10, spaceAfter=5),
+            2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=11.5, leading=14, spaceBefore=8, spaceAfter=4),
+            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=10, leading=13, spaceBefore=8, spaceAfter=3),
+        }
+        self.storia = []
+
+    def p(self, testo, stile="base"):
+        self.storia.append(Paragraph(_pulito(testo), self.stili[stile]))
+
+    def titolo_documento(self, testo, centrato=False):
+        self.p(testo, "titolo_centro" if centrato else "titolo")
+
+    def titoletto(self, testo, livello=1):
+        self.p(testo, livello)
+
+    def grassetto_testo(self, testo, coda=""):
+        self.storia.append(Paragraph(f"<b>{_pulito(testo)}</b>{_pulito(coda)}", self.stili["base"]))
+
+    def coppia(self, etichetta, valore):
+        self.storia.append(Paragraph(f"<b>{_pulito(etichetta)}:</b> {_pulito(valore or '–')}", self.stili["base"]))
+
+    def elenco(self, voci):
+        voci = [v for v in voci if v]
+        if voci:
+            self.storia.append(
+                ListFlowable(
+                    [ListItem(Paragraph(_pulito(v), self.stili["base"]), leftIndent=12) for v in voci],
+                    bulletType="bullet", start="•", leftIndent=12, bulletFontSize=8,
+                )
+            )
+
+    def spazio(self, altezza=4):
+        self.storia.append(Spacer(1, altezza * mm))
+
+    def tabella(self, intestazioni, righe, larghezze=None, sfondi=None, bordo=True):
+        """Tabella con celle a capo automatico. sfondi: {(colonna, riga): colore}, riga 0 = intestazione."""
+        cella = self.stili["cella"]
+        dati = []
+        if intestazioni:
+            dati.append([Paragraph(f"<b>{_pulito(t)}</b>", cella) for t in intestazioni])
+        dati += [[Paragraph(_pulito("" if v is None else v), cella) for v in riga] for riga in righe]
+        larghezza_utile = A4[0] - 4 * cm
+        if larghezze:
+            totale = sum(larghezze)
+            larghezze = [larghezza_utile * l / totale for l in larghezze]
+        tabella = Table(dati, colWidths=larghezze, repeatRows=1 if intestazioni else 0, hAlign="LEFT")
+        stile = [("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]
+        if bordo:
+            stile.append(("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#9AA3AE")))
+        if intestazioni:
+            stile.append(("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEF0F3")))
+        for (colonna, riga), colore in (sfondi or {}).items():
+            stile.append(("BACKGROUND", (colonna, riga), (colonna, riga), colors.HexColor(colore)))
+        tabella.setStyle(TableStyle(stile))
+        self.storia.append(tabella)
+        self.spazio(2)
+        return tabella
+
+    def insieme(self, *contenuti):
+        """Tiene sulla stessa pagina gli elementi aggiunti da `contenuti` (funzioni senza argomenti)."""
+        inizio = len(self.storia)
+        for aggiungi in contenuti:
+            aggiungi()
+        blocco = self.storia[inizio:]
+        del self.storia[inizio:]
+        self.storia.append(KeepTogether(blocco))
+
+    def _pagina(self, canvas, doc):
+        canvas.saveState()
+        larghezza, altezza = A4
+        if self.bozza:
+            canvas.setFont(self.grassetto, 10)
+            canvas.setFillColor(colors.HexColor("#B3261E"))
+            canvas.drawCentredString(larghezza / 2, altezza - 1.1 * cm, self.bozza)
+        canvas.setFont(_carattere_registrato()[0], 7.5)
+        canvas.setFillColor(colors.HexColor("#5F6B7A"))
+        canvas.drawString(2 * cm, 1.1 * cm, self.titolo)
+        canvas.drawRightString(larghezza - 2 * cm, 1.1 * cm, f"{self.pagina} {doc.page}")
+        canvas.restoreState()
+
+    def salva(self):
+        buffer = io.BytesIO()
+        documento = SimpleDocTemplate(
+            buffer, pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm, topMargin=1.8 * cm, bottomMargin=1.8 * cm,
+            title=self.titolo, author="Cosmap – Analisi dei rischi",
+        )
+        documento.build(self.storia, onFirstPage=self._pagina, onLaterPages=self._pagina)
+        return buffer.getvalue()
 
 
-def _bozza(doc, revisione, testo):
-    if revisione.stato == Revisione.Stato.APPROVATA:
-        return
-    p = doc.sections[0].header.paragraphs[0]
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = p.add_run(testo)
-    run.bold = True
-    run.font.color.rgb = RGBColor(0xB3, 0x26, 0x1E)
-
-
-def _sfondo(cella, colore):
-    proprieta = cella._tc.get_or_add_tcPr()
-    shd = OxmlElement("w:shd")
-    shd.set(qn("w:val"), "clear")
-    shd.set(qn("w:color"), "auto")
-    shd.set(qn("w:fill"), colore)
-    proprieta.append(shd)
-
-
-def _tabella(doc, intestazioni, righe, larghezze=None):
-    tabella = doc.add_table(rows=1, cols=len(intestazioni))
-    tabella.style = "Table Grid"
-    tabella.alignment = WD_TABLE_ALIGNMENT.CENTER
-    for cella, testo in zip(tabella.rows[0].cells, intestazioni):
-        cella.text = ""
-        cella.paragraphs[0].add_run(testo).bold = True
-        _sfondo(cella, "EEF0F3")
-    for riga in righe:
-        celle = tabella.add_row().cells
-        for cella, valore in zip(celle, riga):
-            cella.text = "" if valore is None else str(valore)
-    if larghezze:
-        for riga in tabella.rows:
-            for cella, larghezza in zip(riga.cells, larghezze):
-                cella.width = Cm(larghezza)
-    return tabella
-
-
-def _coppia(doc, etichetta, valore):
-    p = doc.add_paragraph()
-    p.paragraph_format.space_after = Pt(2)
-    p.add_run(f"{etichetta}: ").bold = True
-    p.add_run(valore or "–")
-
-
-def _salva(doc):
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    return buffer.getvalue()
+def _testo_bozza(revisione, lingua="it"):
+    return "" if revisione.stato == Revisione.Stato.APPROVATA else TESTI[lingua]["bozza"]
 
 
 def _schede_attive(revisione):
@@ -200,82 +287,74 @@ def dichiarazione(revisione, lingua="it"):
     fabbricante = Fabbricante.corrente()
     macchina = revisione.analisi.macchina
     commessa = macchina.commessa
-    doc = _documento()
-    _bozza(doc, revisione, t["bozza"])
+    doc = Pdf(f"{t['titolo']} {commessa.numero}/{revisione.numero}", _testo_bozza(revisione, lingua), t["pagina"])
 
-    titolo = doc.add_paragraph()
-    titolo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = titolo.add_run(t["titolo"])
-    run.bold = True
-    run.font.size = Pt(16)
-    sotto = doc.add_paragraph(t["sottotitolo"])
-    sotto.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    numero = doc.add_paragraph(f"{t['numero']} {commessa.numero}/{revisione.numero}")
-    numero.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.titolo_documento(t["titolo"], centrato=True)
+    doc.p(t["sottotitolo"], "centro")
+    doc.p(f"{t['numero']} {commessa.numero}/{revisione.numero}", "centro")
 
-    doc.add_heading(f"1. {t['fabbricante']}", level=2)
+    doc.titoletto(f"1. {t['fabbricante']}", 2)
     if fabbricante:
-        doc.add_paragraph(fabbricante.ragione_sociale)
-        doc.add_paragraph(fabbricante.indirizzo)
+        doc.p(fabbricante.ragione_sociale)
+        doc.p(fabbricante.indirizzo)
         if fabbricante.partita_iva:
-            _coppia(doc, t["piva"], fabbricante.partita_iva)
+            doc.coppia(t["piva"], fabbricante.partita_iva)
     else:
-        doc.add_paragraph("Dati del fabbricante non impostati.")
+        doc.p("Dati del fabbricante non impostati.")
 
-    doc.add_heading(f"2. {t['fascicolo']}", level=2)
+    doc.titoletto(f"2. {t['fascicolo']}", 2)
     if fabbricante and fabbricante.persona_fascicolo:
-        doc.add_paragraph(fabbricante.persona_fascicolo)
-        doc.add_paragraph(fabbricante.indirizzo_persona_fascicolo or fabbricante.indirizzo)
+        doc.p(fabbricante.persona_fascicolo)
+        doc.p(fabbricante.indirizzo_persona_fascicolo or fabbricante.indirizzo)
     else:
-        doc.add_paragraph("–")
+        doc.p("–")
 
-    doc.add_heading(f"3. {t['oggetto']}", level=2)
-    _coppia(doc, t["denominazione"], macchina.denominazione)
-    _coppia(doc, t["funzione"], macchina.funzione)
-    _coppia(doc, t["modello"], macchina.modello)
-    _coppia(doc, t["matricola"], macchina.matricola)
-    _coppia(doc, t["anno"], str(macchina.anno_costruzione or ""))
+    doc.titoletto(f"3. {t['oggetto']}", 2)
+    doc.coppia(t["denominazione"], macchina.denominazione)
+    doc.coppia(t["funzione"], macchina.funzione)
+    doc.coppia(t["modello"], macchina.modello)
+    doc.coppia(t["matricola"], macchina.matricola)
+    doc.coppia(t["anno"], str(macchina.anno_costruzione or ""))
 
-    doc.add_heading("4.", level=2)
-    doc.add_paragraph(t["responsabilita"])
+    doc.titoletto("4.", 2)
+    doc.p(t["responsabilita"])
 
     legislazioni = list(macchina.altre_legislazioni.all())
-    doc.add_heading("5.", level=2)
-    doc.add_paragraph(t["conforme"] + (t["conforme_altre"] if legislazioni else "."))
-    for legge in legislazioni:
-        titolo_legge = legge.titolo_en if lingua == "en" and legge.titolo_en else legge.titolo
-        doc.add_paragraph(f"{legge.codice} – {titolo_legge}", style="List Bullet")
+    doc.titoletto("5.", 2)
+    doc.p(t["conforme"] + (t["conforme_altre"] if legislazioni else "."))
+    doc.elenco(
+        f"{legge.codice} – {legge.titolo_en if lingua == 'en' and legge.titolo_en else legge.titolo}"
+        for legge in legislazioni
+    )
 
     armonizzate, altre = norme_applicate(revisione)
-    doc.add_heading(f"6. {t['norme_arm']}", level=2)
+    doc.titoletto(f"6. {t['norme_arm']}", 2)
     if armonizzate:
-        for norma in armonizzate:
-            doc.add_paragraph(_edizione(norma), style="List Bullet")
+        doc.elenco(_edizione(norma) for norma in armonizzate)
     else:
-        doc.add_paragraph("–")
+        doc.p("–")
     if altre:
-        doc.add_paragraph().add_run(t["norme_altre"]).bold = True
-        for norma in altre:
-            doc.add_paragraph(_edizione(norma), style="List Bullet")
+        doc.grassetto_testo(t["norme_altre"])
+        doc.elenco(_edizione(norma) for norma in altre)
 
     if macchina.organismo_notificato.strip():
-        doc.add_heading(f"7. {t['organismo']}", level=2)
-        doc.add_paragraph(macchina.organismo_notificato)
+        doc.titoletto(f"7. {t['organismo']}", 2)
+        doc.p(macchina.organismo_notificato)
 
-    doc.add_paragraph()
-    doc.add_paragraph(f"{t['firmato']}: {fabbricante.ragione_sociale if fabbricante else ''}")
-    firma = doc.add_table(rows=3, cols=2)
     luogo = fabbricante.luogo if fabbricante else ""
     data = f"{timezone.localtime(revisione.approvata_il):%d/%m/%Y}" if revisione.approvata_il else "____________"
-    valori = [
-        (t["luogo_data"], f"{luogo}, {data}"),
-        (t["nome_qualifica"], f"{fabbricante.firmatario}, {fabbricante.qualifica_firmatario}" if fabbricante else ""),
-        (t["firma"], "\n\n______________________________"),
-    ]
-    for riga, (etichetta, valore) in zip(firma.rows, valori):
-        riga.cells[0].text = etichetta
-        riga.cells[1].text = valore
-    return _salva(doc)
+    firmatario = f"{fabbricante.firmatario}, {fabbricante.qualifica_firmatario}" if fabbricante else ""
+    doc.insieme(
+        lambda: doc.spazio(6),
+        lambda: doc.p(f"{t['firmato']}: {fabbricante.ragione_sociale if fabbricante else ''}"),
+        lambda: doc.tabella(
+            None,
+            [[t["luogo_data"], f"{luogo}, {data}"], [t["nome_qualifica"], firmatario], [t["firma"], "\n\n______________________________"]],
+            [5, 12],
+            bordo=False,
+        ),
+    )
+    return doc.salva()
 
 
 # ---------------------------------------------------------------------------
@@ -301,28 +380,25 @@ def _tabella_stima(doc, scheda, descrizioni):
     righe.append(["Cl"] + [_valore({}, "", getattr(scheda, f"cl_{quale}")) for quale in ("iniziale", "finale")])
     esiti = [getattr(scheda, f"esito_{quale}") for quale in ("iniziale", "finale")]
     righe.append(["Esito"] + [ESITI_TESTO.get(e, "–") for e in esiti])
-    tabella = _tabella(doc, ["", "Stima iniziale", "Stima finale"], righe, [2, 7.5, 7.5])
-    for cella, esito in zip(tabella.rows[-1].cells[1:], esiti):
-        if esito:
-            _sfondo(cella, ESITI_COLORE[esito])
+    ultima = len(righe)
+    sfondi = {(colonna, ultima): ESITI_COLORE[e] for colonna, e in enumerate(esiti, start=1) if e}
+    doc.tabella(["Stima del rischio (RESS 1.1.1 e)", "Iniziale", "Finale"], righe, [3, 7, 7], sfondi)
 
 
 def valutazione(revisione):
     macchina = revisione.analisi.macchina
     commessa = macchina.commessa
     metodo = revisione.metodo
-    doc = _documento()
-    _bozza(doc, revisione, TESTI["it"]["bozza"])
+    doc = Pdf(f"Valutazione dei rischi – commessa {commessa.numero} rev. {revisione.numero}", _testo_bozza(revisione))
 
-    doc.add_heading("Valutazione dei rischi", level=0)
-    _coppia(doc, "Commessa", f"{commessa.numero} – {commessa.cliente}")
-    _coppia(doc, "Macchina", f"{macchina.denominazione} {macchina.modello}".strip())
-    _coppia(doc, "Matricola", macchina.matricola)
-    _coppia(doc, "Riferimento normativo", REGOLAMENTO)
-    _coppia(doc, "Revisione", f"{revisione.numero} – {revisione.motivo}")
-    doc.add_paragraph()
-    _tabella(
-        doc,
+    doc.titolo_documento("Valutazione dei rischi")
+    doc.coppia("Commessa", f"{commessa.numero} – {commessa.cliente}")
+    doc.coppia("Macchina", f"{macchina.denominazione} {macchina.modello}".strip())
+    doc.coppia("Matricola", macchina.matricola)
+    doc.coppia("Riferimento normativo", REGOLAMENTO)
+    doc.coppia("Revisione", f"{revisione.numero} – {revisione.motivo}")
+    doc.spazio(2)
+    doc.tabella(
         ["", "Nome", "Data"],
         [
             ["Compilata", _nome(revisione.compilata_da), f"{revisione.creata_il:%d/%m/%Y}"],
@@ -332,8 +408,16 @@ def valutazione(revisione):
         [4, 7, 4],
     )
 
-    doc.add_heading("Soggetti", level=1)
-    doc.add_paragraph(
+    doc.titoletto("Definizioni (RESS 1.1.1)")
+    doc.p(
+        "Le schede usano le definizioni del punto 1.1.1 dell'Allegato III del Regolamento: "
+        "a) pericolo; b) zona pericolosa; c) persona esposta; d) operatore; e) rischio; f) riparo; "
+        "g) dispositivo di protezione; h) uso previsto; i) uso scorretto ragionevolmente prevedibile. "
+        "Il riferimento alla lettera è indicato accanto a ogni voce delle schede."
+    )
+
+    doc.titoletto("Soggetti")
+    doc.p(
         "Operatori (RESS 1.1.1 d): persone incaricate di installare, far funzionare, regolare, pulire, "
         "riparare o spostare la macchina. Persone esposte (RESS 1.1.1 c): chiunque si trovi interamente "
         "o in parte in una zona pericolosa."
@@ -342,8 +426,7 @@ def valutazione(revisione):
     figure_usate = {f for s in _schede_attive(revisione) for f in s.soggetti.all()}
     figure_usate |= {f.figura for f in macchina.figure.select_related("figura")}
     if figure_usate:
-        _tabella(
-            doc,
+        doc.tabella(
             ["Tipo", "Figura", "Chi è su questa macchina"],
             [
                 [f.get_tipo_display(), f.nome, descrizioni_figure.get(f.pk) or f.descrizione]
@@ -352,74 +435,78 @@ def valutazione(revisione):
             [5, 4, 8],
         )
     else:
-        doc.add_paragraph("Soggetti non ancora indicati.")
+        doc.p("Soggetti non ancora indicati.")
 
-    doc.add_heading("Metodo di stima", level=1)
-    doc.add_paragraph(
-        f"{metodo.versione}. Gravità Se da 1 a 4; classe Cl = Fr + Pr + Av (frequenza di esposizione, "
-        "probabilità dell'evento pericoloso, possibilità di evitare il danno). L'esito si legge nella matrice."
+    doc.titoletto("Metodo di stima")
+    doc.p(
+        f"{metodo.versione}. Rischio (RESS 1.1.1 e) stimato con la gravità Se da 1 a 4 e la classe "
+        "Cl = Fr + Pr + Av (frequenza di esposizione, probabilità dell'evento pericoloso, possibilità di "
+        "evitare il danno). L'esito si legge nella matrice."
     )
     fasce = list(metodo.fasce.all())
-    righe = []
-    for se in (4, 3, 2, 1):
-        righe.append([f"Se {se}"] + [ESITI_TESTO[metodo.esito(se, f.cl_min)] for f in fasce])
-    tabella = _tabella(doc, ["Gravità"] + [f"Cl {f.cl_min}-{f.cl_max}" for f in fasce], righe)
-    for riga in tabella.rows[1:]:
-        for cella in riga.cells[1:]:
-            esito = next((k for k, v in ESITI_TESTO.items() if v == cella.text), None)
-            if esito:
-                _sfondo(cella, ESITI_COLORE[esito])
+    righe, sfondi = [], {}
+    for indice, se in enumerate((4, 3, 2, 1), start=1):
+        esiti = [metodo.esito(se, f.cl_min) for f in fasce]
+        righe.append([f"Se {se}"] + [ESITI_TESTO.get(e, "–") for e in esiti])
+        sfondi.update({(colonna, indice): ESITI_COLORE[e] for colonna, e in enumerate(esiti, start=1) if e})
+    doc.tabella(["Gravità"] + [f"Cl {f.cl_min}-{f.cl_max}" for f in fasce], righe, None, sfondi)
 
     descrizioni = metodo.descrizioni()
     if descrizioni:
-        doc.add_paragraph("Valori dei fattori:")
-        _tabella(
-            doc,
+        doc.p("Valori dei fattori:")
+        doc.tabella(
             ["Fattore", "Valore", "Descrizione"],
             [[f, v, descrizioni[(f, v)]] for f in FATTORI for v in sorted({v for (ff, v) in descrizioni if ff == f}, reverse=True)],
             [2, 2, 13],
         )
 
-    doc.add_heading("Requisiti non applicabili", level=1)
+    doc.titoletto("Requisiti non applicabili")
     non_applicabili = revisione.applicabilita.filter(applicabile=False).select_related("requisito")
     if non_applicabili:
-        _tabella(doc, ["Requisito", "Motivazione"], [[f"{a.requisito.codice} {a.requisito.titolo}", a.motivazione] for a in non_applicabili], [6, 11])
+        doc.tabella(
+            ["Requisito", "Motivazione"],
+            [[f"{a.requisito.codice} {a.requisito.titolo}", a.motivazione] for a in non_applicabili],
+            [6, 11],
+        )
     else:
-        doc.add_paragraph("Tutti i requisiti sono considerati applicabili.")
+        doc.p("Tutti i requisiti sono considerati applicabili.")
 
-    doc.add_heading("Schede di valutazione", level=1)
-    schede = _schede_attive(revisione)
-    for modulo, gruppo in groupby(schede, key=lambda s: s.modulo):
-        doc.add_heading(modulo.nome, level=2)
+    doc.titoletto("Schede di valutazione")
+    for modulo, gruppo in groupby(_schede_attive(revisione), key=lambda s: s.modulo):
+        doc.titoletto(modulo.nome, 2)
         for s in gruppo:
-            doc.add_heading(f"{s.codice or 'Scheda'} – {s.requisito.codice} {s.requisito.titolo}", level=3)
-            _coppia(doc, "Zona", " – ".join(v for v in (s.zona_impianto, s.zona_pericolosa) if v))
-            _coppia(doc, "Condizioni operative", ", ".join(c.nome for c in s.condizioni.all()))
-            _coppia(doc, "Soggetti esposti", ", ".join(f.nome for f in s.soggetti.all()))
+            doc.insieme(
+                lambda s=s: doc.titoletto(f"{s.codice or 'Scheda'} – {s.requisito.codice} {s.requisito.titolo}", 3),
+                lambda s=s: doc.coppia("Zona dell'impianto", s.zona_impianto),
+                lambda s=s: doc.coppia("Zona pericolosa (RESS 1.1.1 b)", s.zona_pericolosa),
+            )
+            doc.coppia("Condizioni operative", ", ".join(c.nome for c in s.condizioni.all()))
+            doc.coppia("Soggetti esposti (RESS 1.1.1 c, d)", ", ".join(f.nome for f in s.soggetti.all()))
             pericoli = list(s.pericoli.all())
             if pericoli:
-                doc.add_paragraph().add_run("Pericoli").bold = True
-                for p in pericoli:
-                    doc.add_paragraph(f"{p.codice} {p.descrizione}", style="List Bullet")
+                doc.grassetto_testo("Pericoli (RESS 1.1.1 a)")
+                doc.elenco(f"{p.codice} {p.descrizione}" for p in pericoli)
             if s.ha_stima_iniziale or s.ha_stima_finale:
                 _tabella_stima(doc, s, descrizioni)
             misure = list(s.misure.all())
             if misure:
-                doc.add_paragraph().add_run("Misure di protezione").bold = True
-                for m in misure:
-                    testo = m.testo + (f" ({m.norma})" if m.norma else "")
-                    doc.add_paragraph(testo, style="List Bullet")
+                doc.grassetto_testo("Misure di protezione (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)")
+                doc.elenco(m.testo + (f" ({m.norma})" if m.norma else "") for m in misure)
             if s.testo_istruzioni:
-                _coppia(doc, "Informazioni per le istruzioni / rischio residuo", s.testo_istruzioni)
+                doc.coppia("Informazioni per le istruzioni / rischio residuo", s.testo_istruzioni)
             norme = ", ".join(n.codice for n in s.norme.all())
             if norme:
-                _coppia(doc, "Norme", norme)
+                doc.coppia("Norme", norme)
 
     scartate = revisione.schede.filter(decisione=SchedaAnalisi.Decisione.SCARTATA).select_related("requisito")
     if scartate:
-        doc.add_heading("Schede proposte e scartate", level=1)
-        _tabella(doc, ["Scheda", "Requisito", "Motivazione"], [[s.codice, f"{s.requisito.codice} {s.requisito.titolo}", s.motivazione] for s in scartate], [2.5, 6, 8.5])
-    return _salva(doc)
+        doc.titoletto("Schede proposte e scartate")
+        doc.tabella(
+            ["Scheda", "Requisito", "Motivazione"],
+            [[s.codice, f"{s.requisito.codice} {s.requisito.titolo}", s.motivazione] for s in scartate],
+            [2.5, 6, 8.5],
+        )
+    return doc.salva()
 
 
 # ---------------------------------------------------------------------------
@@ -429,25 +516,24 @@ def valutazione(revisione):
 
 def rischi_residui(revisione):
     macchina = revisione.analisi.macchina
-    doc = _documento()
-    _bozza(doc, revisione, TESTI["it"]["bozza"])
-    doc.add_heading("Rischi residui e informazioni per le istruzioni", level=0)
-    doc.add_paragraph(
+    doc = Pdf(f"Rischi residui – commessa {macchina.commessa.numero} rev. {revisione.numero}", _testo_bozza(revisione))
+    doc.titolo_documento("Rischi residui e informazioni per le istruzioni")
+    doc.p(
         f"Commessa {macchina.commessa.numero} · {macchina.denominazione} {macchina.modello}".strip()
         + f" · matricola {macchina.matricola or '–'} · valutazione dei rischi rev. {revisione.numero}"
     )
     schede = [s for s in _schede_attive(revisione) if s.testo_istruzioni.strip()]
     if not schede:
-        doc.add_paragraph("Nessun rischio residuo indicato nelle schede.")
+        doc.p("Nessun rischio residuo indicato nelle schede.")
     for modulo, gruppo in groupby(schede, key=lambda s: s.modulo):
-        doc.add_heading(modulo.nome, level=1)
+        doc.titoletto(modulo.nome)
         for s in gruppo:
-            p = doc.add_paragraph()
-            p.add_run(f"{s.requisito.codice} {s.requisito.titolo}").bold = True
-            if s.esito_finale and s.esito_finale != Esito.OK:
-                p.add_run(f"  [{ESITI_TESTO[s.esito_finale]}]")
-            doc.add_paragraph(s.testo_istruzioni)
-    return _salva(doc)
+            esito = f"  [{ESITI_TESTO[s.esito_finale]}]" if s.esito_finale and s.esito_finale != Esito.OK else ""
+            doc.insieme(
+                lambda s=s, esito=esito: doc.grassetto_testo(f"{s.requisito.codice} {s.requisito.titolo}", esito),
+                lambda s=s: doc.p(s.testo_istruzioni),
+            )
+    return doc.salva()
 
 
 GENERATORI = {
@@ -458,7 +544,7 @@ GENERATORI = {
 
 
 def genera(tipo, revisione, lingua="it"):
-    """Contenuto .docx del documento; solo la dichiarazione esiste anche in inglese."""
+    """Contenuto PDF del documento; solo la dichiarazione esiste anche in inglese."""
     if tipo == "DICHIARAZIONE":
         return dichiarazione(revisione, lingua)
     return GENERATORI[tipo](revisione)

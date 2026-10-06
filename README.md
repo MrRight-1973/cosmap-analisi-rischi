@@ -34,7 +34,7 @@ La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
 5. Prima della verifica segnala: requisiti senza scheda, stime finali mancanti,
    esiti non verdi senza rischio residuo, proposte non decise.
 6. Flusso Bozza → In verifica → Approvata, con rimando in bozza e nuova revisione.
-7. Genera in Word la valutazione dei rischi, l'elenco dei rischi residui per il
+7. Genera in PDF la valutazione dei rischi, l'elenco dei rischi residui per il
    manuale e la dichiarazione UE di conformità (italiano o inglese). Ogni
    documento generato resta archiviato; da una revisione non approvata esce
    con la scritta BOZZA.
