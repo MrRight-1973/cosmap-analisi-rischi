@@ -39,7 +39,7 @@ class SchedaModelloAdmin(admin.ModelAdmin):
         vecchio = obj.codice
         if not change:
             obj.codice = ""
-        elif not obj.codice_coerente():
+        elif {"modulo", "requisito"} & set(form.changed_data):
             obj.codice = m.SchedaModello.prossimo_codice(obj.modulo, obj.requisito, escludi=obj.pk)
         super().save_model(request, obj, form, change)
         if change and obj.codice != vecchio:

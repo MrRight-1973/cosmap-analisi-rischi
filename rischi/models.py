@@ -304,6 +304,15 @@ class Stima(models.Model):
         return self.se_finale is not None and self.cl_finale is not None
 
 
+def prossimo_codice(modulo, requisito, codici_usati):
+    """SIGLA-RESS-indice con il primo indice libero rispetto ai codici già usati."""
+    if not modulo.sigla:
+        raise ValidationError({"modulo": f"Il modulo \"{modulo}\" non ha la sigla: impostala nella pagina del modulo."})
+    prefisso = f"{modulo.sigla}-{requisito.codice}-"
+    indici = [int(c[len(prefisso):]) for c in codici_usati if c.startswith(prefisso) and c[len(prefisso):].isdigit()]
+    return f"{prefisso}{max(indici, default=0) + 1}"
+
+
 class SchedaModello(Stima):
     class Stato(models.TextChoices):
         BOZZA = "BOZZA", "Bozza"
@@ -332,21 +341,10 @@ class SchedaModello(Stima):
     @classmethod
     def prossimo_codice(cls, modulo, requisito, escludi=None):
         """Primo codice libero SIGLA-RESS-indice per il modulo e il requisito."""
-        if not modulo.sigla:
-            raise ValidationError(
-                {"modulo": f"Il modulo \"{modulo}\" non ha la sigla: impostala nella pagina del modulo."}
-            )
-        prefisso = f"{modulo.sigla}-{requisito.codice}-"
-        usati = cls.objects.filter(codice__startswith=prefisso)
+        usati = cls.objects.all()
         if escludi:
             usati = usati.exclude(pk=escludi)
-        indici = [int(c[len(prefisso):]) for c in usati.values_list("codice", flat=True) if c[len(prefisso):].isdigit()]
-        return f"{prefisso}{max(indici, default=0) + 1}"
-
-    def codice_coerente(self):
-        """Il codice corrisponde al modulo e al requisito attuali."""
-        prefisso = f"{self.modulo.sigla}-{self.requisito.codice}-"
-        return bool(self.modulo.sigla) and self.codice.startswith(prefisso) and self.codice[len(prefisso):].isdigit()
+        return prossimo_codice(modulo, requisito, usati.values_list("codice", flat=True))
 
     def save(self, *args, **kwargs):
         if not self.codice:

@@ -204,6 +204,9 @@ def _salva_scheda(request, scheda, revisione, nuova):
                     if nuova or "decisione" in form.changed_data or form.contenuto_cambiato():
                         scheda.decisa_da = request.user
                         scheda.decisa_il = timezone.now()
+                    vecchio_codice = scheda.codice
+                    if nuova or {"modulo", "requisito"} & set(form.changed_data):
+                        scheda.codice = servizi.codice_scheda(revisione, scheda.modulo, scheda.requisito, escludi=scheda.pk)
                     scheda.full_clean(exclude=["condizioni", "pericoli", "norme", "soggetti", "revisione"])
                     scheda.save()
                     form.save_m2m()
@@ -213,7 +216,12 @@ def _salva_scheda(request, scheda, revisione, nuova):
             except ValidationError as e:
                 form.add_error(None, e)
             else:
-                messages.success(request, "Scheda salvata.")
+                if nuova:
+                    messages.success(request, f"Scheda {scheda.codice} aggiunta.")
+                elif scheda.codice != vecchio_codice:
+                    messages.success(request, f"Scheda salvata: codice aggiornato da {vecchio_codice} a {scheda.codice}.")
+                else:
+                    messages.success(request, "Scheda salvata.")
                 return redirect("analisi", pk=revisione.analisi_id)
     return render(
         request,

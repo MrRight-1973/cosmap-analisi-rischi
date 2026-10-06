@@ -624,3 +624,63 @@ class CodiceAutomaticoTest(TestCase):
         elettrico = Modulo.objects.get(sigla="ELE")
         scheda = SchedaModello.objects.create(modulo=elettrico, requisito=RequisitoRESS.objects.get(codice="1.5.1"))
         self.assertEqual(scheda.codice, "ELE-1.5.1-3")
+
+
+class CodiceSchedeAggiunteTest(TestCase):
+    """Anche le schede aggiunte a mano nell'analisi prendono il codice SIGLA-RESS-indice."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        cls.compilatore = crea_utente("mario", servizi.COMPILATORE)
+        commessa = Commessa.objects.create(
+            numero="26-70", cliente=Cliente.objects.create(ragione_sociale="Prova"), anno=2026,
+            riferimento=RiferimentoNormativo.objects.get(),
+        )
+        cls.macchina = Macchina.objects.create(commessa=commessa, denominazione="Linea")
+        cls.macchina.moduli.set(servizi.moduli_proposti() | Modulo.objects.filter(sigla="TAV"))
+        cls.analisi = servizi.crea_analisi_da_libreria(cls.macchina, cls.compilatore)
+
+    def dati(self, modulo, requisito, decisione="AGGIUNTA"):
+        return {
+            "modulo": modulo.pk, "requisito": requisito.pk, "decisione": decisione,
+            "misure-TOTAL_FORMS": 0, "misure-INITIAL_FORMS": 0, "misure-MIN_NUM_FORMS": 0, "misure-MAX_NUM_FORMS": 1000,
+        }
+
+    def test_nuova_scheda_e_cambio_di_requisito(self):
+        from .models import RequisitoRESS
+
+        self.client.force_login(self.compilatore)
+        rev = self.analisi.revisione_corrente
+        tavola = Modulo.objects.get(sigla="TAV")
+        risposta = self.client.post(
+            reverse("nuova_scheda", args=[rev.pk]), self.dati(tavola, RequisitoRESS.objects.get(codice="1.3.8.2"))
+        )
+        self.assertEqual(risposta.status_code, 302, getattr(risposta, "context", None) and risposta.context["form"].errors)
+        nuova = rev.schede.get(decisione=SchedaAnalisi.Decisione.AGGIUNTA)
+        self.assertEqual(nuova.codice, "TAV-1.3.8.2-2")
+
+        # Una seconda scheda sullo stesso requisito prende l'indice successivo
+        self.client.post(reverse("nuova_scheda", args=[rev.pk]), self.dati(tavola, RequisitoRESS.objects.get(codice="1.3.8.2")))
+        self.assertTrue(rev.schede.filter(codice="TAV-1.3.8.2-3").exists())
+
+        # Cambiando requisito il codice si ricalcola; cambiando solo il testo resta
+        url = reverse("scheda", args=[nuova.pk])
+        self.client.post(url, self.dati(tavola, RequisitoRESS.objects.get(codice="1.1.6")))
+        nuova.refresh_from_db()
+        self.assertEqual(nuova.codice, "TAV-1.1.6-2")
+        self.client.post(url, {**self.dati(tavola, RequisitoRESS.objects.get(codice="1.1.6")), "note": "Solo testo"})
+        nuova.refresh_from_db()
+        self.assertEqual(nuova.codice, "TAV-1.1.6-2")
+
+    def test_modulo_senza_sigla(self):
+        from .models import RequisitoRESS
+
+        self.client.force_login(self.compilatore)
+        rev = self.analisi.revisione_corrente
+        senza = Modulo.objects.create(nome="Senza sigla")
+        risposta = self.client.post(
+            reverse("nuova_scheda", args=[rev.pk]), self.dati(senza, RequisitoRESS.objects.get(codice="1.1.3"))
+        )
+        self.assertContains(risposta, "non ha la sigla")
+        self.assertFalse(rev.schede.filter(modulo=senza).exists())
