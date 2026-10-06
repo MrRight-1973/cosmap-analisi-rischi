@@ -46,6 +46,27 @@ def _scelta(valori):
     return forms.TypedChoiceField(choices=valori, coerce=int, empty_value=None, required=False)
 
 
+CAMPI_STIMA = {
+    f"{fattore}_{quale}": valori
+    for fattore, valori in (("se", VALORI_SE), ("fr", VALORI_FR), ("pr", VALORI_PR), ("av", VALORI_AV))
+    for quale in ("iniziale", "finale")
+}
+
+
+def descrivi_fattori(campi, metodo):
+    """Nome completo del fattore e, accanto a ogni valore, la descrizione delle scale del metodo."""
+    descrizioni = metodo.descrizioni() if metodo else {}
+    for nome, campo in campi.items():
+        if nome not in CAMPI_STIMA:
+            continue
+        campo.label = ETICHETTE_FATTORI[nome[:2]]
+        fattore = nome[:2].capitalize()
+        campo.choices = [
+            (v, f"{v} – {descrizioni[(fattore, v)]}" if (fattore, v) in descrizioni else e)
+            for v, e in CAMPI_STIMA[nome]
+        ]
+
+
 class NuovaCommessaForm(forms.Form):
     ORIGINE = [("LIBRERIA", "Dai moduli della libreria"), ("COPIA", "Copiando un'analisi approvata")]
 
@@ -212,18 +233,7 @@ class SchedaForm(forms.ModelForm):
             "Chi è esposto al pericolo: operatori (RESS 1.1.1 d) e persone esposte (RESS 1.1.1 c). "
             "Chi sono su questa macchina si scrive nei dati della macchina."
         )
-        for nome, campo in self.fields.items():
-            if nome[:2] in ("se", "fr", "pr", "av") and nome.endswith(("_iniziale", "_finale")):
-                campo.label = ETICHETTE_FATTORI[nome[:2]]
-        if metodo:
-            descrizioni = metodo.descrizioni()
-            for nome, campo in self.fields.items():
-                if nome[:2] in ("se", "fr", "pr", "av") and nome.endswith(("_iniziale", "_finale")):
-                    fattore = nome[:2].capitalize()
-                    campo.choices = [
-                        (v, f"{v} – {descrizioni[(fattore, v)]}" if (fattore, v) in descrizioni else e)
-                        for v, e in campo.choices
-                    ]
+        descrivi_fattori(self.fields, metodo)
 
     def contenuto_cambiato(self):
         return any(campo in self.changed_data for campo in self.CAMPI_CONTENUTO)
