@@ -703,3 +703,40 @@ class CodiceSchedeAggiunteTest(TestCase):
         )
         self.assertContains(risposta, "non ha la sigla")
         self.assertFalse(rev.schede.filter(modulo=senza).exists())
+
+
+class LibreriaAmministrazioneTest(TestCase):
+    """Scheda modello con i fattori descritti; sigla del modulo che rinomina le schede."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        cls.capo = User.objects.create_superuser("capo", password="prova-prova-123")
+
+    def test_fattori_con_descrizione_nella_scheda_modello(self):
+        self.client.force_login(self.capo)
+        scheda = SchedaModello.objects.get(codice="TAV-01")
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk]))
+        self.assertContains(pagina, "Se – Gravità")
+        descrizione = MetodoStima.corrente().descrizioni()[("Se", scheda.se_iniziale)]
+        self.assertContains(pagina, f"{scheda.se_iniziale} – {descrizione}")
+
+    def dati_modulo(self, modulo, sigla):
+        return {
+            "nome": modulo.nome, "sigla": sigla, "descrizione": modulo.descrizione, "condizione": modulo.condizione,
+            "attivo": "on", "ordine": modulo.ordine,
+        }
+
+    def test_cambio_sigla_rinomina_le_schede(self):
+        self.client.force_login(self.capo)
+        tavola = Modulo.objects.get(sigla="TAV")
+        quante = tavola.schede.count()
+        url = reverse("admin:rischi_modulo_change", args=[tavola.pk])
+        risposta = self.client.post(url, self.dati_modulo(tavola, "trt"))
+        self.assertEqual(risposta.status_code, 302)
+        codici = sorted(tavola.schede.values_list("codice", flat=True))
+        self.assertEqual(codici, [f"TRT-{n:02d}" for n in range(1, quante + 1)])
+
+        risposta = self.client.post(url, self.dati_modulo(tavola, "CAB"))
+        self.assertContains(risposta, "già usata da un altro modulo")
+        self.assertTrue(tavola.schede.filter(codice="TRT-01").exists())

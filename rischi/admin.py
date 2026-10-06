@@ -4,6 +4,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from . import models as m
+from .forms import VALORI_AV, VALORI_FR, VALORI_PR, VALORI_SE, _scelta, descrivi_fattori
 
 
 class MisuraModelloInline(admin.StackedInline):
@@ -12,9 +13,22 @@ class MisuraModelloInline(admin.StackedInline):
 
 
 class SchedaModelloForm(forms.ModelForm):
+    se_iniziale = _scelta(VALORI_SE)
+    fr_iniziale = _scelta(VALORI_FR)
+    pr_iniziale = _scelta(VALORI_PR)
+    av_iniziale = _scelta(VALORI_AV)
+    se_finale = _scelta(VALORI_SE)
+    fr_finale = _scelta(VALORI_FR)
+    pr_finale = _scelta(VALORI_PR)
+    av_finale = _scelta(VALORI_AV)
+
     class Meta:
         model = m.SchedaModello
         exclude = ("codice",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        descrivi_fattori(self.fields, m.MetodoStima.corrente())
 
     def clean(self):
         dati = super().clean()
@@ -48,11 +62,39 @@ class SchedaModelloAdmin(admin.ModelAdmin):
             messages.info(request, f"Codice assegnato: {obj.codice}.")
 
 
+class ModuloForm(forms.ModelForm):
+    class Meta:
+        model = m.Modulo
+        fields = "__all__"
+
+    def clean_sigla(self):
+        sigla = self.cleaned_data["sigla"].strip().upper()
+        if sigla and m.Modulo.objects.filter(sigla=sigla).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError(f"La sigla {sigla} è già usata da un altro modulo.")
+        if self.instance.pk and not sigla and self.instance.schede.exists():
+            raise forms.ValidationError("Il modulo ha schede: la sigla non può restare vuota.")
+        return sigla
+
+
 @admin.register(m.Modulo)
 class ModuloAdmin(admin.ModelAdmin):
+    form = ModuloForm
     list_display = ("nome", "sigla", "condizione", "sempre_attivo", "numero_schede", "attivo", "ordine")
     list_editable = ("ordine",)
     readonly_fields = ("elenco_schede",)
+
+    def save_model(self, request, obj, form, change):
+        """Cambiando la sigla, le schede modello del modulo prendono la nuova sigla e tengono il numero."""
+        vecchia = m.Modulo.objects.get(pk=obj.pk).sigla if change else ""
+        super().save_model(request, obj, form, change)
+        if change and vecchia and obj.sigla != vecchia:
+            rinominate = 0
+            for scheda in obj.schede.all():
+                if scheda.codice.startswith(f"{vecchia}-"):
+                    scheda.codice = f"{obj.sigla}-{scheda.codice[len(vecchia) + 1:]}"
+                    scheda.save(update_fields=["codice"])
+                    rinominate += 1
+            messages.info(request, f"Sigla cambiata da {vecchia} a {obj.sigla}: aggiornati i codici di {rinominate} schede modello.")
 
     @admin.display(description="schede del modulo")
     def elenco_schede(self, obj):
