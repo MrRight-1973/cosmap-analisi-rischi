@@ -56,12 +56,13 @@
     {% else %}
       <p class="sotto">Revisione storica: sola lettura.</p>
     {% endif %}
-    {% if eliminabile and puo.compilare %}
+    {% if puo_eliminare %}
     <details class="elimina">
       <summary>Elimina commessa</summary>
       {% with c=analisi.macchina.commessa %}
       <form method="post" action="{% url 'elimina_commessa' c.pk %}">{% csrf_token %}
         <p class="sotto">Cancella la commessa con macchina, analisi, schede e documenti generati. Non si può annullare. Scrivi <strong>{{ c.numero }}</strong> per confermare.</p>
+        {% if commessa_approvata %}<p class="messaggio warning">La commessa ha revisioni <strong>approvate</strong>: verranno cancellate anche loro e i documenti definitivi (dichiarazione UE compresa). Conserva prima una copia dei PDF se servono al fascicolo tecnico.</p>{% endif %}
         <input name="conferma" autocomplete="off" required>
         <button class="pericolo">Elimina definitivamente</button>
       </form>

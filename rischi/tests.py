@@ -471,17 +471,35 @@ class EliminaCommessaTest(BaseConLibreria):
         self.assertTrue(eliminate.filter(tabella="commessa").exists())
         self.assertFalse(eliminate.filter(tabella="scheda dell'analisi").exists())
 
-    def test_approvata_resta_protetta(self):
+    def test_approvata_solo_dall_approvatore(self):
+        from . import documenti
+        from .models import DocumentoGenerato
+
         rev = self.analisi.revisione_corrente
         servizi.invia_in_verifica(rev, self.compilatore)
         servizi.segna_verificata(rev, self.verificatore)
         servizi.approva(rev, self.approvatore)
+        DocumentoGenerato.objects.create(
+            revisione=rev, tipo="VALUTAZIONE", lingua="it", definitivo=True, generato_da=self.compilatore,
+            file="documenti/prova.pdf",
+        )
+        # Il compilatore non può più eliminarla
         self.client.force_login(self.compilatore)
         self.assertNotContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Elimina commessa")
         self.client.post(self.url, {"conferma": "26-99"})
         self.assertTrue(Commessa.objects.filter(pk=self.commessa.pk).exists())
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(PermissionDenied):
             servizi.elimina_commessa(self.commessa, self.compilatore)
+        # L'approvatore sì, con l'avviso sulle revisioni approvate
+        self.client.force_login(self.approvatore)
+        pagina = self.client.get(reverse("analisi", args=[self.analisi.pk]))
+        self.assertContains(pagina, "Elimina commessa")
+        self.assertContains(pagina, "revisioni <strong>approvate</strong>")
+        risposta = self.client.post(self.url, {"conferma": "26-99"})
+        self.assertRedirects(risposta, reverse("elenco_commesse"))
+        self.assertFalse(Commessa.objects.filter(numero="26-99").exists())
+        self.assertFalse(Revisione.objects.exists())
+        self.assertFalse(DocumentoGenerato.objects.exists())
 
     def test_serve_il_compilatore(self):
         with self.assertRaises(PermissionDenied):
