@@ -642,7 +642,9 @@ def valutazione(revisione):
     for modulo, gruppo in groupby(schede, key=lambda s: s.modulo):
         doc.nuova_pagina()
         doc.titoletto(f"Modulo: {modulo.nome}" + (f" ({modulo.sigla})" if modulo.sigla else ""))
-        for s in gruppo:
+        for numero, s in enumerate(gruppo):
+            if numero:
+                doc.nuova_pagina()
             _scheda(doc, s, descrizioni)
 
     scartate = revisione.schede.filter(decisione=SchedaAnalisi.Decisione.SCARTATA).select_related("requisito")

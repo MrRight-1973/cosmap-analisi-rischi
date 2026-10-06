@@ -335,18 +335,19 @@ def approva(revisione, utente):
 
 @transaction.atomic
 def elimina_commessa(commessa, utente):
-    """Elimina una commessa mai approvata con macchine, analisi, schede e documenti.
+    """Elimina una commessa con macchine, analisi, schede e documenti.
 
-    Le commesse con una revisione approvata (o sostituita) restano protette.
-    Nel registro restano commessa, macchine, analisi e revisioni eliminate,
-    non ogni singola scheda o misura.
+    Una commessa mai approvata la elimina il compilatore; una con revisioni approvate
+    (o sostituite) solo l'approvatore. Nel registro restano commessa, macchine, analisi
+    e revisioni eliminate, non ogni singola scheda o misura.
     """
-    richiedi_ruolo(utente, COMPILATORE)
+    if not puo_eliminare(utente, commessa):
+        if ha_revisioni_approvate(commessa):
+            raise PermissionDenied(
+                f"La commessa {commessa.numero} ha revisioni approvate: può eliminarla solo l'approvatore."
+            )
+        raise PermissionDenied(f"Serve il ruolo {COMPILATORE}.")
     revisioni = Revisione.objects.filter(analisi__macchina__commessa=commessa)
-    if revisioni.filter(stato__in=(Revisione.Stato.APPROVATA, Revisione.Stato.SOSTITUITA)).exists():
-        raise ValidationError(
-            f"La commessa {commessa.numero} ha una revisione approvata: non si può eliminare."
-        )
     for revisione in revisioni:
         for documento in revisione.documenti.all():
             documento.file.delete(save=False)
@@ -364,11 +365,16 @@ def elimina_commessa(commessa, utente):
     commessa.delete()
 
 
-def eliminabile(commessa):
-    return not Revisione.objects.filter(
+def ha_revisioni_approvate(commessa):
+    return Revisione.objects.filter(
         analisi__macchina__commessa=commessa,
         stato__in=(Revisione.Stato.APPROVATA, Revisione.Stato.SOSTITUITA),
     ).exists()
+
+
+def puo_eliminare(utente, commessa):
+    """Compilatore per le commesse mai approvate, approvatore per quelle con revisioni approvate."""
+    return ha_ruolo(utente, APPROVATORE if ha_revisioni_approvate(commessa) else COMPILATORE)
 
 
 # ---------------------------------------------------------------------------

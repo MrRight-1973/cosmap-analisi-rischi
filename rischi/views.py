@@ -123,7 +123,8 @@ def analisi(request, pk, numero=None):
             "approvare": servizi.ha_ruolo(utente, servizi.APPROVATORE),
         },
         "ultima": revisione == revisioni[0],
-        "eliminabile": servizi.eliminabile(revisione.analisi.macchina.commessa),
+        "puo_eliminare": servizi.puo_eliminare(utente, revisione.analisi.macchina.commessa),
+        "commessa_approvata": servizi.ha_revisioni_approvate(revisione.analisi.macchina.commessa),
         "documenti": revisione.documenti.select_related("generato_da")[:20],
     }
     return render(request, "rischi/analisi.html", contesto)
