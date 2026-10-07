@@ -592,10 +592,17 @@ class SoggettiEspostiTest(TestCase):
 
         norma = Norma.objects.create(codice="EN ISO 99999", titolo="Norma di prova per la sezione 1")
         scheda.norme.add(norma)
+        misura = scheda.misure.first()
+        misura.norma = Norma.objects.create(codice="EN ISO 88888", titolo="Norma di prova della misura")
+        misura.save()
         testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
         self.assertIn("Zona di carico raggiungibile dal lato operatore", testo)
         self.assertIn("Riparo fisso scelto per la frequenza bassa di accesso", testo)
         norme = testo.index("EN ISO 99999")
+        # Le norme delle misure stanno nella sezione 6, con codice e titolo come nella sezione 1
+        norma_misura = testo.index("EN ISO 88888 – Norma di prova della misura")
+        self.assertLess(testo.rindex("6. RIDUZIONE DEL RISCHIO", 0, norma_misura), norma_misura)
+        self.assertLess(norma_misura, testo.index("7. STIMA FINALE", norma_misura))
         self.assertLess(testo.rindex("1. IDENTIFICAZIONE SCHEDA", 0, norme), norme)
         self.assertLess(norme, testo.index("2. IDENTIFICAZIONE DEL PERICOLO", norme))
         self.assertIn("3. IDENTIFICAZIONE DELLA ZONA PERICOLOSA (RESS 1.1.1 b)", testo)
@@ -839,3 +846,68 @@ class LibreriaAmministrazioneTest(TestCase):
         self.assertEqual(self.client.post(url, self.dati_modulo(lucidatura, "UPP")).status_code, 302)
         codici = sorted(lucidatura.schede.values_list("codice", flat=True))
         self.assertEqual(codici, [f"UPP-{n:02d}" for n in range(1, len(codici) + 1)])
+
+
+class AggiornaSchedaModelloTest(TestCase):
+    """Dalla scheda della commessa si riportano le variazioni nella scheda modello della libreria."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        cls.compilatore = crea_utente("mario", servizi.COMPILATORE)
+        cls.capo = User.objects.create_superuser("capo", password="prova-prova-123")
+        commessa = Commessa.objects.create(
+            numero="26-80", cliente=Cliente.objects.create(ragione_sociale="Prova"), anno=2026,
+            riferimento=RiferimentoNormativo.objects.get(),
+        )
+        cls.macchina = Macchina.objects.create(commessa=commessa, denominazione="Linea")
+        cls.macchina.moduli.set(servizi.moduli_proposti() | Modulo.objects.filter(sigla="TAV"))
+        cls.analisi = servizi.crea_analisi_da_libreria(cls.macchina, cls.compilatore)
+
+    def test_aggiorna_la_scheda_modello(self):
+        from .models import MisuraAnalisi, Norma
+
+        scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-01")
+        modello = scheda.origine
+        scheda.zona_pericolosa = "Zona aggiornata in commessa"
+        scheda.considerazioni_riduzione = "Considerazione nuova"
+        scheda.save()
+        norma = Norma.objects.create(codice="EN ISO 77777")
+        scheda.norme.set([norma])
+        scheda.misure.all().delete()
+        MisuraAnalisi.objects.create(scheda=scheda, ordine=1, tipo="PROT", testo="Riparo nuovo", norma=norma)
+
+        url = reverse("aggiorna_modello", args=[scheda.pk])
+        # Senza il permesso sulla libreria non cambia nulla
+        self.client.force_login(self.compilatore)
+        self.assertNotContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Aggiorna la scheda modello")
+        self.client.post(url)
+        modello.refresh_from_db()
+        self.assertNotEqual(modello.zona_pericolosa, "Zona aggiornata in commessa")
+
+        self.client.force_login(self.capo)
+        self.assertContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Aggiorna la scheda modello TAV-01")
+        self.assertRedirects(self.client.post(url), reverse("scheda", args=[scheda.pk]))
+        modello.refresh_from_db()
+        self.assertEqual(modello.codice, "TAV-01")
+        self.assertEqual(modello.zona_pericolosa, "Zona aggiornata in commessa")
+        self.assertEqual(modello.considerazioni_riduzione, "Considerazione nuova")
+        self.assertEqual(list(modello.norme.all()), [norma])
+        self.assertEqual([(m.testo, m.norma) for m in modello.misure.all()], [("Riparo nuovo", norma)])
+
+    def test_scheda_aggiunta_a_mano_crea_la_scheda_modello(self):
+        from .models import RequisitoRESS
+
+        rev = self.analisi.revisione_corrente
+        scheda = SchedaAnalisi.objects.create(
+            revisione=rev, modulo=Modulo.objects.get(sigla="TAV"), requisito=RequisitoRESS.objects.get(codice="1.1.6"),
+            codice="TAV-90", decisione=SchedaAnalisi.Decisione.AGGIUNTA, zona_impianto="Tavola",
+        )
+        self.client.force_login(self.capo)
+        self.assertContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Crea la scheda modello")
+        prima = SchedaModello.objects.count()
+        self.client.post(reverse("aggiorna_modello", args=[scheda.pk]))
+        scheda.refresh_from_db()
+        self.assertEqual(SchedaModello.objects.count(), prima + 1)
+        self.assertEqual(scheda.origine.zona_impianto, "Tavola")
+        self.assertEqual(scheda.origine.codice, "TAV-06")
