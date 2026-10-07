@@ -67,10 +67,10 @@ details.elimina input { display: block; margin: 6px 0; }
 .modifiche { font-size: 13px; }
 .modulo fieldset { min-width: 0; }
 .campo select[multiple], .campo input[type=text], .campo-zona_pericolosa textarea { width: 100%; }
-.campo-condizioni > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 16px; }
-.campo-condizioni label { color: var(--testo); font-size: 14px; }
+.campo-condizioni > div { display: flex; flex-wrap: wrap; gap: 2px 24px; }
+.campo-condizioni label { color: var(--testo); font-size: 14px; white-space: nowrap; }
 .documenti { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .campo-altre_legislazioni label, .campo-caratteristiche label { color: var(--testo); font-size: 14px; }
-.campo-soggetti > div { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 2px 16px; }
-.campo-soggetti label { color: var(--testo); font-size: 14px; }
+.campo-soggetti > div { display: flex; flex-wrap: wrap; gap: 2px 24px; }
+.campo-soggetti label { color: var(--testo); font-size: 14px; white-space: nowrap; }
 .figure textarea { width: 100%; }

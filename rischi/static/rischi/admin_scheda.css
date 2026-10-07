@@ -1,0 +1,13 @@
+/* Scheda modello nell'amministrazione: le voci delle caselle di spunta su una sola riga. */
+.aligned #id_condizioni label,
+.aligned #id_soggetti label {
+    display: inline;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    white-space: nowrap;
+}
+.aligned #id_condizioni > div,
+.aligned #id_soggetti > div {
+    margin: 2px 0;
+}

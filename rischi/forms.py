@@ -196,7 +196,6 @@ class SchedaForm(forms.ModelForm):
         "pr_finale",
         "av_finale",
         "testo_istruzioni",
-        "norme",
         "note",
         *CAMPI_CONSIDERAZIONI,
     )
@@ -220,7 +219,6 @@ class SchedaForm(forms.ModelForm):
             "pr_finale",
             "av_finale",
             "testo_istruzioni",
-            "norme",
             "note",
             *CAMPI_CONSIDERAZIONI,
             "decisione",
@@ -234,7 +232,6 @@ class SchedaForm(forms.ModelForm):
             "motivazione": forms.Textarea(attrs={"rows": 2}),
             "condizioni": forms.CheckboxSelectMultiple,
             "pericoli": forms.SelectMultiple(attrs={"size": 8}),
-            "norme": forms.SelectMultiple(attrs={"size": 8}),
             "soggetti": forms.CheckboxSelectMultiple,
         }
 
@@ -243,7 +240,7 @@ class SchedaForm(forms.ModelForm):
         if riferimento:
             self.fields["requisito"].queryset = RequisitoRESS.objects.filter(riferimento=riferimento)
         self.fields["soggetti"].help_text = (
-            "Chi è esposto al pericolo: operatori (RESS 1.1.1 d) e persone esposte (RESS 1.1.1 c). "
+            "Chi è esposto al pericolo: operatori e persone esposte. "
             "Chi sono su questa macchina si scrive nei dati della macchina."
         )
         descrivi_fattori(self.fields, metodo)
