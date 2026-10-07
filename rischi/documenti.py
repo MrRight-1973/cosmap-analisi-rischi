@@ -514,8 +514,8 @@ def _riepilogo(doc, schede):
 # Sezioni della scheda in sequenza EN ISO 12100, come nella scheda a video.
 SEZIONI_SCHEDA = [
     "1. IDENTIFICAZIONE SCHEDA",
-    "2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
-    "3. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
+    "2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
+    "3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
     "4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)",
     "5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)",
     "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)",
@@ -553,13 +553,13 @@ def _misure(doc, misure):
 def _scheda(doc, s, descrizioni):
     doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice)
     _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note)])
-    _sezione(doc, 2, [
+    _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
+             s.considerazioni_pericoli)
+    _sezione(doc, 3, [
         ("Zona dell'impianto", s.zona_impianto),
         ("Zona pericolosa", s.zona_pericolosa),
         ("Condizioni operative", ", ".join(c.nome for c in s.condizioni.all())),
     ], s.considerazioni_limiti)
-    _sezione(doc, 3, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
-             s.considerazioni_pericoli)
     _sezione(doc, 4, [("Soggetti esposti", ", ".join(f.nome for f in s.soggetti.all()))], s.considerazioni_soggetti)
     _sezione(doc, 5, considerazioni=s.considerazioni_stima_iniziale,
              contenuto=(lambda: _tabella_stima(doc, s, descrizioni, "iniziale")) if s.ha_stima_iniziale else None)

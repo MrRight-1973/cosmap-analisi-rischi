@@ -10,7 +10,7 @@ from .forms import CAMPI_CONSIDERAZIONI, VALORI_AV, VALORI_FR, VALORI_PR, VALORI
 class MisuraModelloInline(admin.StackedInline):
     model = m.MisuraModello
     extra = 0
-    verbose_name_plural = "6. MISURE DI PROTEZIONE"
+    verbose_name_plural = "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)"
 
 
 class SchedaModelloForm(forms.ModelForm):
@@ -56,17 +56,17 @@ class SchedaModelloAdmin(admin.ModelAdmin):
 
     class Media:
         css = {"all": ("rischi/admin_scheda.css",)}
-    # Sezioni in sequenza EN ISO 12100, come la scheda nell'analisi; le misure di protezione stanno
-    # dentro la sezione 6 (vedi admin/rischi/schedamodello/change_form.html).
+    # Sezioni in sequenza EN ISO 12100, come la scheda nell'analisi; le misure di protezione aprono
+    # la sezione 6 (vedi admin/rischi/schedamodello/change_form.html).
     fieldsets = (
         ("1. IDENTIFICAZIONE SCHEDA MODELLO", {
             "fields": ("codice", "modulo", "requisito", "stato", "scheda_originale", "note"),
         }),
-        ("2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)", {
-            "fields": ("zona_impianto", "zona_pericolosa", "condizioni", "considerazioni_limiti"),
-        }),
-        ("3. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)", {
+        ("2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)", {
             "fields": ("pericoli", "considerazioni_pericoli"),
+        }),
+        ("3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)", {
+            "fields": ("zona_impianto", "zona_pericolosa", "condizioni", "considerazioni_limiti"),
         }),
         ("4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)", {
             "fields": ("soggetti", "considerazioni_soggetti"),
@@ -75,7 +75,8 @@ class SchedaModelloAdmin(admin.ModelAdmin):
             "fields": (("se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale"), "calcolo_iniziale",
                        "considerazioni_stima_iniziale"),
         }),
-        ("6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)", {
+        # Senza titolo: chiude la sezione 6 aperta dalle misure (vedi change_form.html)
+        (None, {
             "fields": ("considerazioni_riduzione",),
         }),
         ("7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)", {

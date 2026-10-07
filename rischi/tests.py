@@ -596,10 +596,10 @@ class SoggettiEspostiTest(TestCase):
         testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
         self.assertIn("Zona di carico raggiungibile dal lato operatore", testo)
         self.assertIn("Riparo fisso scelto per la frequenza bassa di accesso", testo)
-        self.assertIn("2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)", testo)
+        self.assertIn("3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)", testo)
         # Le considerazioni stanno nella loro sezione, prima della sezione successiva della stessa scheda
         posizione = testo.index("Zona di carico raggiungibile")
-        self.assertLess(testo.rindex("2. DETERMINAZIONE DEI LIMITI", 0, posizione), posizione)
+        self.assertLess(testo.rindex("3. DETERMINAZIONE DEI LIMITI", 0, posizione), posizione)
         self.assertLess(posizione, testo.index("Riparo fisso scelto", posizione))
 
     def test_completa_soggetti_nelle_bozze(self):
@@ -744,12 +744,12 @@ class LibreriaAmministrazioneTest(TestCase):
         pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
         titoli = [
             "1. IDENTIFICAZIONE SCHEDA MODELLO",
-            "2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
-            "3. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
+            "2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
+            "3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
             "4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)",
             "5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)",
             "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)",
-            "6. MISURE DI PROTEZIONE",
+            'name="considerazioni_riduzione"',
             "7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)",
             "8. VALUTAZIONE DEL RISCHIO RESIDUO (RESS 1.1.2 c)",
         ]
@@ -758,6 +758,9 @@ class LibreriaAmministrazioneTest(TestCase):
         self.assertIn('type="checkbox" name="condizioni"', pagina)
         self.assertIn('type="checkbox" name="soggetti"', pagina)
         self.assertEqual(pagina.count('name="considerazioni_'), 6)
+        # Una sola sezione 6: le misure e le considerazioni sotto lo stesso titolo
+        self.assertEqual(pagina.count("6. RIDUZIONE DEL RISCHIO"), 1)
+        self.assertLess(pagina.index('name="misure-0-testo"'), pagina.index('name="considerazioni_riduzione"'))
         # Riferimenti al RESS solo nei titoli delle sezioni; le norme si leggono dalle misure
         self.assertNotIn("(RESS 1.1.1 a)</label>", pagina)
         self.assertNotIn('name="norme"', pagina)
