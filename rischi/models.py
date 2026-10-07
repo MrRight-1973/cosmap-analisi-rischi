@@ -299,12 +299,12 @@ class Stima(models.Model):
     testo_istruzioni = models.TextField("indicazioni per le istruzioni / rischio residuo", blank=True)
     note = models.TextField("note e considerazioni generali", blank=True)
     # Considerazioni del tecnico per ogni passo della valutazione (EN ISO 12100)
-    considerazioni_limiti = models.TextField("considerazioni sui limiti", blank=True)
-    considerazioni_pericoli = models.TextField("considerazioni sui pericoli", blank=True)
-    considerazioni_soggetti = models.TextField("considerazioni sui soggetti esposti", blank=True)
-    considerazioni_stima_iniziale = models.TextField("considerazioni sulla stima iniziale", blank=True)
-    considerazioni_riduzione = models.TextField("considerazioni sulla riduzione del rischio", blank=True)
-    considerazioni_stima_finale = models.TextField("considerazioni sulla stima finale", blank=True)
+    considerazioni_limiti = models.TextField("considerazioni", blank=True)
+    considerazioni_pericoli = models.TextField("considerazioni", blank=True)
+    considerazioni_soggetti = models.TextField("considerazioni", blank=True)
+    considerazioni_stima_iniziale = models.TextField("considerazioni", blank=True)
+    considerazioni_riduzione = models.TextField("considerazioni", blank=True)
+    considerazioni_stima_finale = models.TextField("considerazioni", blank=True)
 
     class Meta:
         abstract = True

@@ -548,39 +548,28 @@ class SoggettiEspostiTest(TestCase):
         segnalate = [a.scheda for a in servizi.controlli(rev) if a.tipo == "soggetti"]
         self.assertEqual(segnalate, [scheda])
 
-    def test_descrizione_per_macchina_e_documento(self):
+    def test_dati_macchina_senza_soggetti_e_documento(self):
         from . import documenti
         from .models import Figura
 
         self.client.force_login(self.compilatore)
-        url = reverse("macchina", args=[self.macchina.pk])
-        figure = list(self.macchina.figure.all())
-        dati = {
+        # Le figure si gestiscono solo nella libreria: la pagina della macchina non le mostra più
+        pagina = self.client.get(reverse("macchina", args=[self.macchina.pk]))
+        self.assertNotContains(pagina, "figure-TOTAL_FORMS")
+        risposta = self.client.post(reverse("macchina", args=[self.macchina.pk]), {
             "denominazione": "Linea", "matricola": "S1", "tipo": "MACCHINA",
             "moduli": [m.pk for m in self.macchina.moduli.all()],
-            "figure-TOTAL_FORMS": len(figure) + 1, "figure-INITIAL_FORMS": len(figure),
-            "figure-MIN_NUM_FORMS": 0, "figure-MAX_NUM_FORMS": 1000,
-        }
-        for i, f in enumerate(figure):
-            dati.update({f"figure-{i}-id": f.pk, f"figure-{i}-figura": f.figura_id, f"figure-{i}-descrizione": f.descrizione})
-        operatore = next(i for i, f in enumerate(figure) if f.figura.nome == "Operatore di conduzione")
-        dati[f"figure-{operatore}-descrizione"] = "Addetto alla conduzione linea e carico bancali"
-        terzi = next(i for i, f in enumerate(figure) if f.figura.nome == "Terzi di passaggio")
-        dati[f"figure-{terzi}-descrizione"] = "Mulettista che transita nella corsia adiacente"
-        risposta = self.client.post(url, dati)
+        })
         self.assertEqual(risposta.status_code, 302)
-        self.assertEqual(
-            self.macchina.figure.get(figura=Figura.objects.get(nome="Terzi di passaggio")).descrizione,
-            "Mulettista che transita nella corsia adiacente",
-        )
+        self.assertTrue(self.macchina.figure.filter(figura__nome="Operatore di conduzione").exists())
 
         scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-01")
-        # Nella scheda le figure compaiono solo con il nome; la descrizione sta nei dati della macchina
         pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
         self.assertContains(pagina, "Operatore di conduzione")
-        self.assertNotContains(pagina, "Addetto alla conduzione linea e carico bancali")
-        self.assertContains(self.client.get(url), "Addetto alla conduzione linea e carico bancali")
 
+        terzi = self.macchina.figure.get(figura=Figura.objects.get(nome="Terzi di passaggio"))
+        terzi.descrizione = "Mulettista che transita nella corsia adiacente"
+        terzi.save()
         testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
         self.assertIn("Soggetti esposti", testo)
         self.assertIn("Mulettista che transita nella corsia adiacente", testo)
@@ -596,10 +585,10 @@ class SoggettiEspostiTest(TestCase):
         testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
         self.assertIn("Zona di carico raggiungibile dal lato operatore", testo)
         self.assertIn("Riparo fisso scelto per la frequenza bassa di accesso", testo)
-        self.assertIn("3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)", testo)
+        self.assertIn("3. IDENTIFICAZIONE DELLA ZONA PERICOLOSA (RESS 1.1.1 b)", testo)
         # Le considerazioni stanno nella loro sezione, prima della sezione successiva della stessa scheda
         posizione = testo.index("Zona di carico raggiungibile")
-        self.assertLess(testo.rindex("3. DETERMINAZIONE DEI LIMITI", 0, posizione), posizione)
+        self.assertLess(testo.rindex("3. IDENTIFICAZIONE DELLA ZONA PERICOLOSA", 0, posizione), posizione)
         self.assertLess(posizione, testo.index("Riparo fisso scelto", posizione))
 
     def test_completa_soggetti_nelle_bozze(self):
@@ -745,13 +734,20 @@ class LibreriaAmministrazioneTest(TestCase):
         titoli = [
             "1. IDENTIFICAZIONE SCHEDA MODELLO",
             "2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
-            "3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
+            'name="considerazioni_pericoli"',
+            'name="pericoli"',
+            "3. IDENTIFICAZIONE DELLA ZONA PERICOLOSA (RESS 1.1.1 b)",
+            'name="considerazioni_limiti"',
+            'name="condizioni"',
             "4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)",
+            'name="considerazioni_soggetti"',
+            'name="soggetti"',
             "5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)",
             "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)",
             'name="considerazioni_riduzione"',
+            'name="misure-0-testo"',
             "7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)",
-            "8. VALUTAZIONE DEL RISCHIO RESIDUO (RESS 1.1.2 c)",
+            "8. VALUTAZIONE DEL RISCHIO RESIDUO",
         ]
         posizioni = [pagina.index(t) for t in titoli]
         self.assertEqual(posizioni, sorted(posizioni))
@@ -760,7 +756,7 @@ class LibreriaAmministrazioneTest(TestCase):
         self.assertEqual(pagina.count('name="considerazioni_'), 6)
         # Una sola sezione 6: le misure e le considerazioni sotto lo stesso titolo
         self.assertEqual(pagina.count("6. RIDUZIONE DEL RISCHIO"), 1)
-        self.assertLess(pagina.index('name="misure-0-testo"'), pagina.index('name="considerazioni_riduzione"'))
+        self.assertEqual(pagina.count(">Considerazioni:<"), 6)
         # Riferimenti al RESS solo nei titoli delle sezioni; le norme si leggono dalle misure
         self.assertNotIn("(RESS 1.1.1 a)</label>", pagina)
         self.assertNotIn('name="norme"', pagina)

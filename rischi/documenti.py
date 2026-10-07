@@ -515,26 +515,29 @@ def _riepilogo(doc, schede):
 SEZIONI_SCHEDA = [
     "1. IDENTIFICAZIONE SCHEDA",
     "2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
-    "3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
+    "3. IDENTIFICAZIONE DELLA ZONA PERICOLOSA (RESS 1.1.1 b)",
     "4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)",
     "5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)",
     "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)",
     "7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)",
-    "8. VALUTAZIONE DEL RISCHIO RESIDUO (RESS 1.1.2 c)",
+    "8. VALUTAZIONE DEL RISCHIO RESIDUO",
 ]
 
 
-def _sezione(doc, numero, righe=(), considerazioni="", contenuto=None):
-    """Titolo della sezione, voci, contenuto aggiuntivo e considerazioni; la sezione vuota non compare."""
+def _sezione(doc, numero, righe=(), considerazioni="", contenuto=None, considerazioni_prima=False):
+    """Titolo della sezione, voci, contenuto aggiuntivo e considerazioni (in fondo, o all'inizio come nella
+    scheda a video); la sezione vuota non compare."""
     righe = [(etichetta, valore) for etichetta, valore in righe if valore]
     if not (righe or considerazioni or contenuto):
         return
     parti = [lambda: doc.p(SEZIONI_SCHEDA[numero - 1], "sezione")]
+    if considerazioni and considerazioni_prima:
+        parti.append(lambda: doc.dettagli([("Considerazioni", considerazioni)]))
     if righe:
         parti.append(lambda: doc.dettagli(righe))
     if contenuto:
         parti.append(contenuto)
-    if considerazioni:
+    if considerazioni and not considerazioni_prima:
         parti.append(lambda: doc.dettagli([("Considerazioni", considerazioni)]))
     doc.insieme(*parti)
 
@@ -554,17 +557,19 @@ def _scheda(doc, s, descrizioni):
     doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice)
     _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note)])
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
-             s.considerazioni_pericoli)
+             s.considerazioni_pericoli, considerazioni_prima=True)
     _sezione(doc, 3, [
         ("Zona dell'impianto", s.zona_impianto),
         ("Zona pericolosa", s.zona_pericolosa),
+        ("Considerazioni", s.considerazioni_limiti),
         ("Condizioni operative", ", ".join(c.nome for c in s.condizioni.all())),
-    ], s.considerazioni_limiti)
-    _sezione(doc, 4, [("Soggetti esposti", ", ".join(f.nome for f in s.soggetti.all()))], s.considerazioni_soggetti)
+    ])
+    _sezione(doc, 4, [("Soggetti esposti", ", ".join(f.nome for f in s.soggetti.all()))], s.considerazioni_soggetti,
+             considerazioni_prima=True)
     _sezione(doc, 5, considerazioni=s.considerazioni_stima_iniziale,
              contenuto=(lambda: _tabella_stima(doc, s, descrizioni, "iniziale")) if s.ha_stima_iniziale else None)
     misure = list(s.misure.all())
-    _sezione(doc, 6, considerazioni=s.considerazioni_riduzione,
+    _sezione(doc, 6, considerazioni=s.considerazioni_riduzione, considerazioni_prima=True,
              contenuto=(lambda: _misure(doc, misure)) if misure else None)
     _sezione(doc, 7, considerazioni=s.considerazioni_stima_finale,
              contenuto=(lambda: _tabella_stima(doc, s, descrizioni, "finale")) if s.ha_stima_finale else None)

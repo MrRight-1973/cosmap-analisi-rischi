@@ -13,18 +13,18 @@
   {% include "rischi/_campo.html" with f=form.note %}
 </fieldset>
 <fieldset><legend>2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)</legend>
-  {% include "rischi/_campo.html" with f=form.pericoli %}
   {% include "rischi/_campo.html" with f=form.considerazioni_pericoli %}
+  {% include "rischi/_campo.html" with f=form.pericoli %}
 </fieldset>
-<fieldset><legend>3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)</legend>
+<fieldset><legend>3. IDENTIFICAZIONE DELLA ZONA PERICOLOSA (RESS 1.1.1 b)</legend>
   {% include "rischi/_campo.html" with f=form.zona_impianto %}
   {% include "rischi/_campo.html" with f=form.zona_pericolosa %}
-  {% include "rischi/_campo.html" with f=form.condizioni %}
   {% include "rischi/_campo.html" with f=form.considerazioni_limiti %}
+  {% include "rischi/_campo.html" with f=form.condizioni %}
 </fieldset>
 <fieldset><legend>4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)</legend>
-  {% include "rischi/_campo.html" with f=form.soggetti %}
   {% include "rischi/_campo.html" with f=form.considerazioni_soggetti %}
+  {% include "rischi/_campo.html" with f=form.soggetti %}
 </fieldset>
 <fieldset><legend>5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)</legend>
   <div class="stime fattori">{% include "rischi/_campo.html" with f=form.se_iniziale %}{% include "rischi/_campo.html" with f=form.fr_iniziale %}{% include "rischi/_campo.html" with f=form.pr_iniziale %}{% include "rischi/_campo.html" with f=form.av_iniziale %}</div>
@@ -32,6 +32,7 @@
   {% include "rischi/_campo.html" with f=form.considerazioni_stima_iniziale %}
 </fieldset>
 <fieldset><legend>6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)</legend>
+  {% include "rischi/_campo.html" with f=form.considerazioni_riduzione %}
   {{ misure.management_form }}
   {% for mf in misure %}
   <div class="misura">{{ mf.id }}
@@ -39,14 +40,13 @@
     {% include "rischi/_campo.html" with f=mf.testo %}
   </div>
   {% endfor %}
-  {% include "rischi/_campo.html" with f=form.considerazioni_riduzione %}
 </fieldset>
 <fieldset><legend>7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)</legend>
   <div class="stime fattori">{% include "rischi/_campo.html" with f=form.se_finale %}{% include "rischi/_campo.html" with f=form.fr_finale %}{% include "rischi/_campo.html" with f=form.pr_finale %}{% include "rischi/_campo.html" with f=form.av_finale %}</div>
   {% if scheda.pk %}<p class="sotto">Cl = Fr + Pr + Av = {{ scheda.cl_finale|default:"–" }} · esito: {% esito scheda.se_finale scheda.cl_finale scheda.esito_finale %}</p>{% endif %}
   {% include "rischi/_campo.html" with f=form.considerazioni_stima_finale %}
 </fieldset>
-<fieldset><legend>8. VALUTAZIONE DEL RISCHIO RESIDUO (RESS 1.1.2 c)</legend>
+<fieldset><legend>8. VALUTAZIONE DEL RISCHIO RESIDUO</legend>
   {% include "rischi/_campo.html" with f=form.testo_istruzioni %}
 </fieldset>
 <fieldset><legend>DECISIONE DEL TECNICO</legend>
