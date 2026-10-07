@@ -166,24 +166,24 @@ class Pdf:
         normale, grassetto, _ = _carattere_registrato()
         self.titolo, self.bozza, self.pagina = titolo, bozza, pagina
         self.grassetto = grassetto
-        base = ParagraphStyle("base", fontName=normale, fontSize=12, leading=14.4, spaceAfter=2)
+        base = ParagraphStyle("base", fontName=normale, fontSize=9, leading=11, spaceAfter=2)
         self.stili = {
             "base": base,
-            "cella": ParagraphStyle("cella", parent=base, fontSize=12, leading=14.2, spaceAfter=0),
-            "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, fontSize=12, leading=14.2,
+            "cella": ParagraphStyle("cella", parent=base, leading=10.8, spaceAfter=0),
+            "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, leading=10.8,
                                         textColor=colors.HexColor("#4A5563"), spaceAfter=0),
-            "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=13, leading=15.5, spaceAfter=0),
-            "sottotitolo_misure": ParagraphStyle("sottotitolo_misure", parent=base, fontName=grassetto, fontSize=12,
-                                                 leading=14.2, textColor=colors.HexColor("#4A5563"), spaceBefore=1, spaceAfter=0,
+            "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=10.5, leading=12.5, spaceAfter=0),
+            "sottotitolo_misure": ParagraphStyle("sottotitolo_misure", parent=base, fontName=grassetto, leading=10.8,
+                                                 textColor=colors.HexColor("#4A5563"), spaceBefore=1, spaceAfter=0,
                                                  keepWithNext=1),
-            "sezione": ParagraphStyle("sezione", parent=base, fontName=grassetto, fontSize=12, leading=14.4,
+            "sezione": ParagraphStyle("sezione", parent=base, fontName=grassetto, fontSize=9.5, leading=11.5,
                                       textColor=colors.HexColor("#2F4A6D"), spaceBefore=4, spaceAfter=1, keepWithNext=1),
-            "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=18, leading=22, spaceAfter=8),
-            "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=18, leading=22, alignment=TA_CENTER, spaceAfter=4),
+            "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=15, leading=18, spaceAfter=6),
+            "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=15, leading=18, alignment=TA_CENTER, spaceAfter=4),
             "centro": ParagraphStyle("centro", parent=base, alignment=TA_CENTER),
-            1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=14, leading=17, spaceBefore=8, spaceAfter=3, keepWithNext=1),
-            2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceBefore=6, spaceAfter=3, keepWithNext=1),
-            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=12, leading=14.4, spaceBefore=6, spaceAfter=2,
+            1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=11.5, leading=14, spaceBefore=6, spaceAfter=3, keepWithNext=1),
+            2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=10.5, leading=13, spaceBefore=5, spaceAfter=2, keepWithNext=1),
+            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=9.5, leading=11.5, spaceBefore=5, spaceAfter=2,
                               keepWithNext=1),
         }
         self.storia = []
@@ -209,7 +209,7 @@ class Pdf:
             self.storia.append(
                 ListFlowable(
                     [ListItem(Paragraph(v, self.stili["cella"]), leftIndent=12) for v in voci],
-                    bulletType="bullet", start="•", leftIndent=12, bulletFontSize=8,
+                    bulletType="bullet", start="•", leftIndent=12, bulletFontSize=6,
                 )
             )
 
@@ -219,7 +219,7 @@ class Pdf:
             self.storia.append(
                 ListFlowable(
                     [ListItem(Paragraph(_pulito(v), self.stili["cella"]), leftIndent=12) for v in voci],
-                    bulletType="bullet", start="•", leftIndent=12, bulletFontSize=8,
+                    bulletType="bullet", start="•", leftIndent=12, bulletFontSize=6,
                 )
             )
 
@@ -261,7 +261,7 @@ class Pdf:
         ]
         if not dati:
             return
-        tabella = Table(dati, colWidths=[5.2 * cm, LARGHEZZA - 5.2 * cm], hAlign="LEFT", splitInRow=1)
+        tabella = Table(dati, colWidths=[3.9 * cm, LARGHEZZA - 3.9 * cm], hAlign="LEFT", splitInRow=1)
         tabella.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
@@ -517,7 +517,7 @@ def _tabella_stima(doc, scheda, descrizioni, quale):
         Paragraph(f"<b>Esito:</b> {_pulito(ESITI_TESTO.get(esito, '–'))}", doc.stili["cella"]),
     ])
     sfondi = {(1, len(righe) - 1): ESITI_COLORE[esito]} if esito else {}
-    doc.tabella(None, righe, [7.2, 10.8], sfondi)
+    doc.tabella(None, righe, [5.6, 12.4], sfondi)
 
 
 def _riepilogo(doc, schede):
@@ -665,7 +665,7 @@ def valutazione(revisione):
                 [f.get_tipo_display(), f.nome, descrizioni_figure.get(f.pk) or f.descrizione]
                 for f in sorted(figure_usate, key=lambda f: (f.ordine, f.nome))
             ],
-            [5.7, 4.3, 8],
+            [4.6, 4, 9.4],
         )
     else:
         doc.p("Soggetti non ancora indicati.")
@@ -708,12 +708,12 @@ def valutazione(revisione):
     doc.titoletto("Riepilogo delle schede")
     _riepilogo(doc, schede)
 
-    # Le schede si susseguono senza salto pagina: ogni sezione resta intera e il titolo del modulo
-    # e la testata della scheda non restano soli in fondo alla pagina.
-    doc.nuova_pagina()
+    # Ogni scheda inizia su una pagina nuova; il titolo del modulo sta sopra la sua prima scheda.
     for modulo, gruppo in groupby(schede, key=lambda s: s.modulo):
-        doc.titoletto(f"Modulo: {modulo.nome}" + (f" ({modulo.sigla})" if modulo.sigla else ""))
-        for s in gruppo:
+        for numero, s in enumerate(gruppo):
+            doc.nuova_pagina()
+            if not numero:
+                doc.titoletto(f"Modulo: {modulo.nome}" + (f" ({modulo.sigla})" if modulo.sigla else ""))
             _scheda(doc, s, descrizioni)
 
     scartate = revisione.schede.filter(decisione=SchedaAnalisi.Decisione.SCARTATA).select_related("requisito")
