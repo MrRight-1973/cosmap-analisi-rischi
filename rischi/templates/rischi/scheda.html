@@ -61,4 +61,19 @@
 </fieldset>
 {% if modificabile %}<button class="primario">Salva scheda</button>{% endif %}
 </form>
+{% if scheda.pk and puo_libreria %}
+<form method="post" action="{% url 'aggiorna_modello' scheda.pk %}" class="modulo"
+      onsubmit="return confirm('{% if scheda.origine %}Sovrascrivere la scheda modello {{ scheda.origine.codice }} con il contenuto di questa scheda?{% else %}Creare nella libreria una nuova scheda modello con il contenuto di questa scheda?{% endif %}');">
+{% csrf_token %}
+<fieldset><legend>LIBRERIA</legend>
+  {% if scheda.origine %}
+  <p class="sotto">Questa scheda viene dalla scheda modello <a href="{% url 'admin:rischi_schedamodello_change' scheda.origine.pk %}">{{ scheda.origine.codice }}</a>. Se le variazioni valgono anche per le prossime commesse, riportale nella libreria: zone, condizioni, pericoli, soggetti, stime, misure, norme, note e considerazioni sostituiscono quelle della scheda modello. Modulo, requisito e codice della scheda modello restano invariati. Salva prima la scheda.</p>
+  <p><button>Aggiorna la scheda modello {{ scheda.origine.codice }}</button></p>
+  {% else %}
+  <p class="sotto">Questa scheda è stata aggiunta a mano e non ha una scheda modello. Puoi crearne una nella libreria con lo stesso contenuto, così sarà proposta nelle prossime commesse con questo modulo. Salva prima la scheda.</p>
+  <p><button>Crea la scheda modello</button></p>
+  {% endif %}
+</fieldset>
+</form>
+{% endif %}
 {% endblock %}

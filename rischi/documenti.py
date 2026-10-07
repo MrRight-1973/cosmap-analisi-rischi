@@ -154,24 +154,24 @@ class Pdf:
         normale, grassetto, _ = _carattere_registrato()
         self.titolo, self.bozza, self.pagina = titolo, bozza, pagina
         self.grassetto = grassetto
-        base = ParagraphStyle("base", fontName=normale, fontSize=10, leading=13.5, spaceAfter=3)
+        base = ParagraphStyle("base", fontName=normale, fontSize=12, leading=15.5, spaceAfter=3)
         self.stili = {
             "base": base,
-            "cella": ParagraphStyle("cella", parent=base, fontSize=9, leading=11.5, spaceAfter=0),
-            "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, fontSize=9, leading=11.5,
+            "cella": ParagraphStyle("cella", parent=base, fontSize=12, leading=15, spaceAfter=0),
+            "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, fontSize=12, leading=15,
                                         textColor=colors.HexColor("#4A5563"), spaceAfter=0),
-            "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=11, leading=14, spaceAfter=0),
-            "sottotitolo_misure": ParagraphStyle("sottotitolo_misure", parent=base, fontName=grassetto, fontSize=9,
-                                                 leading=12, textColor=colors.HexColor("#4A5563"), spaceBefore=3, spaceAfter=1,
+            "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceAfter=0),
+            "sottotitolo_misure": ParagraphStyle("sottotitolo_misure", parent=base, fontName=grassetto, fontSize=12,
+                                                 leading=15, textColor=colors.HexColor("#4A5563"), spaceBefore=3, spaceAfter=1,
                                                  keepWithNext=1),
-            "sezione": ParagraphStyle("sezione", parent=base, fontName=grassetto, fontSize=8.5, leading=11,
-                                      textColor=colors.HexColor("#2F4A6D"), spaceBefore=4, spaceAfter=2, keepWithNext=1),
-            "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=17, leading=21, spaceAfter=8),
-            "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=16, leading=20, alignment=TA_CENTER, spaceAfter=4),
+            "sezione": ParagraphStyle("sezione", parent=base, fontName=grassetto, fontSize=12, leading=15,
+                                      textColor=colors.HexColor("#2F4A6D"), spaceBefore=6, spaceAfter=2, keepWithNext=1),
+            "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=18, leading=22, spaceAfter=8),
+            "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=18, leading=22, alignment=TA_CENTER, spaceAfter=4),
             "centro": ParagraphStyle("centro", parent=base, alignment=TA_CENTER),
-            1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceBefore=10, spaceAfter=5),
-            2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=11.5, leading=14, spaceBefore=8, spaceAfter=4),
-            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=10, leading=13, spaceBefore=8, spaceAfter=3,
+            1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=14, leading=17, spaceBefore=10, spaceAfter=5),
+            2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceBefore=8, spaceAfter=4),
+            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=12, leading=15, spaceBefore=8, spaceAfter=3,
                               keepWithNext=1),
         }
         self.storia = []
@@ -249,7 +249,7 @@ class Pdf:
         ]
         if not dati:
             return
-        tabella = Table(dati, colWidths=[4.6 * cm, A4[0] - 4 * cm - 4.6 * cm], hAlign="LEFT")
+        tabella = Table(dati, colWidths=[5.2 * cm, A4[0] - 4 * cm - 5.2 * cm], hAlign="LEFT")
         tabella.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
@@ -468,7 +468,7 @@ def _cella_valore(doc, descrizioni, fattore, valore):
     if valore is None:
         return Paragraph("–", doc.stili["cella"])
     descrizione = descrizioni.get((fattore, valore))
-    coda = f' <font size="7.5" color="#5F6B7A">– {_pulito(descrizione)}</font>' if descrizione else ""
+    coda = f' <font color="#5F6B7A">– {_pulito(descrizione)}</font>' if descrizione else ""
     return Paragraph(f"<b>{valore}</b>{coda}", doc.stili["cella"])
 
 
@@ -547,18 +547,19 @@ def _misure(doc, misure):
         del_tipo = [m for m in misure if m.tipo == tipo]
         if del_tipo:
             doc.p(titolo, "sottotitolo_misure")
-            doc.elenco_html(
-                _pulito(m.testo) + (f' <font color="#6B7280">({_pulito(m.norma)})</font>' if m.norma else "")
-                for m in del_tipo
-            )
+            doc.elenco_html(_pulito(m.testo) for m in del_tipo)
+
+
+def _elenco_norme(norme):
+    """Una norma per riga con codice, edizione e titolo (sezioni 1 e 6 della scheda)."""
+    return "\n".join(
+        f"{_edizione(n)} – {n.titolo}" if n.titolo else _edizione(n) for n in sorted(set(norme), key=lambda n: n.codice)
+    )
 
 
 def _scheda(doc, s, descrizioni):
     doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice)
-    norme = "\n".join(
-        f"{_edizione(n)} – {n.titolo}" if n.titolo else _edizione(n) for n in s.norme.order_by("codice")
-    )
-    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note), ("Norme", norme)])
+    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note), ("Norme", _elenco_norme(s.norme.all()))])
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
              s.considerazioni_pericoli, considerazioni_prima=True)
     _sezione(doc, 3, [
@@ -572,8 +573,14 @@ def _scheda(doc, s, descrizioni):
     _sezione(doc, 5, considerazioni=s.considerazioni_stima_iniziale,
              contenuto=(lambda: _tabella_stima(doc, s, descrizioni, "iniziale")) if s.ha_stima_iniziale else None)
     misure = list(s.misure.all())
+    norme_misure = _elenco_norme(m.norma for m in misure if m.norma)
+
+    def riduzione():
+        _misure(doc, misure)
+        doc.dettagli([("Norme", norme_misure)])
+
     _sezione(doc, 6, considerazioni=s.considerazioni_riduzione, considerazioni_prima=True,
-             contenuto=(lambda: _misure(doc, misure)) if misure else None)
+             contenuto=riduzione if misure else None)
     _sezione(doc, 7, considerazioni=s.considerazioni_stima_finale,
              contenuto=(lambda: _tabella_stima(doc, s, descrizioni, "finale")) if s.ha_stima_finale else None)
     if s.testo_istruzioni:
