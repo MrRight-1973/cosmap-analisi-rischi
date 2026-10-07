@@ -721,6 +721,20 @@ class LibreriaAmministrazioneTest(TestCase):
         descrizione = MetodoStima.corrente().descrizioni()[("Se", scheda.se_iniziale)]
         self.assertContains(pagina, f"{scheda.se_iniziale} – {descrizione}")
 
+    def test_scheda_modello_nello_stesso_ordine_dell_analisi(self):
+        self.client.force_login(self.capo)
+        scheda = SchedaModello.objects.get(codice="TAV-01")
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
+        titoli = [
+            "Identificazione",
+            "Stima iniziale del rischio",
+            "Misure di protezione",
+            "Stima finale del rischio",
+            "Libreria",
+        ]
+        posizioni = [pagina.index(t) for t in titoli]
+        self.assertEqual(posizioni, sorted(posizioni))
+
     def dati_modulo(self, modulo, sigla):
         return {
             "nome": modulo.nome, "sigla": sigla, "descrizione": modulo.descrizione, "condizione": modulo.condizione,
