@@ -727,14 +727,21 @@ class LibreriaAmministrazioneTest(TestCase):
         scheda = SchedaModello.objects.get(codice="TAV-01")
         pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
         titoli = [
-            "Identificazione",
-            "Stima iniziale del rischio",
-            "Misure di protezione",
-            "Stima finale del rischio",
-            "Libreria",
+            "1. Identificazione scheda modello",
+            "2. Determinazione dei limiti",
+            "3. Identificazione del pericolo",
+            "4. Identificazione dei soggetti esposti",
+            "5. Stima iniziale del rischio",
+            "6. Riduzione del rischio",
+            "6. Misure di protezione",
+            "7. Stima finale del rischio",
+            "8. Valutazione del rischio residuo",
         ]
         posizioni = [pagina.index(t) for t in titoli]
         self.assertEqual(posizioni, sorted(posizioni))
+        self.assertIn('type="checkbox" name="condizioni"', pagina)
+        self.assertIn('type="checkbox" name="soggetti"', pagina)
+        self.assertEqual(pagina.count('name="considerazioni_'), 6)
 
     def test_scheda_modello_mostra_cl_ed_esito(self):
         self.client.force_login(self.capo)

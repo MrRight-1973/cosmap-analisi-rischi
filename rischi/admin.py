@@ -4,13 +4,13 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from . import models as m
-from .forms import VALORI_AV, VALORI_FR, VALORI_PR, VALORI_SE, _scelta, descrivi_fattori
+from .forms import CAMPI_CONSIDERAZIONI, VALORI_AV, VALORI_FR, VALORI_PR, VALORI_SE, _scelta, descrivi_fattori
 
 
 class MisuraModelloInline(admin.StackedInline):
     model = m.MisuraModello
     extra = 0
-    verbose_name_plural = "Misure di protezione (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)"
+    verbose_name_plural = "6. Misure di protezione"
 
 
 class SchedaModelloForm(forms.ModelForm):
@@ -26,6 +26,11 @@ class SchedaModelloForm(forms.ModelForm):
     class Meta:
         model = m.SchedaModello
         exclude = ("codice",)
+        widgets = {
+            "condizioni": forms.CheckboxSelectMultiple,
+            "soggetti": forms.CheckboxSelectMultiple,
+            **{campo: forms.Textarea(attrs={"rows": 3, "cols": 80}) for campo in CAMPI_CONSIDERAZIONI},
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,25 +50,37 @@ class SchedaModelloAdmin(admin.ModelAdmin):
     list_display = ("codice", "modulo", "requisito", "zona_impianto", "stato")
     list_filter = ("modulo", "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
-    filter_horizontal = ("condizioni", "pericoli", "norme", "soggetti")
+    filter_horizontal = ("pericoli", "norme")
     readonly_fields = ("codice", "calcolo_iniziale", "calcolo_finale")
     inlines = [MisuraModelloInline]
-    # Stesso ordine della scheda nell'analisi; le misure stanno tra stima iniziale e finale
-    # (vedi admin/rischi/schedamodello/change_form.html).
+    # Sezioni in sequenza EN ISO 12100, come la scheda nell'analisi; le misure di protezione stanno
+    # dentro la sezione 6 (vedi admin/rischi/schedamodello/change_form.html).
     fieldsets = (
-        ("Identificazione", {
-            "fields": ("codice", "modulo", "requisito", "zona_impianto", "zona_pericolosa",
-                       "condizioni", "pericoli", "soggetti"),
+        ("1. Identificazione scheda modello", {
+            "fields": ("codice", "modulo", "requisito", "stato", "scheda_originale", "note"),
         }),
-        ("Stima iniziale del rischio (RESS 1.1.1 e)", {
-            "fields": (("se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale"), "calcolo_iniziale"),
+        ("2. Determinazione dei limiti (zona pericolosa RESS 1.1.1 b)", {
+            "fields": ("zona_impianto", "zona_pericolosa", "condizioni", "considerazioni_limiti"),
         }),
-        ("Stima finale del rischio (RESS 1.1.1 e)", {
+        ("3. Identificazione del pericolo (RESS 1.1.1 a)", {
+            "fields": ("pericoli", "considerazioni_pericoli"),
+        }),
+        ("4. Identificazione dei soggetti esposti (RESS 1.1.1 c, d)", {
+            "fields": ("soggetti", "considerazioni_soggetti"),
+        }),
+        ("5. Stima iniziale del rischio (RESS 1.1.1 e)", {
+            "fields": (("se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale"), "calcolo_iniziale",
+                       "considerazioni_stima_iniziale"),
+        }),
+        ("6. Riduzione del rischio (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)", {
+            "fields": ("considerazioni_riduzione", "norme"),
+        }),
+        ("7. Stima finale del rischio (RESS 1.1.1 e)", {
             "fields": (("se_finale", "fr_finale", "pr_finale", "av_finale"), "calcolo_finale",
-                       "testo_istruzioni", "norme", "note"),
+                       "considerazioni_stima_finale"),
         }),
-        ("Libreria", {
-            "fields": ("stato", "scheda_originale"),
+        ("8. Valutazione del rischio residuo", {
+            "fields": ("testo_istruzioni",),
         }),
     )
 

@@ -159,6 +159,16 @@ class ModuliMacchinaForm(forms.Form):
     )
 
 
+CAMPI_CONSIDERAZIONI = (
+    "considerazioni_limiti",
+    "considerazioni_pericoli",
+    "considerazioni_soggetti",
+    "considerazioni_stima_iniziale",
+    "considerazioni_riduzione",
+    "considerazioni_stima_finale",
+)
+
+
 class SchedaForm(forms.ModelForm):
     se_iniziale = _scelta(VALORI_SE)
     fr_iniziale = _scelta(VALORI_FR)
@@ -188,6 +198,7 @@ class SchedaForm(forms.ModelForm):
         "testo_istruzioni",
         "norme",
         "note",
+        *CAMPI_CONSIDERAZIONI,
     )
 
     class Meta:
@@ -211,6 +222,7 @@ class SchedaForm(forms.ModelForm):
             "testo_istruzioni",
             "norme",
             "note",
+            *CAMPI_CONSIDERAZIONI,
             "decisione",
             "motivazione",
         ]
@@ -218,6 +230,7 @@ class SchedaForm(forms.ModelForm):
             "zona_pericolosa": forms.Textarea(attrs={"rows": 2}),
             "testo_istruzioni": forms.Textarea(attrs={"rows": 5}),
             "note": forms.Textarea(attrs={"rows": 2}),
+            **{campo: forms.Textarea(attrs={"rows": 2}) for campo in CAMPI_CONSIDERAZIONI},
             "motivazione": forms.Textarea(attrs={"rows": 2}),
             "condizioni": forms.CheckboxSelectMultiple,
             "pericoli": forms.SelectMultiple(attrs={"size": 8}),
