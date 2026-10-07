@@ -10,6 +10,7 @@ from .forms import VALORI_AV, VALORI_FR, VALORI_PR, VALORI_SE, _scelta, descrivi
 class MisuraModelloInline(admin.StackedInline):
     model = m.MisuraModello
     extra = 0
+    verbose_name_plural = "Misure di protezione (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)"
 
 
 class SchedaModelloForm(forms.ModelForm):
@@ -47,6 +48,24 @@ class SchedaModelloAdmin(admin.ModelAdmin):
     filter_horizontal = ("condizioni", "pericoli", "norme", "soggetti")
     readonly_fields = ("codice",)
     inlines = [MisuraModelloInline]
+    # Stesso ordine della scheda nell'analisi; le misure stanno tra stima iniziale e finale
+    # (vedi admin/rischi/schedamodello/change_form.html).
+    fieldsets = (
+        ("Identificazione", {
+            "fields": ("codice", "modulo", "requisito", "zona_impianto", "zona_pericolosa",
+                       "condizioni", "pericoli", "soggetti"),
+        }),
+        ("Stima iniziale del rischio (RESS 1.1.1 e)", {
+            "fields": (("se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale"),),
+        }),
+        ("Stima finale del rischio (RESS 1.1.1 e)", {
+            "fields": (("se_finale", "fr_finale", "pr_finale", "av_finale"),
+                       "testo_istruzioni", "norme", "note"),
+        }),
+        ("Libreria", {
+            "fields": ("stato", "scheda_originale"),
+        }),
+    )
 
     def save_model(self, request, obj, form, change):
         """Codice automatico: alla creazione e quando cambiano modulo o requisito."""
