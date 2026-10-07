@@ -11,3 +11,9 @@
 .aligned #id_soggetti > div {
     margin: 2px 0;
 }
+
+/* Titolo della sezione 6 (misure di protezione): come gli altri titoli, senza forzare il maiuscolo
+   sulle lettere del RESS. */
+.inline-group .inline-heading {
+    text-transform: none;
+}

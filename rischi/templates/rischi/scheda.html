@@ -12,15 +12,15 @@
   {% include "rischi/_campo.html" with f=form.requisito %}
   {% include "rischi/_campo.html" with f=form.note %}
 </fieldset>
-<fieldset><legend>2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)</legend>
+<fieldset><legend>2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)</legend>
+  {% include "rischi/_campo.html" with f=form.pericoli %}
+  {% include "rischi/_campo.html" with f=form.considerazioni_pericoli %}
+</fieldset>
+<fieldset><legend>3. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)</legend>
   {% include "rischi/_campo.html" with f=form.zona_impianto %}
   {% include "rischi/_campo.html" with f=form.zona_pericolosa %}
   {% include "rischi/_campo.html" with f=form.condizioni %}
   {% include "rischi/_campo.html" with f=form.considerazioni_limiti %}
-</fieldset>
-<fieldset><legend>3. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)</legend>
-  {% include "rischi/_campo.html" with f=form.pericoli %}
-  {% include "rischi/_campo.html" with f=form.considerazioni_pericoli %}
 </fieldset>
 <fieldset><legend>4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)</legend>
   {% include "rischi/_campo.html" with f=form.soggetti %}
