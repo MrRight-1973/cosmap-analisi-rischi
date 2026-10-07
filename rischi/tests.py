@@ -581,6 +581,18 @@ class SoggettiEspostiTest(TestCase):
         self.assertIn("Mulettista che transita nella corsia adiacente", testo)
         self.assertIn("Persona esposta (RESS 1.1.1 c)", testo)
 
+    def test_testi_piu_lunghi_di_una_pagina(self):
+        """Note e considerazioni più alte di una pagina proseguono sulla pagina seguente invece di dare errore."""
+        from . import documenti
+
+        scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-01")
+        lungo = "\n".join(f"Riga {i} di un testo molto lungo che occupa parecchio spazio nella pagina." for i in range(80))
+        scheda.note = scheda.considerazioni_riduzione = scheda.testo_istruzioni = lungo
+        scheda.save()
+        testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
+        self.assertIn("Riga 79 di un testo molto lungo", testo)
+        documenti.rischi_residui(self.analisi.revisione_corrente)
+
     def test_considerazioni_nel_pdf(self):
         from . import documenti
 

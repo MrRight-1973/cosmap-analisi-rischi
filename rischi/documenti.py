@@ -21,8 +21,11 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus.flowables import _listWrapOn
 from reportlab.platypus import (
+    CondPageBreak,
     KeepTogether,
     ListFlowable,
     ListItem,
@@ -150,8 +153,12 @@ def _pulito(testo):
 # Margini stretti per far stare più contenuto in ogni pagina.
 MARGINE = 1.5 * cm
 LARGHEZZA = A4[0] - 2 * MARGINE
+MARGINE_VERTICALE = 1.2 * cm
+ALTEZZA = A4[1] - 2 * MARGINE_VERTICALE
 
 
+# Le tabelle possono spezzare una riga tra due pagine (splitInRow): un testo lungo (note,
+# considerazioni) non deve superare l'altezza della pagina.
 class Pdf:
     """Documento A4 con intestazione BOZZA (se serve) e numero di pagina."""
 
@@ -254,7 +261,7 @@ class Pdf:
         ]
         if not dati:
             return
-        tabella = Table(dati, colWidths=[5.2 * cm, LARGHEZZA - 5.2 * cm], hAlign="LEFT")
+        tabella = Table(dati, colWidths=[5.2 * cm, LARGHEZZA - 5.2 * cm], hAlign="LEFT", splitInRow=1)
         tabella.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
@@ -265,7 +272,7 @@ class Pdf:
         self.spazio(1)
 
     def riquadro(self, testo, colore="#F3F4F6"):
-        tabella = Table([[Paragraph(_pulito(testo), self.stili["cella"])]], colWidths=[LARGHEZZA])
+        tabella = Table([[Paragraph(_pulito(testo), self.stili["cella"])]], colWidths=[LARGHEZZA], splitInRow=1)
         tabella.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(colore)),
             ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#9AA3AE")),
@@ -291,7 +298,7 @@ class Pdf:
         if larghezze:
             totale = sum(larghezze)
             larghezze = [larghezza_utile * l / totale for l in larghezze]
-        tabella = Table(dati, colWidths=larghezze, repeatRows=1 if intestazioni else 0, hAlign="LEFT")
+        tabella = Table(dati, colWidths=larghezze, repeatRows=1 if intestazioni else 0, hAlign="LEFT", splitInRow=1)
         stile = [("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]
         if bordo:
             stile.append(("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#9AA3AE")))
@@ -304,14 +311,23 @@ class Pdf:
         self.spazio(1)
         return tabella
 
-    def insieme(self, *contenuti):
-        """Tiene sulla stessa pagina gli elementi aggiunti da `contenuti` (funzioni senza argomenti)."""
+    def insieme(self, *contenuti, prima=()):
+        """Tiene sulla stessa pagina gli elementi `prima` e quelli aggiunti da `contenuti` (funzioni senza
+        argomenti). Un blocco più alto di mezza pagina prosegue sulla pagina seguente: si va a capo solo
+        se in fondo alla pagina resta poco spazio, così il titolo non resta solo e non si lasciano pagine vuote."""
         inizio = len(self.storia)
         for aggiungi in contenuti:
             aggiungi()
-        blocco = self.storia[inizio:]
+        blocco = list(prima) + self.storia[inizio:]
         del self.storia[inizio:]
-        self.storia.append(KeepTogether(blocco))
+        altezza = _listWrapOn(blocco, LARGHEZZA, Canvas(io.BytesIO()))[1]
+        if altezza <= ALTEZZA / 2:
+            self.storia.append(KeepTogether(blocco))
+            return
+        self.storia.append(CondPageBreak(4 * cm))
+        for f in blocco:
+            f.keepWithNext = 0
+        self.storia.extend(blocco)
 
     def _pagina(self, canvas, doc):
         canvas.saveState()
@@ -329,7 +345,7 @@ class Pdf:
     def salva(self):
         buffer = io.BytesIO()
         documento = SimpleDocTemplate(
-            buffer, pagesize=A4, leftMargin=MARGINE, rightMargin=MARGINE, topMargin=1.2 * cm, bottomMargin=1.2 * cm,
+            buffer, pagesize=A4, leftMargin=MARGINE, rightMargin=MARGINE, topMargin=MARGINE_VERTICALE, bottomMargin=MARGINE_VERTICALE,
             title=self.titolo, author="Cosmap – Analisi dei rischi",
         )
         documento.build(self.storia, onFirstPage=self._pagina, onLaterPages=self._pagina)
@@ -530,7 +546,7 @@ SEZIONI_SCHEDA = [
 ]
 
 
-def _sezione(doc, numero, righe=(), considerazioni="", contenuto=None, considerazioni_prima=False):
+def _sezione(doc, numero, righe=(), considerazioni="", contenuto=None, considerazioni_prima=False, prima=()):
     """Titolo della sezione, voci, contenuto aggiuntivo e considerazioni (in fondo, o all'inizio come nella
     scheda a video); la sezione vuota non compare."""
     righe = [(etichetta, valore) for etichetta, valore in righe if valore]
@@ -545,7 +561,7 @@ def _sezione(doc, numero, righe=(), considerazioni="", contenuto=None, considera
         parti.append(contenuto)
     if considerazioni and not considerazioni_prima:
         parti.append(lambda: doc.dettagli([("Considerazioni", considerazioni)]))
-    doc.insieme(*parti)
+    doc.insieme(*parti, prima=prima)
 
 
 def _misure(doc, misure):
@@ -567,10 +583,9 @@ def _scheda(doc, s, descrizioni):
     doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice)
     testata = doc.storia[-2:]
     del doc.storia[-2:]
-    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note), ("Norme", _elenco_norme(s.norme.all()))])
-    # La testata non resta sola in fondo alla pagina: va con la sezione 1 (un KeepTogether annidato
-    # forzerebbe sempre il salto pagina, quindi si uniscono i contenuti).
-    doc.storia.append(KeepTogether(testata + doc.storia.pop()._content))
+    # La testata non resta sola in fondo alla pagina: va con la sezione 1.
+    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note), ("Norme", _elenco_norme(s.norme.all()))],
+             prima=testata)
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
              s.considerazioni_pericoli, considerazioni_prima=True)
     _sezione(doc, 3, [
