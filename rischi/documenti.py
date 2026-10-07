@@ -147,6 +147,11 @@ def _pulito(testo):
 # ---------------------------------------------------------------------------
 
 
+# Margini stretti per far stare più contenuto in ogni pagina.
+MARGINE = 1.5 * cm
+LARGHEZZA = A4[0] - 2 * MARGINE
+
+
 class Pdf:
     """Documento A4 con intestazione BOZZA (se serve) e numero di pagina."""
 
@@ -154,24 +159,24 @@ class Pdf:
         normale, grassetto, _ = _carattere_registrato()
         self.titolo, self.bozza, self.pagina = titolo, bozza, pagina
         self.grassetto = grassetto
-        base = ParagraphStyle("base", fontName=normale, fontSize=12, leading=15.5, spaceAfter=3)
+        base = ParagraphStyle("base", fontName=normale, fontSize=12, leading=14.4, spaceAfter=2)
         self.stili = {
             "base": base,
-            "cella": ParagraphStyle("cella", parent=base, fontSize=12, leading=15, spaceAfter=0),
-            "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, fontSize=12, leading=15,
+            "cella": ParagraphStyle("cella", parent=base, fontSize=12, leading=14.2, spaceAfter=0),
+            "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, fontSize=12, leading=14.2,
                                         textColor=colors.HexColor("#4A5563"), spaceAfter=0),
-            "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceAfter=0),
+            "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=13, leading=15.5, spaceAfter=0),
             "sottotitolo_misure": ParagraphStyle("sottotitolo_misure", parent=base, fontName=grassetto, fontSize=12,
-                                                 leading=15, textColor=colors.HexColor("#4A5563"), spaceBefore=3, spaceAfter=1,
+                                                 leading=14.2, textColor=colors.HexColor("#4A5563"), spaceBefore=1, spaceAfter=0,
                                                  keepWithNext=1),
-            "sezione": ParagraphStyle("sezione", parent=base, fontName=grassetto, fontSize=12, leading=15,
-                                      textColor=colors.HexColor("#2F4A6D"), spaceBefore=6, spaceAfter=2, keepWithNext=1),
+            "sezione": ParagraphStyle("sezione", parent=base, fontName=grassetto, fontSize=12, leading=14.4,
+                                      textColor=colors.HexColor("#2F4A6D"), spaceBefore=4, spaceAfter=1, keepWithNext=1),
             "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=18, leading=22, spaceAfter=8),
             "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=18, leading=22, alignment=TA_CENTER, spaceAfter=4),
             "centro": ParagraphStyle("centro", parent=base, alignment=TA_CENTER),
-            1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=14, leading=17, spaceBefore=10, spaceAfter=5),
-            2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceBefore=8, spaceAfter=4),
-            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=12, leading=15, spaceBefore=8, spaceAfter=3,
+            1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=14, leading=17, spaceBefore=8, spaceAfter=3, keepWithNext=1),
+            2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=13, leading=16, spaceBefore=6, spaceAfter=3, keepWithNext=1),
+            3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=12, leading=14.4, spaceBefore=6, spaceAfter=2,
                               keepWithNext=1),
         }
         self.storia = []
@@ -196,7 +201,7 @@ class Pdf:
         if voci:
             self.storia.append(
                 ListFlowable(
-                    [ListItem(Paragraph(v, self.stili["base"]), leftIndent=12) for v in voci],
+                    [ListItem(Paragraph(v, self.stili["cella"]), leftIndent=12) for v in voci],
                     bulletType="bullet", start="•", leftIndent=12, bulletFontSize=8,
                 )
             )
@@ -206,7 +211,7 @@ class Pdf:
         if voci:
             self.storia.append(
                 ListFlowable(
-                    [ListItem(Paragraph(_pulito(v), self.stili["base"]), leftIndent=12) for v in voci],
+                    [ListItem(Paragraph(_pulito(v), self.stili["cella"]), leftIndent=12) for v in voci],
                     bulletType="bullet", start="•", leftIndent=12, bulletFontSize=8,
                 )
             )
@@ -221,14 +226,14 @@ class Pdf:
     def testata(self, testo, a_destra="", sfondo="#DDE4EE", stile="testata"):
         """Fascia a tutta larghezza: titolo a sinistra, codice a destra."""
         destra = ParagraphStyle("destra", parent=self.stili[stile], alignment=TA_RIGHT)
-        larghezza = A4[0] - 4 * cm
+        larghezza = LARGHEZZA
         tabella = Table(
             [[Paragraph(_pulito(testo), self.stili[stile]), Paragraph(_pulito(a_destra), destra)]],
             colWidths=[larghezza - 3 * cm, 3 * cm],
         )
         stile_tabella = [
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
         ]
         if sfondo:
             stile_tabella += [
@@ -239,7 +244,7 @@ class Pdf:
             stile_tabella.append(("LEFTPADDING", (0, 0), (0, -1), 0))
         tabella.setStyle(TableStyle(stile_tabella))
         self.storia.append(tabella)
-        self.spazio(1.5)
+        self.spazio(0.5)
 
     def dettagli(self, righe):
         """Coppie etichetta/valore in due colonne; le righe senza valore non compaiono."""
@@ -249,26 +254,25 @@ class Pdf:
         ]
         if not dati:
             return
-        tabella = Table(dati, colWidths=[5.2 * cm, A4[0] - 4 * cm - 5.2 * cm], hAlign="LEFT")
+        tabella = Table(dati, colWidths=[5.2 * cm, LARGHEZZA - 5.2 * cm], hAlign="LEFT")
         tabella.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+            ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
             ("LEFTPADDING", (0, 0), (0, -1), 0),
             ("LINEBELOW", (0, 0), (-1, -2), 0.25, colors.HexColor("#D5DAE1")),
         ]))
         self.storia.append(tabella)
-        self.spazio(2)
+        self.spazio(1)
 
-    def riquadro(self, titolo, testo, colore="#F3F4F6"):
-        contenuto = Paragraph(f"<b>{_pulito(titolo)}</b><br/>{_pulito(testo)}", self.stili["cella"])
-        tabella = Table([[contenuto]], colWidths=[A4[0] - 4 * cm])
+    def riquadro(self, testo, colore="#F3F4F6"):
+        tabella = Table([[Paragraph(_pulito(testo), self.stili["cella"])]], colWidths=[LARGHEZZA])
         tabella.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(colore)),
             ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#9AA3AE")),
-            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
         self.storia.append(tabella)
-        self.spazio(2)
+        self.spazio(1)
 
     def spazio(self, altezza=4):
         self.storia.append(Spacer(1, altezza * mm))
@@ -283,12 +287,12 @@ class Pdf:
             [v if isinstance(v, Paragraph) else Paragraph(_pulito("" if v is None else v), cella) for v in riga]
             for riga in righe
         ]
-        larghezza_utile = A4[0] - 4 * cm
+        larghezza_utile = LARGHEZZA
         if larghezze:
             totale = sum(larghezze)
             larghezze = [larghezza_utile * l / totale for l in larghezze]
         tabella = Table(dati, colWidths=larghezze, repeatRows=1 if intestazioni else 0, hAlign="LEFT")
-        stile = [("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]
+        stile = [("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]
         if bordo:
             stile.append(("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#9AA3AE")))
         if intestazioni:
@@ -297,7 +301,7 @@ class Pdf:
             stile.append(("BACKGROUND", (colonna, riga), (colonna, riga), colors.HexColor(colore)))
         tabella.setStyle(TableStyle(stile))
         self.storia.append(tabella)
-        self.spazio(2)
+        self.spazio(1)
         return tabella
 
     def insieme(self, *contenuti):
@@ -315,17 +319,17 @@ class Pdf:
         if self.bozza:
             canvas.setFont(self.grassetto, 10)
             canvas.setFillColor(colors.HexColor("#B3261E"))
-            canvas.drawCentredString(larghezza / 2, altezza - 1.1 * cm, self.bozza)
+            canvas.drawCentredString(larghezza / 2, altezza - 0.8 * cm, self.bozza)
         canvas.setFont(_carattere_registrato()[0], 7.5)
         canvas.setFillColor(colors.HexColor("#5F6B7A"))
-        canvas.drawString(2 * cm, 1.1 * cm, self.titolo)
-        canvas.drawRightString(larghezza - 2 * cm, 1.1 * cm, f"{self.pagina} {doc.page}")
+        canvas.drawString(MARGINE, 0.7 * cm, self.titolo)
+        canvas.drawRightString(larghezza - MARGINE, 0.7 * cm, f"{self.pagina} {doc.page}")
         canvas.restoreState()
 
     def salva(self):
         buffer = io.BytesIO()
         documento = SimpleDocTemplate(
-            buffer, pagesize=A4, leftMargin=2 * cm, rightMargin=2 * cm, topMargin=1.8 * cm, bottomMargin=1.8 * cm,
+            buffer, pagesize=A4, leftMargin=MARGINE, rightMargin=MARGINE, topMargin=1.2 * cm, bottomMargin=1.2 * cm,
             title=self.titolo, author="Cosmap – Analisi dei rischi",
         )
         documento.build(self.storia, onFirstPage=self._pagina, onLaterPages=self._pagina)
@@ -491,11 +495,13 @@ def _tabella_stima(doc, scheda, descrizioni, quale):
         [f"{fattore} – {NOMI_FATTORI[fattore]}", _cella_valore(doc, descrizioni, fattore, getattr(scheda, f"{fattore.lower()}_{quale}"))]
         for fattore in FATTORI
     ]
-    righe.append(["Cl = Fr + Pr + Av", _valore({}, "", getattr(scheda, f"cl_{quale}"))])
     esito = getattr(scheda, f"esito_{quale}")
-    righe.append(["Esito", ESITI_TESTO.get(esito, "–")])
-    sfondi = {(1, len(righe)): ESITI_COLORE[esito]} if esito else {}
-    doc.tabella(["Fattore", "Valore"], righe, [4.2, 12.8], sfondi)
+    righe.append([
+        f"Cl = Fr + Pr + Av = {_valore({}, '', getattr(scheda, f'cl_{quale}'))}",
+        Paragraph(f"<b>Esito:</b> {_pulito(ESITI_TESTO.get(esito, '–'))}", doc.stili["cella"]),
+    ])
+    sfondi = {(1, len(righe) - 1): ESITI_COLORE[esito]} if esito else {}
+    doc.tabella(None, righe, [7.2, 10.8], sfondi)
 
 
 def _riepilogo(doc, schede):
@@ -559,7 +565,12 @@ def _elenco_norme(norme):
 
 def _scheda(doc, s, descrizioni):
     doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice)
+    testata = doc.storia[-2:]
+    del doc.storia[-2:]
     _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note), ("Norme", _elenco_norme(s.norme.all()))])
+    # La testata non resta sola in fondo alla pagina: va con la sezione 1 (un KeepTogether annidato
+    # forzerebbe sempre il salto pagina, quindi si uniscono i contenuti).
+    doc.storia.append(KeepTogether(testata + doc.storia.pop()._content))
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
              s.considerazioni_pericoli, considerazioni_prima=True)
     _sezione(doc, 3, [
@@ -586,11 +597,10 @@ def _scheda(doc, s, descrizioni):
     if s.testo_istruzioni:
         da_segnalare = s.esito_finale and s.esito_finale != Esito.OK
         _sezione(doc, 8, contenuto=lambda: doc.riquadro(
-            "Informazioni per le istruzioni / rischio residuo",
             s.testo_istruzioni,
             ESITI_COLORE[Esito.SUGGERITE] if da_segnalare else "#F3F4F6",
         ))
-    doc.spazio(5)
+    doc.spazio(4)
 
 
 def valutazione(revisione):
@@ -640,7 +650,7 @@ def valutazione(revisione):
                 [f.get_tipo_display(), f.nome, descrizioni_figure.get(f.pk) or f.descrizione]
                 for f in sorted(figure_usate, key=lambda f: (f.ordine, f.nome))
             ],
-            [5, 4, 8],
+            [5.7, 4.3, 8],
         )
     else:
         doc.p("Soggetti non ancora indicati.")
@@ -683,12 +693,12 @@ def valutazione(revisione):
     doc.titoletto("Riepilogo delle schede")
     _riepilogo(doc, schede)
 
+    # Le schede si susseguono senza salto pagina: ogni sezione resta intera e il titolo del modulo
+    # e la testata della scheda non restano soli in fondo alla pagina.
+    doc.nuova_pagina()
     for modulo, gruppo in groupby(schede, key=lambda s: s.modulo):
-        doc.nuova_pagina()
         doc.titoletto(f"Modulo: {modulo.nome}" + (f" ({modulo.sigla})" if modulo.sigla else ""))
-        for numero, s in enumerate(gruppo):
-            if numero:
-                doc.nuova_pagina()
+        for s in gruppo:
             _scheda(doc, s, descrizioni)
 
     scartate = revisione.schede.filter(decisione=SchedaAnalisi.Decisione.SCARTATA).select_related("requisito")
