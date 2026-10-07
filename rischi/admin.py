@@ -4,7 +4,19 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from . import models as m
-from .forms import CAMPI_CONSIDERAZIONI, VALORI_AV, VALORI_FR, VALORI_PR, VALORI_SE, _scelta, descrivi_fattori
+from .forms import (
+    CAMPI_CONSIDERAZIONI,
+    CAMPI_NORME,
+    NUMERO_NORME,
+    VALORI_AV,
+    VALORI_FR,
+    VALORI_PR,
+    VALORI_SE,
+    NormeSchedaMixin,
+    _campo_norma,
+    _scelta,
+    descrivi_fattori,
+)
 
 
 class MisuraModelloInline(admin.StackedInline):
@@ -13,7 +25,7 @@ class MisuraModelloInline(admin.StackedInline):
     verbose_name_plural = "Misure di protezione"
 
 
-class SchedaModelloForm(forms.ModelForm):
+class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
     se_iniziale = _scelta(VALORI_SE)
     fr_iniziale = _scelta(VALORI_FR)
     pr_iniziale = _scelta(VALORI_PR)
@@ -22,6 +34,7 @@ class SchedaModelloForm(forms.ModelForm):
     fr_finale = _scelta(VALORI_FR)
     pr_finale = _scelta(VALORI_PR)
     av_finale = _scelta(VALORI_AV)
+    norma_1, norma_2, norma_3, norma_4, norma_5 = (_campo_norma(i) for i in range(1, NUMERO_NORME + 1))
 
     class Meta:
         model = m.SchedaModello
@@ -35,6 +48,7 @@ class SchedaModelloForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         descrivi_fattori(self.fields, m.MetodoStima.corrente())
+        self._prepara_norme()
 
     def clean(self):
         dati = super().clean()
@@ -60,7 +74,7 @@ class SchedaModelloAdmin(admin.ModelAdmin):
     # in fondo alla sezione 6, dopo le considerazioni (vedi admin/rischi/schedamodello/change_form.html).
     fieldsets = (
         ("1. IDENTIFICAZIONE SCHEDA MODELLO", {
-            "fields": ("codice", "modulo", "requisito", "stato", "scheda_originale", "note"),
+            "fields": ("codice", "modulo", "requisito", "stato", "scheda_originale", "note", *CAMPI_NORME),
         }),
         ("2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)", {
             "fields": ("considerazioni_pericoli", "pericoli"),

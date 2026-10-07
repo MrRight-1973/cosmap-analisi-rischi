@@ -555,7 +555,10 @@ def _misure(doc, misure):
 
 def _scheda(doc, s, descrizioni):
     doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice)
-    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note)])
+    norme = "\n".join(
+        f"{_edizione(n)} – {n.titolo}" if n.titolo else _edizione(n) for n in s.norme.order_by("codice")
+    )
+    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note), ("Norme", norme)])
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
              s.considerazioni_pericoli, considerazioni_prima=True)
     _sezione(doc, 3, [
