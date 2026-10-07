@@ -20,13 +20,13 @@ DEBUG = _env_bool("DJANGO_DEBUG", True)
 ALLOWED_HOSTS = [h for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h]
 
 INSTALLED_APPS = [
+    "rischi",  # prima dell'amministrazione: rischi/templates/admin/base_site.html sostituisce l'intestazione
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "rischi",
 ]
 
 MIDDLEWARE = [

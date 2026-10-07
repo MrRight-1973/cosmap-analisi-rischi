@@ -9,7 +9,7 @@
 {% for v in voci %}
 <tr>
   <td>{{ v.quando|date:"d/m/Y H:i" }}</td>
-  <td>{{ v.utente.get_full_name|default:v.utente.username|default:"sistema" }}</td>
+  <td>{% if v.utente %}{{ v.utente.get_full_name|default:v.utente.username }}{% else %}sistema{% endif %}</td>
   <td>{{ v.get_azione_display }}</td>
   <td>{{ v.tabella }}: {{ v.descrizione }}</td>
   <td class="modifiche">{% for campo, valori in v.modifiche.items %}<div><strong>{{ campo }}</strong>: {{ valori.0|default:"–"|truncatechars:60 }} → {{ valori.1|default:"–"|truncatechars:60 }}</div>{% endfor %}</td>

@@ -253,7 +253,13 @@ class PagineTest(BaseConLibreria):
         self.assertEqual(
             self.client.get(reverse("applicabilita", args=[analisi.revisione_corrente.pk])).status_code, 200
         )
-        self.assertEqual(self.client.get(reverse("registro")).status_code, 200)
+        # Le modifiche fatte senza utente (importazioni, comandi) compaiono come "sistema"
+        from .models import RegistroModifica
+
+        RegistroModifica.objects.create(
+            azione=RegistroModifica.Azione.choices[0][0], tabella="prova", oggetto_id="1", descrizione="importazione"
+        )
+        self.assertContains(self.client.get(reverse("registro")), "sistema")
 
     def test_modifica_scheda_da_form(self):
         self.client.force_login(self.compilatore)
