@@ -848,8 +848,8 @@ class LibreriaAmministrazioneTest(TestCase):
         self.assertEqual(codici, [f"UPP-{n:02d}" for n in range(1, len(codici) + 1)])
 
 
-class AggiornaSchedaModelloTest(TestCase):
-    """Dalla scheda della commessa si riportano le variazioni nella scheda modello della libreria."""
+class AggiornaDaModelloTest(TestCase):
+    """La scheda della commessa si ricarica dalla scheda modello aggiornata in libreria."""
 
     @classmethod
     def setUpTestData(cls):
@@ -864,38 +864,42 @@ class AggiornaSchedaModelloTest(TestCase):
         cls.macchina.moduli.set(servizi.moduli_proposti() | Modulo.objects.filter(sigla="TAV"))
         cls.analisi = servizi.crea_analisi_da_libreria(cls.macchina, cls.compilatore)
 
-    def test_aggiorna_la_scheda_modello(self):
-        from .models import MisuraAnalisi, Norma
+    def test_aggiorna_la_scheda_dal_modello(self):
+        from .models import MisuraModello, Norma
 
         scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-01")
         modello = scheda.origine
-        scheda.zona_pericolosa = "Zona aggiornata in commessa"
-        scheda.considerazioni_riduzione = "Considerazione nuova"
-        scheda.save()
+        modello.zona_pericolosa = "Zona aggiornata in libreria"
+        modello.considerazioni_riduzione = "Considerazione nuova"
+        modello.save()
         norma = Norma.objects.create(codice="EN ISO 77777")
-        scheda.norme.set([norma])
-        scheda.misure.all().delete()
-        MisuraAnalisi.objects.create(scheda=scheda, ordine=1, tipo="PROT", testo="Riparo nuovo", norma=norma)
+        modello.norme.set([norma])
+        modello.misure.all().delete()
+        MisuraModello.objects.create(scheda=modello, ordine=1, tipo="PROT", testo="Riparo nuovo", norma=norma)
+        scheda.zona_impianto = "Modifica fatta in commessa"
+        scheda.save()
 
-        url = reverse("aggiorna_modello", args=[scheda.pk])
-        # Senza il permesso sulla libreria non cambia nulla
-        self.client.force_login(self.compilatore)
-        self.assertNotContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Aggiorna la scheda modello")
+        url = reverse("aggiorna_da_modello", args=[scheda.pk])
+        # Senza il ruolo di compilatore non cambia nulla
+        altro = User.objects.create_user("ospite", password="prova-prova-123")
+        self.client.force_login(altro)
+        self.assertNotContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Aggiorna dalla scheda modello")
         self.client.post(url)
-        modello.refresh_from_db()
-        self.assertNotEqual(modello.zona_pericolosa, "Zona aggiornata in commessa")
+        scheda.refresh_from_db()
+        self.assertNotEqual(scheda.zona_pericolosa, "Zona aggiornata in libreria")
 
-        self.client.force_login(self.capo)
-        self.assertContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Aggiorna la scheda modello TAV-01")
+        self.client.force_login(self.compilatore)
+        self.assertContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Aggiorna dalla scheda modello TAV-01")
         self.assertRedirects(self.client.post(url), reverse("scheda", args=[scheda.pk]))
-        modello.refresh_from_db()
-        self.assertEqual(modello.codice, "TAV-01")
-        self.assertEqual(modello.zona_pericolosa, "Zona aggiornata in commessa")
-        self.assertEqual(modello.considerazioni_riduzione, "Considerazione nuova")
-        self.assertEqual(list(modello.norme.all()), [norma])
-        self.assertEqual([(m.testo, m.norma) for m in modello.misure.all()], [("Riparo nuovo", norma)])
+        scheda.refresh_from_db()
+        self.assertEqual(scheda.codice, "TAV-01")
+        self.assertEqual(scheda.zona_pericolosa, "Zona aggiornata in libreria")
+        self.assertEqual(scheda.zona_impianto, modello.zona_impianto)
+        self.assertEqual(scheda.considerazioni_riduzione, "Considerazione nuova")
+        self.assertEqual(list(scheda.norme.all()), [norma])
+        self.assertEqual([(m.testo, m.norma) for m in scheda.misure.all()], [("Riparo nuovo", norma)])
 
-    def test_scheda_aggiunta_a_mano_crea_la_scheda_modello(self):
+    def test_scheda_aggiunta_a_mano_senza_pulsante(self):
         from .models import RequisitoRESS
 
         rev = self.analisi.revisione_corrente
@@ -903,11 +907,8 @@ class AggiornaSchedaModelloTest(TestCase):
             revisione=rev, modulo=Modulo.objects.get(sigla="TAV"), requisito=RequisitoRESS.objects.get(codice="1.1.6"),
             codice="TAV-90", decisione=SchedaAnalisi.Decisione.AGGIUNTA, zona_impianto="Tavola",
         )
-        self.client.force_login(self.capo)
-        self.assertContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Crea la scheda modello")
-        prima = SchedaModello.objects.count()
-        self.client.post(reverse("aggiorna_modello", args=[scheda.pk]))
+        self.client.force_login(self.compilatore)
+        self.assertNotContains(self.client.get(reverse("scheda", args=[scheda.pk])), "Aggiorna dalla scheda modello")
+        self.client.post(reverse("aggiorna_da_modello", args=[scheda.pk]))
         scheda.refresh_from_db()
-        self.assertEqual(SchedaModello.objects.count(), prima + 1)
-        self.assertEqual(scheda.origine.zona_impianto, "Tavola")
-        self.assertEqual(scheda.origine.codice, "TAV-06")
+        self.assertEqual(scheda.zona_impianto, "Tavola")

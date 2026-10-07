@@ -16,7 +16,6 @@ from .models import (
     FiguraMacchina,
     MetodoStima,
     MisuraAnalisi,
-    MisuraModello,
     Modulo,
     RequisitoRESS,
     Revisione,
@@ -103,39 +102,32 @@ def _copia_scheda(sorgente, revisione, **extra):
     return nuova
 
 
-def puo_aggiornare_libreria(utente):
-    return utente.has_perm("rischi.change_schedamodello") and utente.has_perm("rischi.add_schedamodello")
-
-
 @transaction.atomic
-def aggiorna_scheda_modello(scheda, utente):
-    """Riporta nella libreria il contenuto di una scheda della commessa.
+def aggiorna_da_modello(scheda, utente):
+    """Ricarica nella scheda della commessa il contenuto attuale della sua scheda modello in libreria.
 
-    Se la scheda viene da una scheda modello, la aggiorna (modulo, requisito e codice restano quelli della
-    libreria); se è stata aggiunta a mano, crea una nuova scheda modello e la collega. Restituisce
-    (scheda modello, creata)."""
-    if not puo_aggiornare_libreria(utente):
-        raise PermissionDenied("Per aggiornare la libreria serve il permesso di modifica delle schede modello.")
+    Zone, condizioni, pericoli, soggetti, stime, misure, norme, note e considerazioni sono sostituiti da quelli
+    della scheda modello; modulo, requisito, codice e decisione della scheda restano invariati."""
+    richiedi_ruolo(utente, COMPILATORE)
+    if not scheda.revisione.modificabile:
+        raise ValidationError("La scheda si aggiorna solo con una revisione in bozza.")
     modello = scheda.origine
-    creata = modello is None
-    if creata:
-        modello = SchedaModello(modulo=scheda.modulo, requisito=scheda.requisito)
+    if modello is None:
+        raise ValidationError("La scheda è stata aggiunta a mano e non ha una scheda modello.")
     for campo in _CAMPI_STIMA:
-        setattr(modello, campo, getattr(scheda, campo))
-    modello.save()
-    modello.condizioni.set(scheda.condizioni.all())
-    modello.pericoli.set(scheda.pericoli.all())
-    modello.norme.set(scheda.norme.all())
-    modello.soggetti.set(scheda.soggetti.all())
-    modello.misure.all().delete()
-    for misura in scheda.misure.all():
-        MisuraModello.objects.create(
-            scheda=modello, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma
+        setattr(scheda, campo, getattr(modello, campo))
+    scheda.save()
+    scheda.condizioni.set(modello.condizioni.all())
+    scheda.pericoli.set(modello.pericoli.all())
+    scheda.norme.set(modello.norme.all())
+    scheda.soggetti.set(modello.soggetti.all())
+    scheda.misure.all().delete()
+    for misura in modello.misure.all():
+        MisuraAnalisi.objects.create(
+            scheda=scheda, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma
         )
-    if creata:
-        scheda.origine = modello
-        scheda.save(update_fields=["origine"])
-    return modello, creata
+    allinea_figure(scheda.revisione.analisi.macchina, scheda.revisione)
+    return modello
 
 
 def allinea_figure(macchina, revisione, descrizioni=None):

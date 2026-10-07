@@ -228,7 +228,6 @@ def _salva_scheda(request, scheda, revisione, nuova):
         "rischi/scheda.html",
         {
             "form": form, "misure": misure, "scheda": scheda, "revisione": revisione, "modificabile": modificabile,
-            "puo_libreria": servizi.puo_aggiornare_libreria(request.user),
         },
     )
 
@@ -259,18 +258,15 @@ def decisione_rapida(request, pk):
 
 @login_required
 @require_POST
-def aggiorna_modello(request, pk):
-    """Riporta nella scheda modello della libreria le variazioni fatte nella scheda della commessa."""
-    scheda = get_object_or_404(SchedaAnalisi, pk=pk)
+def aggiorna_da_modello(request, pk):
+    """Ricarica nella scheda della commessa il contenuto della scheda modello in libreria."""
+    scheda = get_object_or_404(SchedaAnalisi.objects.select_related("revisione__analisi"), pk=pk)
     try:
-        modello, creata = servizi.aggiorna_scheda_modello(scheda, request.user)
+        modello = servizi.aggiorna_da_modello(scheda, request.user)
     except (PermissionDenied, ValidationError) as e:
         _errore(request, e)
     else:
-        if creata:
-            messages.success(request, f"Creata nella libreria la scheda modello {modello.codice}.")
-        else:
-            messages.success(request, f"Scheda modello {modello.codice} aggiornata con il contenuto di questa scheda.")
+        messages.success(request, f"Scheda aggiornata con il contenuto della scheda modello {modello.codice}.")
     return redirect("scheda", pk=scheda.pk)
 
 
