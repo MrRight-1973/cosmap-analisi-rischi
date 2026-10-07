@@ -7,20 +7,31 @@
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
 <form method="post" class="modulo">{% csrf_token %}
 {{ form.non_field_errors }}
-<fieldset><legend>Identificazione</legend>
+<fieldset><legend>1. Identificazione scheda</legend>
   {% include "rischi/_campo.html" with f=form.modulo %}
   {% include "rischi/_campo.html" with f=form.requisito %}
+  {% include "rischi/_campo.html" with f=form.note %}
+</fieldset>
+<fieldset><legend>2. Determinazione dei limiti (zona pericolosa RESS 1.1.1 b)</legend>
   {% include "rischi/_campo.html" with f=form.zona_impianto %}
   {% include "rischi/_campo.html" with f=form.zona_pericolosa %}
   {% include "rischi/_campo.html" with f=form.condizioni %}
-  {% include "rischi/_campo.html" with f=form.pericoli %}
-  {% include "rischi/_campo.html" with f=form.soggetti %}
+  {% include "rischi/_campo.html" with f=form.considerazioni_limiti %}
 </fieldset>
-<fieldset><legend>Stima iniziale del rischio (RESS 1.1.1 e)</legend>
+<fieldset><legend>3. Identificazione del pericolo (RESS 1.1.1 a)</legend>
+  {% include "rischi/_campo.html" with f=form.pericoli %}
+  {% include "rischi/_campo.html" with f=form.considerazioni_pericoli %}
+</fieldset>
+<fieldset><legend>4. Identificazione dei soggetti esposti (RESS 1.1.1 c, d)</legend>
+  {% include "rischi/_campo.html" with f=form.soggetti %}
+  {% include "rischi/_campo.html" with f=form.considerazioni_soggetti %}
+</fieldset>
+<fieldset><legend>5. Stima iniziale del rischio (RESS 1.1.1 e)</legend>
   <div class="stime fattori">{% include "rischi/_campo.html" with f=form.se_iniziale %}{% include "rischi/_campo.html" with f=form.fr_iniziale %}{% include "rischi/_campo.html" with f=form.pr_iniziale %}{% include "rischi/_campo.html" with f=form.av_iniziale %}</div>
   {% if scheda.pk %}<p class="sotto">Cl = Fr + Pr + Av = {{ scheda.cl_iniziale|default:"–" }} · esito: {% esito scheda.se_iniziale scheda.cl_iniziale scheda.esito_iniziale %}</p>{% endif %}
+  {% include "rischi/_campo.html" with f=form.considerazioni_stima_iniziale %}
 </fieldset>
-<fieldset><legend>Misure di protezione (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)</legend>
+<fieldset><legend>6. Riduzione del rischio (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)</legend>
   {{ misure.management_form }}
   {% for mf in misure %}
   <div class="misura">{{ mf.id }}
@@ -28,13 +39,16 @@
     {% include "rischi/_campo.html" with f=mf.testo %}
   </div>
   {% endfor %}
+  {% include "rischi/_campo.html" with f=form.norme %}
+  {% include "rischi/_campo.html" with f=form.considerazioni_riduzione %}
 </fieldset>
-<fieldset><legend>Stima finale del rischio (RESS 1.1.1 e)</legend>
+<fieldset><legend>7. Stima finale del rischio (RESS 1.1.1 e)</legend>
   <div class="stime fattori">{% include "rischi/_campo.html" with f=form.se_finale %}{% include "rischi/_campo.html" with f=form.fr_finale %}{% include "rischi/_campo.html" with f=form.pr_finale %}{% include "rischi/_campo.html" with f=form.av_finale %}</div>
   {% if scheda.pk %}<p class="sotto">Cl = Fr + Pr + Av = {{ scheda.cl_finale|default:"–" }} · esito: {% esito scheda.se_finale scheda.cl_finale scheda.esito_finale %}</p>{% endif %}
+  {% include "rischi/_campo.html" with f=form.considerazioni_stima_finale %}
+</fieldset>
+<fieldset><legend>8. Valutazione del rischio residuo</legend>
   {% include "rischi/_campo.html" with f=form.testo_istruzioni %}
-  {% include "rischi/_campo.html" with f=form.norme %}
-  {% include "rischi/_campo.html" with f=form.note %}
 </fieldset>
 <fieldset><legend>Decisione del tecnico</legend>
   {% include "rischi/_campo.html" with f=form.decisione %}

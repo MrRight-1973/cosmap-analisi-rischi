@@ -71,6 +71,12 @@ _CAMPI_STIMA = (
     "av_finale",
     "testo_istruzioni",
     "note",
+    "considerazioni_limiti",
+    "considerazioni_pericoli",
+    "considerazioni_soggetti",
+    "considerazioni_stima_iniziale",
+    "considerazioni_riduzione",
+    "considerazioni_stima_finale",
 )
 
 
