@@ -10,7 +10,7 @@ from .forms import CAMPI_CONSIDERAZIONI, VALORI_AV, VALORI_FR, VALORI_PR, VALORI
 class MisuraModelloInline(admin.StackedInline):
     model = m.MisuraModello
     extra = 0
-    verbose_name_plural = "6. Misure di protezione"
+    verbose_name_plural = "6. MISURE DI PROTEZIONE"
 
 
 class SchedaModelloForm(forms.ModelForm):
@@ -50,36 +50,39 @@ class SchedaModelloAdmin(admin.ModelAdmin):
     list_display = ("codice", "modulo", "requisito", "zona_impianto", "stato")
     list_filter = ("modulo", "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
-    filter_horizontal = ("pericoli", "norme")
+    filter_horizontal = ("pericoli",)
     readonly_fields = ("codice", "calcolo_iniziale", "calcolo_finale")
     inlines = [MisuraModelloInline]
+
+    class Media:
+        css = {"all": ("rischi/admin_scheda.css",)}
     # Sezioni in sequenza EN ISO 12100, come la scheda nell'analisi; le misure di protezione stanno
     # dentro la sezione 6 (vedi admin/rischi/schedamodello/change_form.html).
     fieldsets = (
-        ("1. Identificazione scheda modello", {
+        ("1. IDENTIFICAZIONE SCHEDA MODELLO", {
             "fields": ("codice", "modulo", "requisito", "stato", "scheda_originale", "note"),
         }),
-        ("2. Determinazione dei limiti (zona pericolosa RESS 1.1.1 b)", {
+        ("2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)", {
             "fields": ("zona_impianto", "zona_pericolosa", "condizioni", "considerazioni_limiti"),
         }),
-        ("3. Identificazione del pericolo (RESS 1.1.1 a)", {
+        ("3. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)", {
             "fields": ("pericoli", "considerazioni_pericoli"),
         }),
-        ("4. Identificazione dei soggetti esposti (RESS 1.1.1 c, d)", {
+        ("4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)", {
             "fields": ("soggetti", "considerazioni_soggetti"),
         }),
-        ("5. Stima iniziale del rischio (RESS 1.1.1 e)", {
+        ("5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)", {
             "fields": (("se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale"), "calcolo_iniziale",
                        "considerazioni_stima_iniziale"),
         }),
-        ("6. Riduzione del rischio (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)", {
-            "fields": ("considerazioni_riduzione", "norme"),
+        ("6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)", {
+            "fields": ("considerazioni_riduzione",),
         }),
-        ("7. Stima finale del rischio (RESS 1.1.1 e)", {
+        ("7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)", {
             "fields": (("se_finale", "fr_finale", "pr_finale", "av_finale"), "calcolo_finale",
                        "considerazioni_stima_finale"),
         }),
-        ("8. Valutazione del rischio residuo", {
+        ("8. VALUTAZIONE DEL RISCHIO RESIDUO (RESS 1.1.2 c)", {
             "fields": ("testo_istruzioni",),
         }),
     )

@@ -287,7 +287,7 @@ class Stima(models.Model):
     """Campi comuni a scheda modello e scheda dell'analisi."""
 
     zona_impianto = models.CharField(max_length=60, blank=True)
-    zona_pericolosa = models.TextField("zona pericolosa (RESS 1.1.1 b)", blank=True)
+    zona_pericolosa = models.TextField("zona pericolosa", blank=True)
     se_iniziale = models.PositiveSmallIntegerField("Se iniziale", null=True, blank=True)
     fr_iniziale = models.PositiveSmallIntegerField("Fr iniziale", null=True, blank=True)
     pr_iniziale = models.PositiveSmallIntegerField("Pr iniziale", null=True, blank=True)
@@ -352,9 +352,9 @@ class SchedaModello(Stima):
     modulo = models.ForeignKey(Modulo, on_delete=models.PROTECT, related_name="schede")
     requisito = models.ForeignKey(RequisitoRESS, on_delete=models.PROTECT, related_name="schede_modello")
     condizioni = models.ManyToManyField(CondizioneOperativa, blank=True)
-    pericoli = models.ManyToManyField(Pericolo, blank=True, verbose_name="pericoli (RESS 1.1.1 a)")
+    pericoli = models.ManyToManyField(Pericolo, blank=True, verbose_name="pericoli")
     norme = models.ManyToManyField(Norma, blank=True)
-    soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti (RESS 1.1.1 c, d)")
+    soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti")
     scheda_originale = models.CharField(max_length=40, blank=True, help_text="Riferimento alla valutazione di origine.")
     stato = models.CharField(max_length=10, choices=Stato.choices, default=Stato.BOZZA)
 
@@ -642,9 +642,9 @@ class SchedaAnalisi(ContenutoRevisione, Stima):
     modulo = models.ForeignKey(Modulo, on_delete=models.PROTECT)
     requisito = models.ForeignKey(RequisitoRESS, on_delete=models.PROTECT)
     condizioni = models.ManyToManyField(CondizioneOperativa, blank=True)
-    pericoli = models.ManyToManyField(Pericolo, blank=True, verbose_name="pericoli (RESS 1.1.1 a)")
+    pericoli = models.ManyToManyField(Pericolo, blank=True, verbose_name="pericoli")
     norme = models.ManyToManyField(Norma, blank=True)
-    soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti (RESS 1.1.1 c, d)")
+    soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti")
     decisione = models.CharField(max_length=10, choices=Decisione.choices, default=Decisione.PROPOSTA)
     motivazione = models.TextField(blank=True)
     decisa_da = models.ForeignKey(

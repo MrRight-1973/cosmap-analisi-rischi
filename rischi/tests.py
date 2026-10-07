@@ -586,6 +586,22 @@ class SoggettiEspostiTest(TestCase):
         self.assertIn("Mulettista che transita nella corsia adiacente", testo)
         self.assertIn("Persona esposta (RESS 1.1.1 c)", testo)
 
+    def test_considerazioni_nel_pdf(self):
+        from . import documenti
+
+        scheda = self.analisi.revisione_corrente.schede.get(codice="TAV-01")
+        scheda.considerazioni_limiti = "Zona di carico raggiungibile dal lato operatore"
+        scheda.considerazioni_riduzione = "Riparo fisso scelto per la frequenza bassa di accesso"
+        scheda.save()
+        testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
+        self.assertIn("Zona di carico raggiungibile dal lato operatore", testo)
+        self.assertIn("Riparo fisso scelto per la frequenza bassa di accesso", testo)
+        self.assertIn("2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)", testo)
+        # Le considerazioni stanno nella loro sezione, prima della sezione successiva della stessa scheda
+        posizione = testo.index("Zona di carico raggiungibile")
+        self.assertLess(testo.rindex("2. DETERMINAZIONE DEI LIMITI", 0, posizione), posizione)
+        self.assertLess(posizione, testo.index("Riparo fisso scelto", posizione))
+
     def test_completa_soggetti_nelle_bozze(self):
         rev = self.analisi.revisione_corrente
         for scheda in rev.schede.all():
@@ -727,21 +743,25 @@ class LibreriaAmministrazioneTest(TestCase):
         scheda = SchedaModello.objects.get(codice="TAV-01")
         pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
         titoli = [
-            "1. Identificazione scheda modello",
-            "2. Determinazione dei limiti",
-            "3. Identificazione del pericolo",
-            "4. Identificazione dei soggetti esposti",
-            "5. Stima iniziale del rischio",
-            "6. Riduzione del rischio",
-            "6. Misure di protezione",
-            "7. Stima finale del rischio",
-            "8. Valutazione del rischio residuo",
+            "1. IDENTIFICAZIONE SCHEDA MODELLO",
+            "2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
+            "3. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
+            "4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)",
+            "5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)",
+            "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)",
+            "6. MISURE DI PROTEZIONE",
+            "7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)",
+            "8. VALUTAZIONE DEL RISCHIO RESIDUO (RESS 1.1.2 c)",
         ]
         posizioni = [pagina.index(t) for t in titoli]
         self.assertEqual(posizioni, sorted(posizioni))
         self.assertIn('type="checkbox" name="condizioni"', pagina)
         self.assertIn('type="checkbox" name="soggetti"', pagina)
         self.assertEqual(pagina.count('name="considerazioni_'), 6)
+        # Riferimenti al RESS solo nei titoli delle sezioni; le norme si leggono dalle misure
+        self.assertNotIn("(RESS 1.1.1 a)</label>", pagina)
+        self.assertNotIn('name="norme"', pagina)
+        self.assertIn("rischi/admin_scheda.css", pagina)
 
     def test_scheda_modello_mostra_cl_ed_esito(self):
         self.client.force_login(self.capo)

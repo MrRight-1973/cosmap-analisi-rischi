@@ -164,6 +164,8 @@ class Pdf:
             "sottotitolo_misure": ParagraphStyle("sottotitolo_misure", parent=base, fontName=grassetto, fontSize=9,
                                                  leading=12, textColor=colors.HexColor("#4A5563"), spaceBefore=3, spaceAfter=1,
                                                  keepWithNext=1),
+            "sezione": ParagraphStyle("sezione", parent=base, fontName=grassetto, fontSize=8.5, leading=11,
+                                      textColor=colors.HexColor("#2F4A6D"), spaceBefore=4, spaceAfter=2, keepWithNext=1),
             "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=17, leading=21, spaceAfter=8),
             "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=16, leading=20, alignment=TA_CENTER, spaceAfter=4),
             "centro": ParagraphStyle("centro", parent=base, alignment=TA_CENTER),
@@ -478,24 +480,22 @@ NOMI_FATTORI = {
 }
 TIPI_MISURA = [
     ("PROG", "Progettazione intrinsecamente sicura"),
-    ("PROT", "Protezione e misure complementari (ripari RESS 1.1.1 f, dispositivi di protezione 1.1.1 g)"),
+    ("PROT", "Protezione e misure complementari (ripari e dispositivi di protezione)"),
     ("INFO", "Informazioni per l'uso"),
     ("DACL", "Da classificare"),
 ]
 
 
-def _tabella_stima(doc, scheda, descrizioni):
+def _tabella_stima(doc, scheda, descrizioni, quale):
     righe = [
-        [f"{fattore} – {NOMI_FATTORI[fattore]}"]
-        + [_cella_valore(doc, descrizioni, fattore, getattr(scheda, f"{fattore.lower()}_{quale}")) for quale in ("iniziale", "finale")]
+        [f"{fattore} – {NOMI_FATTORI[fattore]}", _cella_valore(doc, descrizioni, fattore, getattr(scheda, f"{fattore.lower()}_{quale}"))]
         for fattore in FATTORI
     ]
-    righe.append(["Cl"] + [_valore({}, "", getattr(scheda, f"cl_{quale}")) for quale in ("iniziale", "finale")])
-    esiti = [getattr(scheda, f"esito_{quale}") for quale in ("iniziale", "finale")]
-    righe.append(["Esito"] + [ESITI_TESTO.get(e, "–") for e in esiti])
-    ultima = len(righe)
-    sfondi = {(colonna, ultima): ESITI_COLORE[e] for colonna, e in enumerate(esiti, start=1) if e}
-    doc.tabella(["Stima (1.1.1 e)", "Iniziale", "Finale"], righe, [4.2, 6.4, 6.4], sfondi)
+    righe.append(["Cl = Fr + Pr + Av", _valore({}, "", getattr(scheda, f"cl_{quale}"))])
+    esito = getattr(scheda, f"esito_{quale}")
+    righe.append(["Esito", ESITI_TESTO.get(esito, "–")])
+    sfondi = {(1, len(righe)): ESITI_COLORE[esito]} if esito else {}
+    doc.tabella(["Fattore", "Valore"], righe, [4.2, 12.8], sfondi)
 
 
 def _riepilogo(doc, schede):
@@ -511,41 +511,70 @@ def _riepilogo(doc, schede):
     doc.tabella(["Requisito", "Zona pericolosa", "Esito iniziale", "Esito finale", "Scheda"], righe, [5.1, 5.1, 3, 3, 1.8], sfondi)
 
 
+# Sezioni della scheda in sequenza EN ISO 12100, come nella scheda a video.
+SEZIONI_SCHEDA = [
+    "1. IDENTIFICAZIONE SCHEDA",
+    "2. DETERMINAZIONE DEI LIMITI (RESS 1.1.1 b)",
+    "3. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)",
+    "4. IDENTIFICAZIONE DEI SOGGETTI ESPOSTI (RESS 1.1.1 c, d)",
+    "5. STIMA INIZIALE DEL RISCHIO (RESS 1.1.1 e)",
+    "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)",
+    "7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)",
+    "8. VALUTAZIONE DEL RISCHIO RESIDUO (RESS 1.1.2 c)",
+]
+
+
+def _sezione(doc, numero, righe=(), considerazioni="", contenuto=None):
+    """Titolo della sezione, voci, contenuto aggiuntivo e considerazioni; la sezione vuota non compare."""
+    righe = [(etichetta, valore) for etichetta, valore in righe if valore]
+    if not (righe or considerazioni or contenuto):
+        return
+    parti = [lambda: doc.p(SEZIONI_SCHEDA[numero - 1], "sezione")]
+    if righe:
+        parti.append(lambda: doc.dettagli(righe))
+    if contenuto:
+        parti.append(contenuto)
+    if considerazioni:
+        parti.append(lambda: doc.dettagli([("Considerazioni", considerazioni)]))
+    doc.insieme(*parti)
+
+
+def _misure(doc, misure):
+    for tipo, titolo in TIPI_MISURA:
+        del_tipo = [m for m in misure if m.tipo == tipo]
+        if del_tipo:
+            doc.p(titolo, "sottotitolo_misure")
+            doc.elenco_html(
+                _pulito(m.testo) + (f' <font color="#6B7280">({_pulito(m.norma)})</font>' if m.norma else "")
+                for m in del_tipo
+            )
+
+
 def _scheda(doc, s, descrizioni):
-    pericoli = "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all())
-    doc.insieme(
-        lambda: doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice),
-        lambda: doc.dettagli([
-            ("Zona dell'impianto", s.zona_impianto),
-            ("Zona pericolosa (1.1.1 b)", s.zona_pericolosa),
-            ("Condizioni operative", ", ".join(c.nome for c in s.condizioni.all())),
-            ("Soggetti esposti (1.1.1 c, d)", ", ".join(f.nome for f in s.soggetti.all())),
-            ("Pericoli (1.1.1 a)", pericoli),
-        ]),
-    )
-    if s.ha_stima_iniziale or s.ha_stima_finale:
-        doc.insieme(lambda: _tabella_stima(doc, s, descrizioni))
+    doc.testata(f"{s.requisito.codice} {s.requisito.titolo}", s.codice)
+    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note)])
+    _sezione(doc, 2, [
+        ("Zona dell'impianto", s.zona_impianto),
+        ("Zona pericolosa", s.zona_pericolosa),
+        ("Condizioni operative", ", ".join(c.nome for c in s.condizioni.all())),
+    ], s.considerazioni_limiti)
+    _sezione(doc, 3, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
+             s.considerazioni_pericoli)
+    _sezione(doc, 4, [("Soggetti esposti", ", ".join(f.nome for f in s.soggetti.all()))], s.considerazioni_soggetti)
+    _sezione(doc, 5, considerazioni=s.considerazioni_stima_iniziale,
+             contenuto=(lambda: _tabella_stima(doc, s, descrizioni, "iniziale")) if s.ha_stima_iniziale else None)
     misure = list(s.misure.all())
-    if misure:
-        doc.p("Misure di protezione", 3)
-        for tipo, titolo in TIPI_MISURA:
-            del_tipo = [m for m in misure if m.tipo == tipo]
-            if del_tipo:
-                doc.p(titolo, "sottotitolo_misure")
-                doc.elenco_html(
-                    _pulito(m.testo) + (f' <font color="#6B7280">({_pulito(m.norma)})</font>' if m.norma else "")
-                    for m in del_tipo
-                )
+    _sezione(doc, 6, considerazioni=s.considerazioni_riduzione,
+             contenuto=(lambda: _misure(doc, misure)) if misure else None)
+    _sezione(doc, 7, considerazioni=s.considerazioni_stima_finale,
+             contenuto=(lambda: _tabella_stima(doc, s, descrizioni, "finale")) if s.ha_stima_finale else None)
     if s.testo_istruzioni:
         da_segnalare = s.esito_finale and s.esito_finale != Esito.OK
-        doc.riquadro(
+        _sezione(doc, 8, contenuto=lambda: doc.riquadro(
             "Informazioni per le istruzioni / rischio residuo",
             s.testo_istruzioni,
             ESITI_COLORE[Esito.SUGGERITE] if da_segnalare else "#F3F4F6",
-        )
-    norme = ", ".join(n.codice for n in s.norme.all())
-    if norme:
-        doc.p_html(f'<font color="#6B7280">Norme: {_pulito(norme)}</font>', "cella")
+        ))
     doc.spazio(5)
 
 
@@ -577,7 +606,7 @@ def valutazione(revisione):
         "Le schede usano le definizioni del punto 1.1.1 dell'Allegato III del Regolamento: "
         "a) pericolo; b) zona pericolosa; c) persona esposta; d) operatore; e) rischio; f) riparo; "
         "g) dispositivo di protezione; h) uso previsto; i) uso scorretto ragionevolmente prevedibile. "
-        "Il riferimento alla lettera è indicato accanto a ogni voce delle schede."
+        "Il riferimento alla lettera è indicato nel titolo di ogni sezione delle schede."
     )
 
     doc.titoletto("Soggetti")
