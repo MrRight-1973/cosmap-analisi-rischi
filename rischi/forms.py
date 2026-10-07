@@ -11,6 +11,7 @@ from .models import (
     Macchina,
     MisuraAnalisi,
     Modulo,
+    Norma,
     RequisitoRESS,
     Revisione,
     RiferimentoNormativo,
@@ -168,8 +169,37 @@ CAMPI_CONSIDERAZIONI = (
     "considerazioni_stima_finale",
 )
 
+# Norme richiamate nella sezione 1 della scheda: cinque selezioni sotto le note.
+NUMERO_NORME = 5
+CAMPI_NORME = tuple(f"norma_{i}" for i in range(1, NUMERO_NORME + 1))
 
-class SchedaForm(forms.ModelForm):
+
+def _campo_norma(numero):
+    campo = forms.ModelChoiceField(
+        Norma.objects.order_by("codice"), required=False, label=f"Norma {numero}", empty_label="–"
+    )
+    campo.label_from_instance = lambda n: f"{n.codice} – {n.titolo[:90]}" if n.titolo else n.codice
+    return campo
+
+
+class NormeSchedaMixin:
+    """Le cinque selezioni norma_1…norma_5 leggono e scrivono il campo molti-a-molti `norme` della scheda."""
+
+    def _prepara_norme(self):
+        attuali = list(self.instance.norme.order_by("codice")) if self.instance.pk else []
+        for campo, norma in zip(CAMPI_NORME, attuali):
+            self.initial[campo] = norma.pk
+
+    def norme_scelte(self):
+        scelte = [self.cleaned_data.get(campo) for campo in CAMPI_NORME]
+        return list(dict.fromkeys(n for n in scelte if n))
+
+    def _save_m2m(self):
+        super()._save_m2m()
+        self.instance.norme.set(self.norme_scelte())
+
+
+class SchedaForm(NormeSchedaMixin, forms.ModelForm):
     se_iniziale = _scelta(VALORI_SE)
     fr_iniziale = _scelta(VALORI_FR)
     pr_iniziale = _scelta(VALORI_PR)
@@ -178,6 +208,7 @@ class SchedaForm(forms.ModelForm):
     fr_finale = _scelta(VALORI_FR)
     pr_finale = _scelta(VALORI_PR)
     av_finale = _scelta(VALORI_AV)
+    norma_1, norma_2, norma_3, norma_4, norma_5 = (_campo_norma(i) for i in range(1, NUMERO_NORME + 1))
 
     CAMPI_CONTENUTO = (
         "modulo",
@@ -197,6 +228,7 @@ class SchedaForm(forms.ModelForm):
         "av_finale",
         "testo_istruzioni",
         "note",
+        *CAMPI_NORME,
         *CAMPI_CONSIDERAZIONI,
     )
 
@@ -244,6 +276,7 @@ class SchedaForm(forms.ModelForm):
             "Le figure si aggiungono nella libreria (Figure, soggetti esposti)."
         )
         descrivi_fattori(self.fields, metodo)
+        self._prepara_norme()
 
     def contenuto_cambiato(self):
         return any(campo in self.changed_data for campo in self.CAMPI_CONTENUTO)

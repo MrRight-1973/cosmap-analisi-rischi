@@ -588,9 +588,16 @@ class SoggettiEspostiTest(TestCase):
         scheda.considerazioni_limiti = "Zona di carico raggiungibile dal lato operatore"
         scheda.considerazioni_riduzione = "Riparo fisso scelto per la frequenza bassa di accesso"
         scheda.save()
+        from .models import Norma
+
+        norma = Norma.objects.create(codice="EN ISO 99999", titolo="Norma di prova per la sezione 1")
+        scheda.norme.add(norma)
         testo = DocumentiTest.leggi(documenti.valutazione(self.analisi.revisione_corrente))
         self.assertIn("Zona di carico raggiungibile dal lato operatore", testo)
         self.assertIn("Riparo fisso scelto per la frequenza bassa di accesso", testo)
+        norme = testo.index("EN ISO 99999")
+        self.assertLess(testo.rindex("1. IDENTIFICAZIONE SCHEDA", 0, norme), norme)
+        self.assertLess(norme, testo.index("2. IDENTIFICAZIONE DEL PERICOLO", norme))
         self.assertIn("3. IDENTIFICAZIONE DELLA ZONA PERICOLOSA (RESS 1.1.1 b)", testo)
         # Le considerazioni stanno nella loro sezione, prima della sezione successiva della stessa scheda
         posizione = testo.index("Zona di carico raggiungibile")
@@ -637,6 +644,23 @@ class CodiceAutomaticoTest(TestCase):
         nuova.refresh_from_db()
         self.assertEqual(nuova.codice, "CAB-08")
 
+    def test_norme_della_sezione_1(self):
+        from .models import Norma, RequisitoRESS
+
+        self.client.force_login(self.capo)
+        prima, seconda = Norma.objects.order_by("codice")[:2]
+        dati = self.dati(Modulo.objects.get(sigla="TAV"), RequisitoRESS.objects.get(codice="1.3.8.2"))
+        dati.update({"norma_1": seconda.pk, "norma_2": prima.pk, "norma_3": seconda.pk})
+        self.assertEqual(self.client.post(reverse("admin:rischi_schedamodello_add"), dati).status_code, 302)
+        nuova = SchedaModello.objects.get(codice="TAV-06")
+        self.assertEqual(set(nuova.norme.all()), {prima, seconda})
+
+        # Le cinque selezioni stanno sotto le note e ripropongono le norme salvate, in ordine di codice
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[nuova.pk])).content.decode()
+        posizioni = [pagina.index(t) for t in ['name="note"', *(f'name="norma_{i}"' for i in range(1, 6)), "2. IDENTIFICAZIONE"]]
+        self.assertEqual(posizioni, sorted(posizioni))
+        self.assertIn(f'<option value="{prima.pk}" selected>', pagina[pagina.index('name="norma_1"'):pagina.index('name="norma_2"')])
+
     def test_modulo_senza_sigla(self):
         from .models import RequisitoRESS
 
@@ -678,7 +702,7 @@ class CodiceSchedeAggiunteTest(TestCase):
         }
 
     def test_nuova_scheda_e_cambio_di_requisito(self):
-        from .models import RequisitoRESS
+        from .models import Norma, RequisitoRESS
 
         self.client.force_login(self.compilatore)
         rev = self.analisi.revisione_corrente
@@ -689,6 +713,10 @@ class CodiceSchedeAggiunteTest(TestCase):
         self.assertEqual(risposta.status_code, 302, getattr(risposta, "context", None) and risposta.context["form"].errors)
         nuova = rev.schede.get(decisione=SchedaAnalisi.Decisione.AGGIUNTA)
         self.assertEqual(nuova.codice, "TAV-06")
+        self.assertFalse(nuova.norme.exists())
+        norma = Norma.objects.order_by("codice").first()
+        self.client.post(reverse("scheda", args=[nuova.pk]), {**self.dati(tavola, nuova.requisito), "norma_1": norma.pk})
+        self.assertEqual(list(nuova.norme.all()), [norma])
 
         # Una seconda scheda nel modulo prende il numero successivo
         self.client.post(reverse("nuova_scheda", args=[rev.pk]), self.dati(tavola, RequisitoRESS.objects.get(codice="1.1.6")))
