@@ -9,20 +9,6 @@
 <fieldset><legend>Macchina</legend>
 {% for f in form %}{% include "rischi/_campo.html" %}{% endfor %}
 </fieldset>
-<fieldset><legend>Soggetti (RESS 1.1.1)</legend>
-<p class="sotto">Chi lavora alla macchina (operatori) e chi può trovarsi nelle vicinanze (persone esposte), descritti per questa macchina. Le figure usate nelle schede si aggiungono da sole con la descrizione standard.</p>
-{{ figure.management_form }}
-{{ figure.non_form_errors }}
-<table class="tabella figure">
-<thead><tr><th>Figura</th><th>Chi è su questa macchina</th>{% if modificabile %}<th>Togli</th>{% endif %}</tr></thead>
-<tbody>
-{% for f in figure %}<tr>
-  <td>{{ f.id }}{{ f.figura }}{% for e in f.figura.errors %}<small class="errore">{{ e }}</small>{% endfor %}</td>
-  <td>{{ f.descrizione }}</td>
-  {% if modificabile %}<td>{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>{% endif %}
-</tr>{% endfor %}
-</tbody></table>
-</fieldset>
 <fieldset><legend>Moduli</legend>
 {% include "rischi/_campo.html" with f=form_moduli.moduli %}
 </fieldset>

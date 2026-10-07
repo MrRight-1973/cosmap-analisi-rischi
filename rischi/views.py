@@ -14,7 +14,6 @@ from . import servizi
 from . import documenti
 from .forms import (
     ApplicabilitaFormSet,
-    FigureMacchinaFormSet,
     MacchinaForm,
     MisureFormSet,
     ModuliMacchinaForm,
@@ -300,23 +299,17 @@ def macchina(request, pk):
     )
     form = MacchinaForm(request.POST or None, instance=macchina)
     form_moduli = ModuliMacchinaForm(request.POST or None, initial={"moduli": macchina.moduli.all()})
-    # Le figure sono facoltative nel POST: senza il loro modulo restano come sono.
-    con_figure = request.method == "POST" and "figure-TOTAL_FORMS" in request.POST
-    figure = FigureMacchinaFormSet(request.POST if con_figure else None, instance=macchina, prefix="figure")
     if not modificabile:
         campi = list(form.fields.values()) + list(form_moduli.fields.values())
-        campi += [campo for f in figure.forms for campo in f.fields.values()]
         for campo in campi:
             campo.disabled = True
     if request.method == "POST":
         if not modificabile:
             raise PermissionDenied("Dati della macchina modificabili solo con una revisione in bozza.")
-        if form.is_valid() and form_moduli.is_valid() and (not con_figure or figure.is_valid()):
+        if form.is_valid() and form_moduli.is_valid():
             try:
                 with transaction.atomic():
                     form.save()
-                    if con_figure:
-                        figure.save()
                     aggiunte, tolte, rimaste = servizi.cambia_moduli(
                         macchina, form_moduli.cleaned_data["moduli"], request.user
                     )
@@ -338,7 +331,6 @@ def macchina(request, pk):
         {
             "form": form,
             "form_moduli": form_moduli,
-            "figure": figure,
             "macchina": macchina,
             "analisi": analisi,
             "modificabile": modificabile,

@@ -17,3 +17,8 @@
 .inline-group .inline-heading {
     text-transform: none;
 }
+
+/* Le misure di protezione proseguono la sezione 6: niente secondo titolo. */
+#misure-group .inline-heading {
+    display: none;
+}

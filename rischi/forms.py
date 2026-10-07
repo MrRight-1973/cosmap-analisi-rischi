@@ -241,7 +241,7 @@ class SchedaForm(forms.ModelForm):
             self.fields["requisito"].queryset = RequisitoRESS.objects.filter(riferimento=riferimento)
         self.fields["soggetti"].help_text = (
             "Chi è esposto al pericolo: operatori e persone esposte. "
-            "Chi sono su questa macchina si scrive nei dati della macchina."
+            "Le figure si aggiungono nella libreria (Figure, soggetti esposti)."
         )
         descrivi_fattori(self.fields, metodo)
 
@@ -256,16 +256,6 @@ MisureFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
     widgets={"testo": forms.Textarea(attrs={"rows": 4}), "ordine": forms.NumberInput(attrs={"style": "width:4em"})},
-)
-
-
-FigureMacchinaFormSet = inlineformset_factory(
-    Macchina,
-    FiguraMacchina,
-    fields=["figura", "descrizione"],
-    extra=1,
-    can_delete=True,
-    widgets={"descrizione": forms.Textarea(attrs={"rows": 1})},
 )
 
 
