@@ -1,0 +1,26 @@
+{% extends "admin/base.html" %}
+{% comment %}Intestazione comune a tutto l'applicativo: la usano sia la libreria (amministrazione) sia le pagine
+delle commesse, che estendono questo modello tramite rischi/base.html.{% endcomment %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:"Analisi dei rischi" }}{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'elenco_commesse' %}">{{ site_header|default:"Cosmap – Analisi dei rischi" }}</a></div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}
+
+{% block userlinks %}
+<a href="{% url 'elenco_commesse' %}">Commesse</a> /
+<a href="{% url 'registro' %}">Registro modifiche</a> /
+{% if user.is_staff %}<a href="{% url 'admin:index' %}">Libreria e utenti</a> /{% endif %}
+{% if user.is_staff and user.has_usable_password %}<a href="{% url 'admin:password_change' %}">Modifica password</a> /{% endif %}
+<form id="logout-form" method="post" action="{% url 'logout' %}">
+  {% csrf_token %}
+  <button type="submit">Esci</button>
+</form>
+{% include "admin/color_theme_toggle.html" %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

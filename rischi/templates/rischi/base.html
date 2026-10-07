@@ -1,26 +1,15 @@
-{% load static %}<!doctype html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block titolo %}Analisi dei rischi{% endblock %} · Cosmap</title>
-<link rel="stylesheet" href="{% static 'rischi/stile.css' %}">
-</head>
-<body>
-<header class="testata">
-  <a class="marchio" href="{% url 'elenco_commesse' %}">Cosmap · Analisi dei rischi</a>
-  {% if user.is_authenticated %}
-  <nav>
-    <a href="{% url 'elenco_commesse' %}">Commesse</a>
-    <a href="{% url 'registro' %}">Registro modifiche</a>
-    {% if user.is_staff %}<a href="{% url 'admin:index' %}">Libreria e utenti</a>{% endif %}
-    <form method="post" action="{% url 'logout' %}" class="in-linea">{% csrf_token %}<button class="link">Esci ({{ user.get_full_name|default:user.username }})</button></form>
-  </nav>
-  {% endif %}
-</header>
-<main>
-  {% for m in messages %}<div class="messaggio {{ m.tags }}">{{ m }}</div>{% endfor %}
-  {% block contenuto %}{% endblock %}
-</main>
-</body>
-</html>
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% comment %}Pagine delle commesse con la stessa grafica della libreria (amministrazione di Django).{% endcomment %}
+{% block title %}{% block titolo %}Analisi dei rischi{% endblock %} · Cosmap{% endblock %}
+{% block extrastyle %}<link rel="stylesheet" href="{% static 'rischi/stile.css' %}">{% endblock %}
+{% block usertools %}
+{% if user.is_authenticated %}
+<div id="user-tools">
+  Benvenuto, <strong>{% firstof user.get_short_name user.get_username %}</strong>.
+  {% block userlinks %}{{ block.super }}{% endblock %}
+</div>
+{% endif %}
+{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+{% block content %}{% block contenuto %}{% endblock %}{% endblock %}
