@@ -46,7 +46,7 @@ class SchedaModelloAdmin(admin.ModelAdmin):
     list_filter = ("modulo", "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
     filter_horizontal = ("condizioni", "pericoli", "norme", "soggetti")
-    readonly_fields = ("codice",)
+    readonly_fields = ("codice", "calcolo_iniziale", "calcolo_finale")
     inlines = [MisuraModelloInline]
     # Stesso ordine della scheda nell'analisi; le misure stanno tra stima iniziale e finale
     # (vedi admin/rischi/schedamodello/change_form.html).
@@ -56,16 +56,41 @@ class SchedaModelloAdmin(admin.ModelAdmin):
                        "condizioni", "pericoli", "soggetti"),
         }),
         ("Stima iniziale del rischio (RESS 1.1.1 e)", {
-            "fields": (("se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale"),),
+            "fields": (("se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale"), "calcolo_iniziale"),
         }),
         ("Stima finale del rischio (RESS 1.1.1 e)", {
-            "fields": (("se_finale", "fr_finale", "pr_finale", "av_finale"),
+            "fields": (("se_finale", "fr_finale", "pr_finale", "av_finale"), "calcolo_finale",
                        "testo_istruzioni", "norme", "note"),
         }),
         ("Libreria", {
             "fields": ("stato", "scheda_originale"),
         }),
     )
+
+    COLORI_ESITO = {"OK": ("#e6f4ea", "#1e7b34"), "SUGGERITE": ("#fff4e0", "#9a5b00"), "RICHIESTE": ("#fde8e8", "#b42318")}
+
+    def _calcolo(self, se, fr, pr, av, cl):
+        """Cl = Fr + Pr + Av con l'esito della matrice del metodo in uso, come nella scheda dell'analisi."""
+        if cl is None:
+            return "Cl = Fr + Pr + Av = – (compila Fr, Pr e Av e salva)"
+        metodo = m.MetodoStima.corrente()
+        esito = metodo.esito(se, cl) if metodo else None
+        if esito is None:
+            return format_html("Cl = {} + {} + {} = <b>{}</b> · esito: –", fr, pr, av, cl)
+        sfondo, colore = self.COLORI_ESITO[esito]
+        return format_html(
+            'Cl = {} + {} + {} = <b>{}</b> · esito: <span style="background:{};color:{};padding:1px 8px;'
+            'border-radius:10px;font-weight:600">{}</span>',
+            fr, pr, av, cl, sfondo, colore, m.Esito(esito).label,
+        )
+
+    @admin.display(description="Classe ed esito iniziale")
+    def calcolo_iniziale(self, obj):
+        return self._calcolo(obj.se_iniziale, obj.fr_iniziale, obj.pr_iniziale, obj.av_iniziale, obj.cl_iniziale)
+
+    @admin.display(description="Classe ed esito finale")
+    def calcolo_finale(self, obj):
+        return self._calcolo(obj.se_finale, obj.fr_finale, obj.pr_finale, obj.av_finale, obj.cl_finale)
 
     def save_model(self, request, obj, form, change):
         """Codice automatico: alla creazione e quando cambiano modulo o requisito."""

@@ -142,6 +142,74 @@ PERICOLI = {
     "10.3": "Combinazione – manomissione o corruzione del software",
 }
 
+
+# Registro interno dei pericoli EN ISO 12100 (prospetto B.1, tre livelli): codici e descrizioni usati
+# nel foglio Pericoli e nella colonna Pericoli. Le chiavi interne qui sopra restano per le regole
+# dei soggetti esposti e si traducono con DA_NL_A_ISO.
+PERICOLI_ISO = [
+    ("1.1.1", "Forma (elementi taglienti, spigoli vivi, pezzi aguzzi)"),
+    ("1.1.2", "Posizione relativa (zone di convergenza o ridotti spazi tra parti mobili)"),
+    ("1.1.3", "Massa e stabilità (energia potenziale dovuta alla gravità)"),
+    ("1.1.4", "Massa e velocità (energia cinetica di elementi in movimento)"),
+    ("1.1.5", "Accelerazione o decelerazione inadeguata"),
+    ("1.1.6", "Resistenza meccanica insufficiente degli elementi (rotture, cedimenti)"),
+    ("1.2.1", "Pericolo di schiacciamento"),
+    ("1.2.2", "Pericolo di cesoiamento"),
+    ("1.2.3", "Pericolo di taglio o di sezionamento"),
+    ("1.2.4", "Pericolo di impigliamento"),
+    ("1.2.5", "Pericolo di trascinamento o d'intrappolamento"),
+    ("1.2.6", "Pericolo di urto"),
+    ("1.2.7", "Pericolo di perforazione o di puntura"),
+    ("1.2.8", "Pericolo di attrito o di abrasione"),
+    ("1.2.9", "Pericolo di eiezione o iniezione di fluido ad alta pressione"),
+    ("2.1.1", "Contatto elettrico diretto (con parti normalmente in tensione)"),
+    ("2.1.2", "Contatto elettrico indiretto (con parti andate in tensione per un guasto)"),
+    ("2.1.3", "Avvicinamento a parti sotto alta tensione (effetto arco elettrico)"),
+    ("2.2.1", "Fenomeni elettrostatici (scosse da cariche statiche accumulate)"),
+    ("2.2.2", "Irraggiamento termico o proiezioni da cortocircuiti"),
+    ("3.1.1", "Ustioni e scottature da contatto con oggetti o fluidi caldi, fiamme o esplosioni"),
+    ("3.1.2", "Lesioni da contatto con superfici o fluidi a temperatura estremamente bassa (congelamento)"),
+    ("3.2.1", "Danni alla salute causati da un ambiente di lavoro eccessivamente caldo o freddo"),
+    ("4.1.1", "Perdita dell'udito (ipoacusia da trauma acustico o esposizione prolungata)"),
+    ("4.1.2", "Acufene (ronzio o fischio permanente nelle orecchie)"),
+    ("4.2.1", "Disturbi dell'equilibrio o senso di vertigine"),
+    ("4.2.2", "Interferenza con la comunicazione verbale e mascheramento dei segnali acustici"),
+    ("5.1.1", "Sindrome da vibrazioni mano-braccio (disturbi vascolari, neurologici e ossei)"),
+    ("5.1.2", "Sindrome da vibrazioni corpo intero (traumi alla colonna vertebrale, lombalgie)"),
+    ("6.1.1", "Radiazioni ionizzanti (fonti di raggi X, raggi gamma o particelle)"),
+    ("6.1.2", "Campi elettromagnetici (unità CEM a bassa o alta frequenza)"),
+    ("6.2.1", "Radiazioni ottiche artificiali (ROA): infrarossi, luce visibile estrema, ultravioletti"),
+    ("6.2.2", "Radiazioni laser (danni irreversibili a occhi e pelle)"),
+    ("7.1.1", "Pericoli tossici o nocivi per inalazione, ingestione o contatto con elementi chimici"),
+    ("7.1.2", "Pericoli biologici o microbiologici (esposizione a virus o batteri nei liquidi)"),
+    ("7.2.1", "Pericoli di incendio o combustione di materiali lavorati o fluidi di processo"),
+    ("7.2.2", "Pericoli di esplosione (miscele di gas o accumuli di polveri combustibili)"),
+    ("8.1.1", "Posture incongrue, faticose o sforzi fisici eccessivi"),
+    ("8.1.2", "Movimenti ripetitivi o inadeguata considerazione dell'anatomia della mano/braccio"),
+    ("8.2.1", "Progettazione errata o insufficiente dell'illuminazione locale sulla macchina"),
+    ("8.2.2", "Sovraccarico mentale, stress o affaticamento da cattiva progettazione dell'interfaccia (HMI)"),
+    ("9.1.1", "Fulminazione da scariche atmosferiche esterne"),
+    ("9.1.2", "Condizioni meteorologiche estreme (vento forte, neve, temperature proibitive)"),
+    ("9.2.1", "Mancanza di stabilità del suolo o pendenze (rischio di ribaltamento)"),
+    ("9.2.2", "Rischio di scivolamento, inciampo o caduta a causa della conformazione dei piani"),
+    ("10.1.1", "Rischi generati dall'azione simultanea di più fattori (es. vibrazioni + freddo + postura)"),
+]
+
+DA_NL_A_ISO = {
+    "1.1": ["1.2.1"], "1.2": ["1.2.2"], "1.3": ["1.2.3"], "1.4": ["1.2.5"], "1.5": ["1.2.4"],
+    "1.6": ["1.2.6"], "1.7": ["1.2.8"], "1.8": ["1.2.7"], "1.9": ["1.1.4", "1.1.6"], "1.10": ["1.1.3"],
+    "1.11": ["1.2.9"], "1.12": ["1.1.4"],
+    "2.1": ["2.1.1"], "2.2": ["2.1.2"], "2.3": ["2.2.1"], "2.4": ["2.2.2", "7.2.1"],
+    "3.1": ["3.1.1"], "3.2": ["7.2.1"],
+    "4.1": ["4.1.1"], "4.2": ["4.2.2"],
+    "7.1": ["7.1.1"], "7.2": ["7.1.1"], "7.3": ["7.2.2"], "7.4": ["7.1.1"],
+    "8.1": ["8.1.1", "8.1.2"], "8.2": ["8.1.1"], "8.3": ["8.2.1"], "8.4": ["8.2.2"],
+    "9.1": ["9.2.2"], "9.2": ["9.2.2"], "9.3": ["1.2.5"],
+    "10.1": ["10.1.1"], "10.2": ["10.1.1"], "10.3": ["10.1.1"],
+}
+
+DESCRIZIONI_ISO = dict(PERICOLI_ISO)
+
 # ---------------------------------------------------------------------------
 # Norme (codice, edizione di riferimento, oggetto, edizione più recente nota, nota)
 # ---------------------------------------------------------------------------
@@ -203,10 +271,10 @@ def tipo_norma(codice):
     return "A" if codice in NORME_A else "C" if codice in NORME_C else "B"
 
 
-def codice_pericolo(codice):
-    """'7.1' -> '7.01': codici distinti da quelli della prima estrazione già presenti nei database."""
-    gruppo, voce = codice.split(".")
-    return f"{gruppo}.{int(voce):02d}"
+def pericoli_iso(chiavi):
+    """Codici ISO 12100 della scheda, senza doppioni e in ordine."""
+    codici = {c for k in chiavi for c in DA_NL_A_ISO[k]}
+    return [c for c, _ in PERICOLI_ISO if c in codici]
 
 
 # ---------------------------------------------------------------------------
@@ -886,7 +954,7 @@ def genera():
         "Le misure sono nel foglio Misure, una per riga, con il tipo (PROG progettazione, PROT protezione,",
         "INFO informazioni) e la norma di riferimento. La colonna misure del foglio Libreria è solo una sintesi.",
         "Codici delle schede: sigla del modulo e numero progressivo (es. TAV-03); l'ordine segue il requisito RESS.",
-        "Codici dei pericoli a due cifre (es. 1.01) per non confondersi con quelli della prima estrazione.",
+        "Pericoli secondo il registro interno EN ISO 12100 (prospetto B.1, tre livelli, es. 1.2.1 schiacciamento).",
         "Soggetti esposti proposti in base a condizioni operative e pericoli (ultima colonna del foglio Libreria):",
         "operatori secondo il RESS 1.1.1 d) e persone esposte secondo il RESS 1.1.1 c).",
         "Edizioni e stato di armonizzazione delle norme vanno verificati sulla GUUE.",
@@ -920,7 +988,7 @@ def genera():
             note = (note + " " if note else "") + "Stima proposta, da validare."
         ws.append([
             s["codice"], s["ress"], titoli[s["ress"]], "", s["zona"], s["modulo"], condizioni_modulo[s["modulo"]],
-            s["zp"], s["cond"], "\n".join(f"{codice_pericolo(c)} {PERICOLI[c]}" for c in s["per"]),
+            s["zp"], s["cond"], "\n".join(f"{c} {DESCRIZIONI_ISO[c]}" for c in pericoli_iso(s["per"])),
             *(s["si"] or (None,) * 4), cl_i, es_i,
             testo_misure(s["mis"]), s["istr"],
             *(s["sf"] or (None,) * 4), cl_f, es_f,
@@ -973,8 +1041,8 @@ def genera():
     # Pericoli
     ws = wb.create_sheet("Pericoli")
     intestazione(ws, ["Codice", "Pericolo", "Schede"], [8, 70, 8])
-    for codice, descrizione in PERICOLI.items():
-        ws.append([codice_pericolo(codice), descrizione, sum(1 for s in SCHEDE if codice in s["per"])])
+    for codice, descrizione in PERICOLI_ISO:
+        ws.append([codice, descrizione, sum(1 for s in SCHEDE if codice in pericoli_iso(s["per"]))])
 
     # Metodo
     ws = wb.create_sheet("Metodo")

@@ -16,6 +16,7 @@ from .models import (
     Macchina,
     MetodoStima,
     Modulo,
+    Pericolo,
     RegistroModifica,
     Revisione,
     RevisioneBloccata,
@@ -734,6 +735,19 @@ class LibreriaAmministrazioneTest(TestCase):
         ]
         posizioni = [pagina.index(t) for t in titoli]
         self.assertEqual(posizioni, sorted(posizioni))
+
+    def test_scheda_modello_mostra_cl_ed_esito(self):
+        self.client.force_login(self.capo)
+        scheda = SchedaModello.objects.filter(se_iniziale__isnull=False, fr_iniziale__isnull=False).first()
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk]))
+        self.assertContains(pagina, f"= <b>{scheda.cl_iniziale}</b>")
+        self.assertContains(pagina, "Classe ed esito finale")
+
+    def test_pericoli_secondo_iso_12100(self):
+        codici = set(Pericolo.objects.values_list("codice", flat=True))
+        self.assertTrue(codici)
+        self.assertTrue(all(c.count(".") == 2 for c in codici), codici)
+        self.assertIn("1.2.1", codici)
 
     def dati_modulo(self, modulo, sigla):
         return {
