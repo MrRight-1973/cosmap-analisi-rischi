@@ -94,7 +94,6 @@ def intero(valore):
         return None
 
 
-
 def _nota_nuova(codice):
     """Nota di una norma creata perché citata: la sintesi se c'è, poi l'avviso di completare i dati."""
     avviso = "Aggiunta dall'import: completare i dati."
