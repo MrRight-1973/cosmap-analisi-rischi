@@ -10,6 +10,7 @@ responsabilità resta di chi firma.
 """
 
 import io
+import re
 from itertools import groupby
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -144,7 +145,9 @@ def _pulito(testo):
     testo = "" if testo is None else str(testo)
     if not _carattere_registrato()[2]:
         testo = testo.replace("≤", "<=").replace("≥", ">=").encode("cp1252", "replace").decode("cp1252")
-    return escape(testo).replace("\n", "<br/>")
+    # **testo** scritto nelle schede (pulsante G) esce in grassetto
+    testo = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", escape(testo), flags=re.S)
+    return testo.replace("\n", "<br/>")
 
 
 # ---------------------------------------------------------------------------

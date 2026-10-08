@@ -151,3 +151,7 @@ small.errore { color: var(--error-fg); }
 .modulo-schede ul { list-style: none; margin: 0 0 8px 28px; padding: 0; }
 .modulo-schede li { padding: 2px 0; }
 .modulo-schede summary:has(input[name=moduli]:not(:checked)) + ul { opacity: 0.55; }
+
+/* Pulsante del grassetto sopra i testi della scheda */
+.pulsante-grassetto { justify-self: start; margin: 0 0 3px; padding: 1px 8px !important; font-size: 0.75rem !important; }
+.campo[hidden] { display: none; }

@@ -1,5 +1,6 @@
 {% extends "rischi/base.html" %}
-{% load rischi_extra %}
+{% load rischi_extra static %}
+{% block extrahead %}{{ block.super }}<script src="{% static 'rischi/scheda.js' %}" defer></script>{% endblock %}
 {% block titolo %}Scheda {{ scheda.codice|default:"nuova" }}{% endblock %}
 {% block contenuto %}
 <p><a href="{% url 'analisi' revisione.analisi_id %}">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
@@ -11,11 +12,7 @@
   {% include "rischi/_campo.html" with f=form.modulo %}
   {% include "rischi/_campo.html" with f=form.requisito %}
   {% include "rischi/_campo.html" with f=form.note %}
-  {% include "rischi/_campo.html" with f=form.norma_1 %}
-  {% include "rischi/_campo.html" with f=form.norma_2 %}
-  {% include "rischi/_campo.html" with f=form.norma_3 %}
-  {% include "rischi/_campo.html" with f=form.norma_4 %}
-  {% include "rischi/_campo.html" with f=form.norma_5 %}
+  {% for f in form.campi_norma %}{% include "rischi/_campo.html" %}{% endfor %}
 </fieldset>
 <fieldset><legend>2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)</legend>
   {% include "rischi/_campo.html" with f=form.considerazioni_pericoli %}

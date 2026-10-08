@@ -312,6 +312,19 @@ class DocumentiTest(BaseConLibreria):
         self.impostazioni.disable()
         self.media.cleanup()
 
+    def test_grassetto_nelle_note(self):
+        from . import documenti
+
+        scheda = self.rev.schede.exclude(decisione=SchedaAnalisi.Decisione.SCARTATA).first()
+        scheda.note = "Prima parte **molto importante** e coda"
+        scheda.save()
+        self.assertEqual(
+            documenti._pulito("a **b** <c>"), "a <b>b</b> &lt;c&gt;"
+        )
+        testo = DocumentiTest.leggi(documenti.valutazione(self.rev))
+        self.assertIn("Prima parte molto importante e coda", testo)
+        self.assertNotIn("**", testo)
+
     def test_pagina_di_intestazione_con_logo(self):
         from django.core.files.base import ContentFile
         from PIL import Image
@@ -1028,3 +1041,19 @@ class FiltroRequisitoTest(BaseConLibreria):
         self.assertEqual(
             risposta.context["cl"].result_count, SchedaModello.objects.filter(requisito=scheda.requisito).count()
         )
+
+
+class SchedaModelloSezioniTest(BaseConLibreria):
+    def test_sezioni_richiudibili_e_venti_norme(self):
+        capo = User.objects.create_superuser("capo3", password="prova-prova-123")
+        self.client.force_login(capo)
+        scheda = SchedaModello.objects.first()
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
+        self.assertEqual(pagina.count('<details class="sezione">'), 8)
+        self.assertIn('name="norma_20"', pagina)
+        self.assertIn("rischi/scheda.js", pagina)
+        # le misure stanno dentro la sezione 6
+        self.assertLess(pagina.index("6. RIDUZIONE DEL RISCHIO"), pagina.index('id="misure-group"'))
+        self.assertLess(pagina.index('id="misure-group"'), pagina.index("7. STIMA FINALE"))
+        nuova = self.client.get(reverse("admin:rischi_schedamodello_add")).content.decode()
+        self.assertEqual(nuova.count('<details class="sezione" open>'), 8)
