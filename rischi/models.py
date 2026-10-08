@@ -414,6 +414,10 @@ class Fabbricante(models.Model):
     indirizzo_persona_fascicolo = models.TextField(blank=True)
     firmatario = models.CharField(max_length=200, blank=True)
     qualifica_firmatario = models.CharField(max_length=200, blank=True)
+    logo = models.ImageField(
+        upload_to="logo/", blank=True,
+        help_text="Logo stampato sulla pagina di intestazione della valutazione dei rischi (PNG o JPG).",
+    )
 
     class Meta:
         verbose_name = "dati del fabbricante"

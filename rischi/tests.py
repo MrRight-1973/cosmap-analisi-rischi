@@ -312,6 +312,27 @@ class DocumentiTest(BaseConLibreria):
         self.impostazioni.disable()
         self.media.cleanup()
 
+    def test_pagina_di_intestazione_con_logo(self):
+        from django.core.files.base import ContentFile
+        from PIL import Image
+        from pypdf import PdfReader
+
+        from . import documenti
+        from .models import Fabbricante
+
+        immagine = io.BytesIO()
+        Image.new("RGB", (300, 100), "navy").save(immagine, "PNG")
+        fabbricante = Fabbricante.objects.first() or Fabbricante.objects.create(
+            ragione_sociale="C.O.S.M.A.P. s.r.l.", indirizzo="Saccolongo"
+        )
+        fabbricante.logo.save("logo.png", ContentFile(immagine.getvalue()))
+        pagine = PdfReader(io.BytesIO(documenti.valutazione(self.rev))).pages
+        prima = pagine[0]
+        self.assertIn("VALUTAZIONE DEI RISCHI", prima.extract_text())
+        self.assertNotIn("Definizioni", prima.extract_text())
+        self.assertTrue(prima.images, "il logo deve essere nella prima pagina")
+        self.assertIn("Definizioni (RESS 1.1.1)", pagine[1].extract_text())
+
     @staticmethod
     def leggi(contenuto):
         """Testo del PDF su una riga, con gli spazi normalizzati (gli a capo diventano spazi)."""
@@ -994,3 +1015,16 @@ class LibreriaAzioniTest(BaseConLibreria):
         self.assertNotIn("add-related", pagina)
         self.assertNotIn("change-related", pagina)
         self.assertNotIn("delete-related", pagina)
+
+
+class FiltroRequisitoTest(BaseConLibreria):
+    def test_schede_modello_filtrate_per_requisito(self):
+        capo = User.objects.create_superuser("capo2", password="prova-prova-123")
+        self.client.force_login(capo)
+        scheda = SchedaModello.objects.first()
+        url = reverse("admin:rischi_schedamodello_changelist")
+        risposta = self.client.get(url, {"requisito__id__exact": scheda.requisito_id})
+        self.assertContains(risposta, "Per requisito")
+        self.assertEqual(
+            risposta.context["cl"].result_count, SchedaModello.objects.filter(requisito=scheda.requisito).count()
+        )

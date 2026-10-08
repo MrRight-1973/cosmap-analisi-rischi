@@ -24,7 +24,9 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus.flowables import _listWrapOn
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
+    Image,
     CondPageBreak,
     KeepTogether,
     ListFlowable,
@@ -181,6 +183,9 @@ class Pdf:
             "titolo": ParagraphStyle("titolo", parent=base, fontName=grassetto, fontSize=15, leading=18, spaceAfter=6),
             "titolo_centro": ParagraphStyle("titolo_centro", parent=base, fontName=grassetto, fontSize=15, leading=18, alignment=TA_CENTER, spaceAfter=4),
             "centro": ParagraphStyle("centro", parent=base, alignment=TA_CENTER),
+            "centro_html": ParagraphStyle("centro_html", parent=base, alignment=TA_CENTER, textColor=colors.HexColor("#4A5563")),
+            "copertina": ParagraphStyle("copertina", parent=base, fontName=grassetto, fontSize=24, leading=30,
+                                        alignment=TA_CENTER, textColor=colors.HexColor("#2F4A6D"), spaceAfter=6),
             1: ParagraphStyle("h1", parent=base, fontName=grassetto, fontSize=11.5, leading=14, spaceBefore=6, spaceAfter=3, keepWithNext=1),
             2: ParagraphStyle("h2", parent=base, fontName=grassetto, fontSize=10.5, leading=13, spaceBefore=5, spaceAfter=2, keepWithNext=1),
             3: ParagraphStyle("h3", parent=base, fontName=grassetto, fontSize=9.5, leading=11.5, spaceBefore=5, spaceAfter=2,
@@ -626,19 +631,43 @@ def _scheda(doc, s, descrizioni):
     doc.spazio(4)
 
 
-def valutazione(revisione):
+def _logo(fabbricante, larghezza=7 * cm, altezza=3.5 * cm):
+    """Logo del fabbricante ridotto nel riquadro dato, o None se non c'è o non si legge."""
+    if not (fabbricante and fabbricante.logo):
+        return None
+    try:
+        percorso = fabbricante.logo.path
+        w, h = ImageReader(percorso).getSize()
+    except Exception:  # file mancante o non leggibile: si stampa il nome
+        return None
+    scala = min(larghezza / w, altezza / h)
+    return Image(percorso, width=w * scala, height=h * scala, hAlign="LEFT")
+
+
+def _intestazione(doc, revisione):
+    """Pagina di intestazione: logo, titolo, dati della commessa e firme della revisione."""
     macchina = revisione.analisi.macchina
     commessa = macchina.commessa
-    metodo = revisione.metodo
-    doc = Pdf(f"Valutazione dei rischi – commessa {commessa.numero} rev. {revisione.numero}", _testo_bozza(revisione))
-
-    doc.titolo_documento("Valutazione dei rischi")
-    doc.coppia("Commessa", f"{commessa.numero} – {commessa.cliente}")
-    doc.coppia("Macchina", f"{macchina.denominazione} {macchina.modello}".strip())
-    doc.coppia("Matricola", macchina.matricola)
-    doc.coppia("Riferimento normativo", REGOLAMENTO)
-    doc.coppia("Revisione", f"{revisione.numero} – {revisione.motivo}")
-    doc.spazio(2)
+    fabbricante = Fabbricante.objects.first()
+    logo = _logo(fabbricante)
+    if logo:
+        doc.storia.append(logo)
+    elif fabbricante:
+        doc.p(fabbricante.ragione_sociale, "titolo")
+    doc.spazio(30)
+    doc.p("VALUTAZIONE DEI RISCHI", "copertina")
+    doc.p(f"{REGOLAMENTO} relativo alle macchine – Allegato III", "centro")
+    doc.spazio(14)
+    doc.tabella(None, [
+        ["Commessa", commessa.numero],
+        ["Cliente", str(commessa.cliente)],
+        ["Macchina", macchina.denominazione],
+        ["Modello", macchina.modello or "–"],
+        ["Matricola", macchina.matricola or "–"],
+        ["Anno di costruzione", str(macchina.anno_costruzione or "–")],
+        ["Revisione", f"{revisione.numero} – {revisione.motivo}"],
+    ], [5, 13])
+    doc.spazio(10)
     doc.tabella(
         ["", "Nome", "Data"],
         [
@@ -648,6 +677,19 @@ def valutazione(revisione):
         ],
         [4, 7, 4],
     )
+    if fabbricante:
+        doc.spazio(20)
+        doc.p_html(f"<b>{_pulito(fabbricante.ragione_sociale)}</b><br/>{_pulito(fabbricante.indirizzo)}", "centro_html")
+
+
+def valutazione(revisione):
+    macchina = revisione.analisi.macchina
+    commessa = macchina.commessa
+    metodo = revisione.metodo
+    doc = Pdf(f"Valutazione dei rischi – commessa {commessa.numero} rev. {revisione.numero}", _testo_bozza(revisione))
+
+    _intestazione(doc, revisione)
+    doc.nuova_pagina()
 
     doc.titoletto("Definizioni (RESS 1.1.1)")
     doc.p(
