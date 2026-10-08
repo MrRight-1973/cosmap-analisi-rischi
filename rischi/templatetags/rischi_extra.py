@@ -34,3 +34,14 @@ def semplice(testo):
 def in_html(testo):
     """Testo formattato di una scheda o di un requisito, in sola lettura."""
     return mark_safe(testo_in_html(testo))
+
+
+@register.simple_tag
+def dati_soluzioni():
+    """Tipo e testo proposto di ogni soluzione di protezione, per precompilare le misure (scheda.js)."""
+    from django.utils.html import json_script
+
+    from ..models import SoluzioneProtezione
+
+    dati = {str(s.pk): {"tipo": s.tipo, "testo": s.testo or s.nome} for s in SoluzioneProtezione.objects.all()}
+    return json_script(dati, "dati-soluzioni")

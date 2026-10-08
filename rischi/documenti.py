@@ -40,7 +40,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .models import Esito, Fabbricante, Revisione, SchedaAnalisi
+from .models import Esito, Fabbricante, Norma, Revisione, SchedaAnalisi
 from .testo import e_formattato, in_reportlab
 
 REGOLAMENTO = "Regolamento (UE) 2023/1230"
@@ -404,7 +404,9 @@ def _schede_attive(revisione):
     return list(
         revisione.schede.exclude(decisione=SchedaAnalisi.Decisione.SCARTATA)
         .select_related("modulo", "requisito", "revisione__metodo")
-        .prefetch_related("misure__norma", "pericoli", "condizioni", "norme", "soggetti")
+        .prefetch_related(
+            "misure__norma", "misure__soluzione__norme", "pericoli__norme", "condizioni", "norme", "soggetti"
+        )
     )
 
 
@@ -414,11 +416,21 @@ def _nome(utente):
     return utente.get_full_name() or utente.username
 
 
+def norme_generali(revisione):
+    """Norme che valgono per tutta l'analisi: quelle sempre applicate (es. EN ISO 12100) e quelle di tipo C
+    scelte nei dati della macchina."""
+    macchina = revisione.analisi.macchina
+    norme = {n.pk: n for n in Norma.objects.filter(sempre_applicata=True)}
+    norme.update({n.pk: n for n in macchina.norme_tipo_c.all()})
+    return sorted(norme.values(), key=lambda n: (n.tipo, n.codice))
+
+
 def norme_applicate(revisione):
-    """Norme citate nelle schede attive: (armonizzate, altre), ordinate per codice."""
-    norme = {}
+    """Norme dell'analisi: generali, delle schede attive, dei loro pericoli e delle soluzioni scelte nelle misure.
+    Restituisce (armonizzate, altre), ordinate per codice."""
+    norme = {n.pk: n for n in norme_generali(revisione)}
     for scheda in _schede_attive(revisione):
-        for norma in scheda.norme.all():
+        for norma in [*scheda.norme.all(), *scheda.norme_collegate()]:
             norme[norma.pk] = norma
         for misura in scheda.misure.all():
             if misura.norma:
@@ -631,8 +643,8 @@ def _scheda(doc, s, descrizioni):
     dettagli = [("Modulo", str(s.modulo))]
     if s.stampa_note_requisito and s.requisito.descrizione:
         dettagli.append((f"Requisito {s.requisito.codice} – testo del Regolamento", s.requisito.descrizione))
-    # Norme della scheda e norme di riferimento dei pericoli analizzati, in un unico elenco
-    norme = [*s.norme.all(), *(n for p in s.pericoli.all() for n in p.norme.all())]
+    # Norme della scheda, dei pericoli analizzati e delle soluzioni scelte nelle misure, in un unico elenco
+    norme = [*s.norme.all(), *s.norme_collegate()]
     dettagli += [("Note", s.note), ("Norme", _elenco_norme(norme))]
     _sezione(doc, 1, dettagli, prima=testata)
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
@@ -778,6 +790,18 @@ def valutazione(revisione):
             [[f, v, descrizioni[(f, v)]] for f in FATTORI for v in sorted({v for (ff, v) in descrizioni if ff == f}, reverse=True)],
             [2, 2, 13],
         )
+
+    doc.titoletto("Norme di riferimento dell'analisi")
+    generali = norme_generali(revisione)
+    if generali:
+        doc.tabella(
+            ["Tipo", "Norma", "Titolo"],
+            [[n.get_tipo_display(), _edizione(n), n.titolo] for n in generali],
+            [2, 5, 10],
+        )
+        doc.p("Le norme specifiche di ogni rischio sono indicate nella sezione 1 della scheda.")
+    else:
+        doc.p("Nessuna norma generale indicata: le norme sono indicate nella sezione 1 di ogni scheda.")
 
     doc.titoletto("Requisiti non applicabili")
     non_applicabili = revisione.applicabilita.filter(applicabile=False).select_related("requisito")

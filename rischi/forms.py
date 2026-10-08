@@ -2,6 +2,8 @@ from django import forms
 from django.forms import inlineformset_factory, modelformset_factory
 
 from .models import (
+    SoluzioneProtezione,
+    TipoMisura,
     ApplicabilitaRequisito,
     LegislazioneUE,
     Cliente,
@@ -143,6 +145,7 @@ class MacchinaForm(forms.ModelForm):
             "tipo",
             "funzione",
             "materiali",
+            "norme_tipo_c",
             "altre_legislazioni",
             "organismo_notificato",
         ]
@@ -151,7 +154,14 @@ class MacchinaForm(forms.ModelForm):
             "materiali": forms.Textarea(attrs={"rows": 2}),
             "organismo_notificato": forms.Textarea(attrs={"rows": 2}),
             "altre_legislazioni": forms.CheckboxSelectMultiple,
+            "norme_tipo_c": forms.CheckboxSelectMultiple,
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        campo = self.fields["norme_tipo_c"]
+        campo.queryset = campo.queryset.order_by("codice")
+        campo.label_from_instance = lambda n: f"{n.codice} – {n.titolo}" if n.titolo else n.codice
 
 
 class ModuliMacchinaForm(forms.Form):
@@ -348,10 +358,36 @@ class SchedaForm(NormeSchedaMixin, forms.ModelForm):
         return any(campo in self.changed_data for campo in self.CAMPI_CONTENUTO)
 
 
+class MisuraForm(forms.ModelForm):
+    """Misura di protezione: scegliendo una soluzione del catalogo, testo e tipo vuoti si prendono da lei
+    (nella pagina li precompila già scheda.js)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "testo" in self.fields:
+            self.fields["testo"].required = False
+        if "soluzione" in self.fields:
+            self.fields["soluzione"].queryset = SoluzioneProtezione.objects.order_by("nome")
+            self.fields["soluzione"].widget.attrs["data-soluzione"] = "1"
+
+    def clean(self):
+        dati = super().clean()
+        soluzione = dati.get("soluzione")
+        if soluzione and dati.get("tipo") in (None, "", TipoMisura.DA_CLASSIFICARE):
+            dati["tipo"] = soluzione.tipo
+        if "testo" in self.fields and not (dati.get("testo") or "").strip():
+            if soluzione:
+                dati["testo"] = soluzione.testo or soluzione.nome
+            else:
+                self.add_error("testo", "Scrivi il testo della misura o scegli una soluzione.")
+        return dati
+
+
 MisureFormSet = inlineformset_factory(
     SchedaAnalisi,
     MisuraAnalisi,
-    fields=["ordine", "tipo", "testo", "norma"],
+    form=MisuraForm,
+    fields=["ordine", "tipo", "soluzione", "testo", "norma"],
     extra=1,
     can_delete=True,
     widgets={"testo": forms.Textarea(attrs={"rows": 4}), "ordine": forms.NumberInput(attrs={"style": "width:4em"})},

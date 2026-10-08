@@ -221,7 +221,31 @@
     });
   }
 
+  // Misure: scegliendo una soluzione di protezione si precompilano tipo e testo (dati in #dati-soluzioni).
+  function preparaSoluzioni() {
+    const dati = document.getElementById("dati-soluzioni");
+    if (!dati) return;
+    const soluzioni = JSON.parse(dati.textContent);
+    document.addEventListener("change", function (e) {
+      const scelta = e.target;
+      if (!scelta.matches || !scelta.matches("select[name$='-soluzione']")) return;
+      const soluzione = soluzioni[scelta.value];
+      const misura = scelta.closest(".inline-related, .misura");
+      if (!soluzione || !misura) return;
+      const tipo = misura.querySelector("select[name$='-tipo']");
+      if (tipo && soluzione.tipo) tipo.value = soluzione.tipo;
+      const area = misura.querySelector("textarea[name$='-testo']");
+      if (!area) return;
+      const editor = area.closest(".testo-ricco") && area.closest(".testo-ricco").querySelector(".editor-testo");
+      const attuale = (editor ? editor.textContent : area.value).trim();
+      if (attuale && !confirm("Sostituire il testo della misura con quello della soluzione scelta?")) return;
+      area.value = soluzione.testo;
+      if (editor) editor.innerHTML = inEditor(soluzione.testo);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    preparaSoluzioni();
     numeraMisure();
     document.addEventListener("formset:added", numeraMisure);
     document.addEventListener("formset:removed", numeraMisure);

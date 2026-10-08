@@ -3,7 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib.auth import admin as _admin_utenti  # noqa: F401 (registra Gruppi prima di aggiungere Duplica)
 from django.contrib.auth.models import Group
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
 
 from . import models as m
@@ -15,6 +15,7 @@ from .forms import (
     VALORI_FR,
     VALORI_PR,
     VALORI_SE,
+    MisuraForm,
     NormeSchedaMixin,
     _campo_norma,
     campi_norme,
@@ -36,12 +37,17 @@ class SoloVistaCollegati:
         return campo
 
 
+def _norma_estesa(norma):
+    return f"{norma.codice} – {norma.titolo}" if norma.titolo else norma.codice
+
+
 class MisuraModelloInline(SoloVistaCollegati, admin.StackedInline):
     model = m.MisuraModello
+    form = MisuraForm
     extra = 0
-    # Le norme della scheda stanno nella sezione 1 (anche quelle dei pericoli): niente norma per misura.
-    # Niente ordine: le misure si numerano da sole (Misura 1, 2, 3…) nell'ordine in cui compaiono.
-    fields = ("tipo", "testo")
+    # Le norme della scheda stanno nella sezione 1 (anche quelle dei pericoli e delle soluzioni): niente norma
+    # per misura. Niente ordine: le misure si numerano da sole (Misura 1, 2, 3…) nell'ordine in cui compaiono.
+    fields = ("soluzione", "tipo", "testo")
     template = "admin/rischi/schedamodello/misure_stacked.html"
     verbose_name_plural = "Misure di protezione"
 
@@ -86,7 +92,7 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     list_filter = ("modulo", ("requisito", admin.RelatedOnlyFieldListFilter), "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
     filter_horizontal = ("pericoli",)
-    readonly_fields = ("codice", "note_requisito", "calcolo_iniziale", "calcolo_finale")
+    readonly_fields = ("codice", "note_requisito", "norme_collegate", "calcolo_iniziale", "calcolo_finale")
     inlines = [MisuraModelloInline]
 
     class Media:
@@ -97,7 +103,7 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     fieldsets = (
         ("1. IDENTIFICAZIONE SCHEDA MODELLO", {
             "fields": ("codice", "modulo", "requisito", "stato", "note_requisito", "stampa_note_requisito", "note",
-                       *CAMPI_NORME),
+                       *CAMPI_NORME, "norme_collegate"),
         }),
         ("2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)", {
             "fields": ("considerazioni_pericoli", "pericoli"),
@@ -148,6 +154,14 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
         if not obj.requisito_id:
             return "Scegli il requisito e salva: qui compare il testo del requisito."
         return format_html('<div class="note-requisito">{}</div>', mark_safe(in_html(obj.requisito.descrizione) or "–"))
+
+    @admin.display(description="Norme da pericoli e soluzioni")
+    def norme_collegate(self, obj):
+        """Norme che entrano da sole nell'area Norme del PDF (si aggiornano dopo il salvataggio)."""
+        norme = obj.norme_collegate() if obj.pk else []
+        if not norme:
+            return "Nessuna: scegli pericoli con norme o soluzioni di protezione nelle misure e salva."
+        return format_html_join(mark_safe("<br>"), "{}", ((_norma_estesa(n),) for n in norme))
 
     @admin.display(description="Classe ed esito iniziale")
     def calcolo_iniziale(self, obj):
@@ -239,8 +253,8 @@ class RequisitoAdmin(SoloVistaCollegati, admin.ModelAdmin):
 
 @admin.register(m.Norma)
 class NormaAdmin(admin.ModelAdmin):
-    list_display = ("codice", "tipo", "edizione_citata", "edizione_vigente", "armonizzata")
-    list_filter = ("tipo", "armonizzata")
+    list_display = ("codice", "tipo", "edizione_citata", "edizione_vigente", "armonizzata", "sempre_applicata")
+    list_filter = ("tipo", "armonizzata", "sempre_applicata")
     search_fields = ("codice", "titolo")
 
 
@@ -315,6 +329,44 @@ class PericoloAdmin(admin.ModelAdmin):
     list_display = ("codice", "descrizione", "elenco_norme")
     search_fields = ("codice", "descrizione", "norme__codice")
     fields = ("codice", "descrizione", *CAMPI_NORME_PERICOLO)
+
+    class Media:
+        css = {"all": ("rischi/admin_scheda.css",)}
+        js = ("rischi/scheda.js",)
+
+    @admin.display(description="norme")
+    def elenco_norme(self, obj):
+        return ", ".join(n.codice for n in obj.norme.all()) or "–"
+
+
+class SoluzioneForm(forms.ModelForm):
+    """Fino a 10 norme per soluzione, una per selezione (come per i pericoli)."""
+
+    locals().update({nome: _campo_norma(i) for i, nome in enumerate(CAMPI_NORME_PERICOLO, start=1)})
+
+    class Meta:
+        model = m.SoluzioneProtezione
+        fields = ["nome", "tipo", "testo"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        attuali = list(self.instance.norme.order_by("codice")) if self.instance.pk else []
+        for campo, norma in zip(CAMPI_NORME_PERICOLO, attuali):
+            self.initial[campo] = norma.pk
+
+    def _save_m2m(self):
+        super()._save_m2m()
+        scelte = [self.cleaned_data.get(campo) for campo in CAMPI_NORME_PERICOLO]
+        self.instance.norme.set(list(dict.fromkeys(n for n in scelte if n)))
+
+
+@admin.register(m.SoluzioneProtezione)
+class SoluzioneProtezioneAdmin(admin.ModelAdmin):
+    form = SoluzioneForm
+    list_display = ("nome", "tipo", "elenco_norme")
+    list_filter = ("tipo",)
+    search_fields = ("nome", "testo", "norme__codice")
+    fields = ("nome", "tipo", "testo", *CAMPI_NORME_PERICOLO)
 
     class Media:
         css = {"all": ("rischi/admin_scheda.css",)}

@@ -1217,3 +1217,68 @@ class NormeDeiPericoliTest(BaseConLibreria):
         self.assertNotIn('name="misure-0-norma"', pagina)
         self.assertNotIn('name="misure-0-ordine"', pagina)
         self.assertIn('Misura <span class="numero-misura">1</span>', pagina)
+
+
+class SoluzioniENormeGeneraliTest(BaseConLibreria):
+    def test_norme_delle_soluzioni_nella_scheda_e_nella_dichiarazione(self):
+        from . import documenti
+        from .forms import MisureFormSet
+        from .models import Norma, SoluzioneProtezione
+
+        analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        scheda = analisi.revisione_corrente.schede.first()
+        norma = Norma.objects.create(codice="EN 88888", titolo="Norma della soluzione", armonizzata=True)
+        soluzione = SoluzioneProtezione.objects.create(
+            nome="Riparo di prova", tipo="PROT", testo="Testo proposto della soluzione"
+        )
+        soluzione.norme.set([norma])
+        # Scelta la soluzione e lasciato vuoto il testo, la misura prende tipo e testo della soluzione.
+        prima = scheda.misure.count()
+        dati = {
+            "misure-TOTAL_FORMS": str(prima + 1), "misure-INITIAL_FORMS": str(prima),
+            "misure-MIN_NUM_FORMS": "0", "misure-MAX_NUM_FORMS": "1000",
+        }
+        for i, misura in enumerate(scheda.misure.all()):
+            dati.update({f"misure-{i}-id": misura.pk, f"misure-{i}-ordine": misura.ordine,
+                         f"misure-{i}-tipo": misura.tipo, f"misure-{i}-testo": misura.testo})
+        dati.update({f"misure-{prima}-ordine": "9", f"misure-{prima}-tipo": "DACL",
+                     f"misure-{prima}-soluzione": soluzione.pk, f"misure-{prima}-testo": ""})
+        formset = MisureFormSet(dati, instance=scheda, prefix="misure")
+        self.assertTrue(formset.is_valid(), formset.errors)
+        formset.save()
+        nuova = scheda.misure.get(soluzione=soluzione)
+        self.assertEqual((nuova.tipo, nuova.testo), ("PROT", "Testo proposto della soluzione"))
+        self.assertIn(norma, scheda.norme_collegate())
+
+        testo = DocumentiTest.leggi(documenti.valutazione(analisi.revisione_corrente))
+        self.assertIn("EN 88888", testo)
+        armonizzate, _ = documenti.norme_applicate(analisi.revisione_corrente)
+        self.assertIn(norma, armonizzate)
+
+    def test_norma_di_tipo_c_e_norme_sempre_applicate(self):
+        from . import documenti
+        from .models import Norma
+
+        macchina = self.nuova_macchina()
+        analisi = servizi.crea_analisi_da_libreria(macchina, self.compilatore)
+        tipo_c, _ = Norma.objects.update_or_create(
+            codice="EN ISO 16089", defaults={"titolo": "Rettificatrici fisse", "tipo": "C", "armonizzata": True}
+        )
+        tipo_a, _ = Norma.objects.update_or_create(
+            codice="EN ISO 12100", defaults={"titolo": "Principi generali", "tipo": "A", "sempre_applicata": True}
+        )
+        macchina.norme_tipo_c.set([tipo_c])
+        revisione = analisi.revisione_corrente
+        self.assertEqual(documenti.norme_generali(revisione), [tipo_a, tipo_c])
+        armonizzate, altre = documenti.norme_applicate(revisione)
+        self.assertIn(tipo_c, armonizzate)
+        self.assertIn(tipo_a, armonizzate + altre)
+        testo = DocumentiTest.leggi(documenti.valutazione(revisione))
+        self.assertIn("Norme di riferimento dell'analisi", testo)
+        self.assertIn("EN ISO 16089", testo)
+
+        utente = User.objects.create_superuser("capo", "capo@example.com", "x")
+        self.client.force_login(utente)
+        pagina = self.client.get(reverse("macchina", args=[macchina.pk])).content.decode()
+        self.assertIn('name="norme_tipo_c"', pagina)
+        self.assertNotIn(f'name="norme_tipo_c" value="{tipo_a.pk}"', pagina)

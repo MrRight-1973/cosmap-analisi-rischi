@@ -204,6 +204,10 @@ class Norma(models.Model):
     armonizzata = models.BooleanField(
         default=False, help_text="Presente nell'elenco delle norme armonizzate per il Regolamento."
     )
+    sempre_applicata = models.BooleanField(
+        default=False,
+        help_text="Entra in tutte le analisi senza doverla scegliere (es. EN ISO 12100): dichiarazione e valutazione.",
+    )
     nota = models.TextField(blank=True)
 
     class Meta:
@@ -301,6 +305,26 @@ class TipoMisura(models.TextChoices):
     DA_CLASSIFICARE = "DACL", "Da classificare"
 
 
+class SoluzioneProtezione(models.Model):
+    """Soluzione tipo (es. riparo mobile interbloccato) con le sue norme: scelta in una misura, le norme
+    entrano da sole nell'area Norme della scheda."""
+
+    nome = models.CharField(max_length=200, unique=True)
+    tipo = models.CharField(max_length=4, choices=TipoMisura.choices, default=TipoMisura.PROTEZIONE)
+    testo = models.TextField(
+        "testo proposto", blank=True, help_text="Si precompila nella misura quando si sceglie la soluzione."
+    )
+    norme = models.ManyToManyField(Norma, blank=True, related_name="soluzioni")
+
+    class Meta:
+        verbose_name = "soluzione di protezione"
+        verbose_name_plural = "soluzioni di protezione"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
 class Stima(models.Model):
     """Campi comuni a scheda modello e scheda dell'analisi."""
 
@@ -353,6 +377,14 @@ class Stima(models.Model):
     @property
     def ha_stima_finale(self):
         return self.se_finale is not None and self.cl_finale is not None
+
+    def norme_collegate(self):
+        """Norme che entrano da sole nella scheda: dei pericoli analizzati e delle soluzioni scelte nelle misure."""
+        if not self.pk:
+            return []
+        norme = {n for p in self.pericoli.all() for n in p.norme.all()}
+        norme |= {n for misura in self.misure.all() if misura.soluzione for n in misura.soluzione.norme.all()}
+        return sorted(norme, key=lambda n: n.codice)
 
 
 def prossimo_codice(modulo, codici_usati):
@@ -407,6 +439,10 @@ class MisuraModello(models.Model):
     scheda = models.ForeignKey(SchedaModello, on_delete=models.CASCADE, related_name="misure")
     ordine = models.PositiveSmallIntegerField(default=0)
     tipo = models.CharField(max_length=4, choices=TipoMisura.choices, default=TipoMisura.DA_CLASSIFICARE)
+    soluzione = models.ForeignKey(
+        SoluzioneProtezione, on_delete=models.SET_NULL, null=True, blank=True, related_name="misure_modello",
+        help_text="Le norme della soluzione entrano nell'area Norme della scheda.",
+    )
     testo = models.TextField()
     norma = models.ForeignKey(Norma, on_delete=models.SET_NULL, null=True, blank=True)
 
@@ -526,6 +562,12 @@ class Macchina(models.Model):
     requisiti_esclusi = models.ManyToManyField(
         "RequisitoRESS", blank=True, related_name="macchine_escluse",
         help_text="Requisiti RESS non considerati per questa macchina: le loro schede non entrano nell'analisi.",
+    )
+    norme_tipo_c = models.ManyToManyField(
+        Norma, blank=True, related_name="macchine", limit_choices_to={"tipo": Norma.Tipo.C},
+        verbose_name="norme di tipo C",
+        help_text="Norme di prodotto della macchina (es. EN ISO 16089 per le rettificatrici fisse): "
+        "valgono per tutta l'analisi ed entrano nella dichiarazione.",
     )
     altre_legislazioni = models.ManyToManyField(
         LegislazioneUE, blank=True, help_text="Oltre al Regolamento (UE) 2023/1230."
@@ -716,6 +758,10 @@ class MisuraAnalisi(ContenutoRevisione):
     scheda = models.ForeignKey(SchedaAnalisi, on_delete=models.CASCADE, related_name="misure")
     ordine = models.PositiveSmallIntegerField(default=0)
     tipo = models.CharField(max_length=4, choices=TipoMisura.choices, default=TipoMisura.DA_CLASSIFICARE)
+    soluzione = models.ForeignKey(
+        SoluzioneProtezione, on_delete=models.SET_NULL, null=True, blank=True, related_name="misure_analisi",
+        help_text="Le norme della soluzione entrano nell'area Norme della scheda.",
+    )
     testo = models.TextField()
     norma = models.ForeignKey(Norma, on_delete=models.SET_NULL, null=True, blank=True)
 
