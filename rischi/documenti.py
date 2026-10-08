@@ -254,20 +254,28 @@ class Pdf:
         self.spazio(0.5)
 
     def dettagli(self, righe):
-        """Coppie etichetta/valore in due colonne; le righe senza valore non compaiono."""
-        dati = [
-            [Paragraph(_pulito(etichetta), self.stili["etichetta"]), Paragraph(_pulito(valore), self.stili["cella"])]
-            for etichetta, valore in righe if valore
+        """Etichetta su una riga e valore a tutta larghezza sotto; una linea sottile separa le voci.
+        Le righe senza valore non compaiono."""
+        dati, stile = [], [
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]
+        for etichetta, valore in righe:
+            if not valore:
+                continue
+            riga = len(dati)
+            dati.append([Paragraph(_pulito(etichetta) + ":", self.stili["etichetta"])])
+            dati.append([Paragraph(_pulito(valore), self.stili["cella"])])
+            stile += [
+                ("TOPPADDING", (0, riga), (0, riga), 2 if riga else 0), ("BOTTOMPADDING", (0, riga), (0, riga), 0),
+                ("TOPPADDING", (0, riga + 1), (0, riga + 1), 0), ("BOTTOMPADDING", (0, riga + 1), (0, riga + 1), 2),
+            ]
         if not dati:
             return
-        tabella = Table(dati, colWidths=[3.9 * cm, LARGHEZZA - 3.9 * cm], hAlign="LEFT", splitInRow=1)
-        tabella.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
-            ("LEFTPADDING", (0, 0), (0, -1), 0),
-            ("LINEBELOW", (0, 0), (-1, -2), 0.25, colors.HexColor("#D5DAE1")),
-        ]))
+        # linea sotto ogni valore tranne l'ultimo (le etichette restano attaccate al loro valore)
+        stile += [("LINEBELOW", (0, r), (0, r), 0.25, colors.HexColor("#D5DAE1")) for r in range(1, len(dati) - 1, 2)]
+        tabella = Table(dati, colWidths=[LARGHEZZA], hAlign="LEFT", splitInRow=1)
+        tabella.setStyle(TableStyle(stile))
         self.storia.append(tabella)
         self.spazio(1)
 
