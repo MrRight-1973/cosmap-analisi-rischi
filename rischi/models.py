@@ -176,6 +176,10 @@ class RequisitoRESS(models.Model):
 class Pericolo(models.Model):
     codice = models.CharField(max_length=20, unique=True, help_text="EN ISO 12100, allegato B.")
     descrizione = models.CharField(max_length=300)
+    norme = models.ManyToManyField(
+        "Norma", blank=True, related_name="pericoli",
+        help_text="Norme di riferimento: nel PDF compaiono tra le norme delle schede che analizzano il pericolo.",
+    )
 
     class Meta:
         verbose_name_plural = "pericoli"
@@ -518,6 +522,10 @@ class Macchina(models.Model):
     schede_escluse = models.ManyToManyField(
         "SchedaModello", blank=True, related_name="macchine_escluse",
         help_text="Schede modello dei moduli attivati che non entrano nell'analisi di questa macchina.",
+    )
+    requisiti_esclusi = models.ManyToManyField(
+        "RequisitoRESS", blank=True, related_name="macchine_escluse",
+        help_text="Requisiti RESS non considerati per questa macchina: le loro schede non entrano nell'analisi.",
     )
     altre_legislazioni = models.ManyToManyField(
         LegislazioneUE, blank=True, help_text="Oltre al Regolamento (UE) 2023/1230."

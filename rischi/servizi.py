@@ -175,6 +175,7 @@ def _crea_applicabilita(revisione, precedente=None):
             applicabile=vecchia.applicabile if vecchia else True,
             motivazione=vecchia.motivazione if vecchia else "",
         )
+    allinea_applicabilita(revisione.analisi.macchina, revisione)
 
 
 def _metodo_corrente():
@@ -224,9 +225,12 @@ def crea_analisi_da_copia(macchina, revisione_sorgente, utente):
 
 
 def schede_attive(macchina):
-    """Schede modello che entrano nell'analisi: quelle dei moduli scelti, tranne le escluse a mano."""
-    return SchedaModello.objects.filter(modulo__in=moduli_attivi(macchina)).exclude(
-        pk__in=macchina.schede_escluse.values("pk")
+    """Schede modello che entrano nell'analisi: quelle dei moduli scelti, tranne le escluse a mano e quelle
+    dei requisiti non considerati per la macchina."""
+    return (
+        SchedaModello.objects.filter(modulo__in=moduli_attivi(macchina))
+        .exclude(pk__in=macchina.schede_escluse.values("pk"))
+        .exclude(requisito__codice__in=macchina.requisiti_esclusi.values("codice"))
     )
 
 
@@ -237,11 +241,12 @@ def schede_attive_libreria(macchina):
 
 
 @transaction.atomic
-def cambia_moduli(macchina, moduli, utente, escluse=None):
-    """Cambia i moduli della macchina (e, se date, le schede modello escluse) e allinea la revisione in bozza.
+def cambia_moduli(macchina, moduli, utente, escluse=None, requisiti_esclusi=None):
+    """Cambia i moduli della macchina (e, se date, le schede modello escluse e i requisiti non considerati) e
+    allinea la revisione in bozza.
 
-    Le schede dei moduli aggiunti e quelle riattivate entrano come proposte; quelle dei moduli tolti
-    e quelle escluse escono solo se ancora da decidere, le altre restano e vanno scartate a mano.
+    Le schede che diventano attive entrano come proposte; quelle che non lo sono più escono solo se ancora da
+    decidere, le altre restano e vanno scartate a mano. I requisiti non considerati risultano non applicabili.
     Restituisce (aggiunte, tolte, rimaste).
     """
     richiedi_ruolo(utente, COMPILATORE)
@@ -250,19 +255,19 @@ def cambia_moduli(macchina, moduli, utente, escluse=None):
     if revisione and not revisione.modificabile:
         raise ValidationError("I moduli si cambiano solo con una revisione in bozza.")
     prima = set(macchina.moduli.all())
-    escluse_prima = set(macchina.schede_escluse.all())
+    attive_prima = set(schede_attive(macchina).values_list("pk", flat=True))
     dopo = set(moduli)
     macchina.moduli.set(dopo)
     if escluse is not None:
         macchina.schede_escluse.set(escluse)
-    escluse_dopo = set(macchina.schede_escluse.all())
+    if requisiti_esclusi is not None:
+        macchina.requisiti_esclusi.set(requisiti_esclusi)
+    attive_dopo = set(schede_attive(macchina).values_list("pk", flat=True))
     if not revisione:
         return 0, 0, 0
-    aggiunti, tolti = dopo - prima, prima - dopo
-    riattivate = escluse_prima - escluse_dopo
+    tolti = prima - dopo
     da_aggiungere = (
-        schede_attive(macchina)
-        .filter(Q(modulo__in=aggiunti) | Q(pk__in=[s.pk for s in riattivate]))
+        SchedaModello.objects.filter(pk__in=attive_dopo - attive_prima)
         .exclude(codice__in=revisione.schede.values("codice"))
         .exclude(pk__in=revisione.schede.exclude(origine=None).values("origine"))
     )
@@ -271,15 +276,33 @@ def cambia_moduli(macchina, moduli, utente, escluse=None):
         _copia_scheda(scheda, revisione, origine=scheda, decisione=SchedaAnalisi.Decisione.PROPOSTA)
         aggiunte += 1
     allinea_figure(macchina, revisione)
-    da_togliere = revisione.schede.filter(
-        Q(modulo__in=tolti) | Q(origine__in=[s.pk for s in escluse_dopo - escluse_prima])
-    )
+    allinea_applicabilita(macchina, revisione)
+    da_togliere = revisione.schede.filter(Q(modulo__in=tolti) | Q(origine__in=attive_prima - attive_dopo))
     rimaste = da_togliere.exclude(decisione=SchedaAnalisi.Decisione.PROPOSTA).count()
     tolte = 0
     for scheda in da_togliere.filter(decisione=SchedaAnalisi.Decisione.PROPOSTA):
         scheda.delete()
         tolte += 1
     return aggiunte, tolte, rimaste
+
+
+MOTIVO_NON_CONSIDERATO = "Requisito non considerato per questa macchina (Dati della macchina e moduli)."
+
+
+def allinea_applicabilita(macchina, revisione):
+    """I requisiti non considerati per la macchina diventano non applicabili; quelli considerati di nuovo
+    tornano applicabili se erano stati esclusi da qui (le motivazioni scritte a mano restano)."""
+    esclusi = set(macchina.requisiti_esclusi.values_list("codice", flat=True))
+    for voce in revisione.applicabilita.select_related("requisito"):
+        if voce.requisito.codice in esclusi:
+            if voce.applicabile or not voce.motivazione.strip():
+                voce.applicabile = False
+                voce.motivazione = voce.motivazione.strip() or MOTIVO_NON_CONSIDERATO
+                voce.save()
+        elif not voce.applicabile and voce.motivazione == MOTIVO_NON_CONSIDERATO:
+            voce.applicabile = True
+            voce.motivazione = ""
+            voce.save()
 
 
 _DECISIONI_ATTIVE = (

@@ -16,6 +16,7 @@ from .forms import (
     VALORI_PR,
     VALORI_SE,
     NormeSchedaMixin,
+    _campo_norma,
     campi_norme,
     _scelta,
     descrivi_fattori,
@@ -38,6 +39,8 @@ class SoloVistaCollegati:
 class MisuraModelloInline(SoloVistaCollegati, admin.StackedInline):
     model = m.MisuraModello
     extra = 0
+    # Le norme della scheda stanno nella sezione 1 (anche quelle dei pericoli): niente norma per misura.
+    fields = ("ordine", "tipo", "testo")
     verbose_name_plural = "Misure di protezione"
 
 
@@ -264,8 +267,49 @@ class RegistroAdmin(admin.ModelAdmin):
         return False
 
 
-for modello in (m.Pericolo, m.CondizioneOperativa, m.RiferimentoNormativo, m.Cliente, m.Fabbricante, m.LegislazioneUE):
+for modello in (m.CondizioneOperativa, m.RiferimentoNormativo, m.Cliente, m.Fabbricante, m.LegislazioneUE):
     admin.site.register(modello)
+
+
+NUMERO_NORME_PERICOLO = 10
+CAMPI_NORME_PERICOLO = tuple(f"norma_{i}" for i in range(1, NUMERO_NORME_PERICOLO + 1))
+
+
+class PericoloForm(forms.ModelForm):
+    """Fino a 10 norme di riferimento per pericolo, una per selezione."""
+
+    locals().update({nome: _campo_norma(i) for i, nome in enumerate(CAMPI_NORME_PERICOLO, start=1)})
+
+    class Meta:
+        model = m.Pericolo
+        fields = ["codice", "descrizione"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        attuali = list(self.instance.norme.order_by("codice")) if self.instance.pk else []
+        for campo, norma in zip(CAMPI_NORME_PERICOLO, attuali):
+            self.initial[campo] = norma.pk
+
+    def _save_m2m(self):
+        super()._save_m2m()
+        scelte = [self.cleaned_data.get(campo) for campo in CAMPI_NORME_PERICOLO]
+        self.instance.norme.set(list(dict.fromkeys(n for n in scelte if n)))
+
+
+@admin.register(m.Pericolo)
+class PericoloAdmin(admin.ModelAdmin):
+    form = PericoloForm
+    list_display = ("codice", "descrizione", "elenco_norme")
+    search_fields = ("codice", "descrizione", "norme__codice")
+    fields = ("codice", "descrizione", *CAMPI_NORME_PERICOLO)
+
+    class Media:
+        css = {"all": ("rischi/admin_scheda.css",)}
+        js = ("rischi/scheda.js",)
+
+    @admin.display(description="norme")
+    def elenco_norme(self, obj):
+        return ", ".join(n.codice for n in obj.norme.all()) or "–"
 
 
 @admin.register(m.Figura)

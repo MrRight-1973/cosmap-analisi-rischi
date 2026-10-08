@@ -631,7 +631,9 @@ def _scheda(doc, s, descrizioni):
     dettagli = [("Modulo", str(s.modulo))]
     if s.stampa_note_requisito and s.requisito.descrizione:
         dettagli.append((f"Requisito {s.requisito.codice} – testo del Regolamento", s.requisito.descrizione))
-    dettagli += [("Note", s.note), ("Norme", _elenco_norme(s.norme.all()))]
+    # Norme della scheda e norme di riferimento dei pericoli analizzati, in un unico elenco
+    norme = [*s.norme.all(), *(n for p in s.pericoli.all() for n in p.norme.all())]
+    dettagli += [("Note", s.note), ("Norme", _elenco_norme(norme))]
     _sezione(doc, 1, dettagli, prima=testata)
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
              s.considerazioni_pericoli, considerazioni_prima=True)
