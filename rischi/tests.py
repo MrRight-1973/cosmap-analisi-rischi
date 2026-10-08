@@ -517,6 +517,33 @@ class ModuliDellaMacchinaTest(BaseConLibreria):
         self.assertTrue(self.rev.schede.filter(modulo=self.tavola).exists())
 
 
+    def test_requisiti_non_considerati_dalla_pagina_della_macchina(self):
+        from .models import RequisitoRESS
+
+        self.client.force_login(self.compilatore)
+        url = reverse("macchina", args=[self.macchina.pk])
+        self.assertContains(self.client.get(url), "REQUISITI RESS DA CONSIDERARE")
+        scheda = self.rev.schede.filter(decisione=SchedaAnalisi.Decisione.PROPOSTA).exclude(origine=None).first()
+        escluso = scheda.requisito
+        tutti = list(RequisitoRESS.objects.filter(riferimento=escluso.riferimento).values_list("pk", flat=True))
+        dati = {
+            "denominazione": self.macchina.denominazione, "tipo": self.macchina.tipo, "con_requisiti": "True",
+            "moduli": [x.pk for x in self.macchina.moduli.all()],
+        }
+        self.client.post(url, {**dati, "requisiti": [pk for pk in tutti if pk != escluso.pk]})
+        self.assertEqual(list(self.macchina.requisiti_esclusi.all()), [escluso])
+        self.assertFalse(self.rev.schede.filter(requisito=escluso, decisione=SchedaAnalisi.Decisione.PROPOSTA).exists())
+        voce = self.rev.applicabilita.get(requisito=escluso)
+        self.assertFalse(voce.applicabile)
+        self.assertEqual(voce.motivazione, servizi.MOTIVO_NON_CONSIDERATO)
+        # Considerato di nuovo: torna applicabile e le sue schede tornano proposte
+        self.client.post(url, {**dati, "requisiti": tutti})
+        voce.refresh_from_db()
+        self.assertTrue(voce.applicabile)
+        self.assertEqual(voce.motivazione, "")
+        self.assertTrue(self.rev.schede.filter(origine=scheda.origine).exists())
+
+
 class AmministrazioneLibreriaTest(BaseConLibreria):
     def test_pagina_modulo_elenca_le_schede_senza_spostarle(self):
         admin_utente = User.objects.create_superuser("capo", password="prova-prova-123")
@@ -1160,3 +1187,31 @@ class RequisitiAllegatoIIITest(BaseConLibreria):
         testo = DocumentiTest.leggi(documenti.valutazione(rev))
         self.assertIn("Requisito 1.1.5 – testo del Regolamento", testo)
         self.assertIn("movimentati e trasportati in modo sicuro", testo)
+
+
+class NormeDeiPericoliTest(BaseConLibreria):
+    def test_norme_del_pericolo_nell_area_norme_della_scheda(self):
+        from . import documenti
+        from .models import Norma, Pericolo
+
+        utente = User.objects.create_superuser("capo", "capo@example.com", "x")
+        self.client.force_login(utente)
+        analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        scheda = analisi.revisione_corrente.schede.filter(pericoli__isnull=False).first()
+        pericolo = scheda.pericoli.first()
+        norma = Norma.objects.create(codice="EN 99999", titolo="Norma del pericolo di prova")
+        url = reverse("admin:rischi_pericolo_change", args=[pericolo.pk])
+        self.assertContains(self.client.get(url), 'name="norma_10"')
+        self.client.post(url, {"codice": pericolo.codice, "descrizione": pericolo.descrizione, "norma_1": norma.pk})
+        self.assertEqual(list(pericolo.norme.all()), [norma])
+        testo = DocumentiTest.leggi(documenti.valutazione(analisi.revisione_corrente))
+        self.assertIn("EN 99999", testo)
+        self.assertIn("Norma del pericolo di prova", testo)
+
+    def test_misure_della_scheda_modello_senza_norma(self):
+        utente = User.objects.create_superuser("capo", "capo@example.com", "x")
+        self.client.force_login(utente)
+        modello = SchedaModello.objects.filter(misure__isnull=False).first()
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[modello.pk])).content.decode()
+        self.assertIn('name="misure-0-testo"', pagina)
+        self.assertNotIn('name="misure-0-norma"', pagina)

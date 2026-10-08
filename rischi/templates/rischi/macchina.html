@@ -31,6 +31,21 @@
 {% endfor %}
 {% for e in form_moduli.non_field_errors %}<small class="errore">{{ e }}</small>{% endfor %}
 </fieldset>
+<fieldset><legend>REQUISITI RESS DA CONSIDERARE</legend>
+<p class="sotto">Togliendo la spunta a un requisito, le sue schede non entrano nell'analisi e il requisito risulta non applicabile, con la motivazione «non considerato per questa macchina».</p>
+{{ form_moduli.con_requisiti }}
+{% with requisiti=form_moduli.elenco_requisiti %}
+<details class="modulo-schede">
+  <summary><b>Requisiti dell'Allegato III</b> <small class="conteggio">{{ requisiti|attive }} di {{ requisiti|length }} considerati ▾</small></summary>
+  <ul>
+    {% for requisito, spuntato in requisiti %}
+    <li><label><input type="checkbox" name="requisiti" value="{{ requisito.pk }}"{% if spuntato %} checked{% endif %}{% if not modificabile %} disabled{% endif %}>
+      <b>{{ requisito.codice }}</b> {{ requisito.titolo }}</label></li>
+    {% endfor %}
+  </ul>
+</details>
+{% endwith %}
+</fieldset>
 {% if modificabile %}<button class="primario">Salva</button>{% endif %}
 </form>
 {% endblock %}

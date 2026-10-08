@@ -166,6 +166,28 @@ class ModuliMacchinaForm(forms.Form):
     )
     # Presente solo quando la pagina mostra le schede: senza, le schede escluse restano come sono.
     con_schede = forms.BooleanField(required=False, widget=forms.HiddenInput, initial=True)
+    requisiti = forms.ModelMultipleChoiceField(
+        RequisitoRESS.objects.none(), required=False, widget=forms.CheckboxSelectMultiple
+    )
+    con_requisiti = forms.BooleanField(required=False, widget=forms.HiddenInput, initial=True)
+
+    def __init__(self, *args, riferimento=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["requisiti"].queryset = RequisitoRESS.objects.filter(riferimento=riferimento)
+
+    def requisiti_esclusi(self):
+        """Requisiti non spuntati, o None se la pagina non li mostrava."""
+        if not self.cleaned_data.get("con_requisiti"):
+            return None
+        return self.fields["requisiti"].queryset.exclude(pk__in=[r.pk for r in self.cleaned_data["requisiti"]])
+
+    def elenco_requisiti(self):
+        """[(requisito, spuntato)] per la pagina della macchina."""
+        if self.is_bound:
+            spuntati = {str(v) for v in self.data.getlist("requisiti")}
+        else:
+            spuntati = {str(r.pk) for r in self.initial.get("requisiti", [])}
+        return [(r, str(r.pk) in spuntati) for r in self.fields["requisiti"].queryset]
 
     def escluse(self):
         """Schede modello non spuntate, o None se la pagina non le mostrava."""

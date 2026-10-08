@@ -20,7 +20,17 @@ from .forms import (
     NuovaCommessaForm,
     SchedaForm,
 )
-from .models import Analisi, Cliente, Commessa, DocumentoGenerato, Macchina, RegistroModifica, Revisione, SchedaAnalisi
+from .models import (
+    Analisi,
+    Cliente,
+    Commessa,
+    DocumentoGenerato,
+    Macchina,
+    RegistroModifica,
+    RequisitoRESS,
+    Revisione,
+    SchedaAnalisi,
+)
 
 
 def _errore(request, eccezione):
@@ -314,9 +324,17 @@ def macchina(request, pk):
         not analisi or analisi.revisione_corrente.modificabile
     )
     form = MacchinaForm(request.POST or None, instance=macchina)
+    riferimento = macchina.commessa.riferimento
     form_moduli = ModuliMacchinaForm(
         request.POST or None,
-        initial={"moduli": macchina.moduli.all(), "schede": servizi.schede_attive_libreria(macchina)},
+        riferimento=riferimento,
+        initial={
+            "moduli": macchina.moduli.all(),
+            "schede": servizi.schede_attive_libreria(macchina),
+            "requisiti": RequisitoRESS.objects.filter(riferimento=riferimento).exclude(
+                codice__in=macchina.requisiti_esclusi.values("codice")
+            ),
+        },
     )
     if not modificabile:
         campi = list(form.fields.values()) + list(form_moduli.fields.values())
@@ -330,7 +348,11 @@ def macchina(request, pk):
                 with transaction.atomic():
                     form.save()
                     aggiunte, tolte, rimaste = servizi.cambia_moduli(
-                        macchina, form_moduli.cleaned_data["moduli"], request.user, form_moduli.escluse()
+                        macchina,
+                        form_moduli.cleaned_data["moduli"],
+                        request.user,
+                        form_moduli.escluse(),
+                        form_moduli.requisiti_esclusi(),
                     )
             except (PermissionDenied, ValidationError) as e:
                 _errore(request, e)
