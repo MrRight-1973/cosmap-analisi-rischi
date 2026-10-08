@@ -15,7 +15,7 @@
   {% include "rischi/_campo.html" with f=form.stampa_note_requisito %}
   {% include "rischi/_campo.html" with f=form.note %}
   {% for f in form.campi_norma %}{% include "rischi/_campo.html" %}{% endfor %}
-  {% if scheda.pk %}<div class="campo"><label>Norme da pericoli e soluzioni</label><div class="sotto">{% for n in scheda.norme_collegate %}{{ n.codice }}{% if n.titolo %} – {{ n.titolo }}{% endif %}{% if not forloop.last %}<br>{% endif %}{% empty %}Nessuna: scegli pericoli con norme o soluzioni di protezione nelle misure e salva.{% endfor %}</div></div>{% endif %}
+  {% include "rischi/_campo.html" with f=form.norme_automatiche %}
 </fieldset>
 <fieldset><legend>2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)</legend>
   {% include "rischi/_campo.html" with f=form.considerazioni_pericoli %}

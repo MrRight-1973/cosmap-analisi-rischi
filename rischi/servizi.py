@@ -96,6 +96,7 @@ def _copia_scheda(sorgente, revisione, **extra):
     nuova.condizioni.set(sorgente.condizioni.all())
     nuova.pericoli.set(sorgente.pericoli.all())
     nuova.norme.set(sorgente.norme.all())
+    nuova.norme_escluse.set(sorgente.norme_escluse.all())
     nuova.soggetti.set(sorgente.soggetti.all())
     for misura in sorgente.misure.all():
         MisuraAnalisi.objects.create(
@@ -123,6 +124,7 @@ def aggiorna_da_modello(scheda, utente):
     scheda.condizioni.set(modello.condizioni.all())
     scheda.pericoli.set(modello.pericoli.all())
     scheda.norme.set(modello.norme.all())
+    scheda.norme_escluse.set(modello.norme_escluse.all())
     scheda.soggetti.set(modello.soggetti.all())
     scheda.misure.all().delete()
     for misura in modello.misure.all():

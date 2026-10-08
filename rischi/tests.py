@@ -1282,3 +1282,53 @@ class SoluzioniENormeGeneraliTest(BaseConLibreria):
         pagina = self.client.get(reverse("macchina", args=[macchina.pk])).content.decode()
         self.assertIn('name="norme_tipo_c"', pagina)
         self.assertNotIn(f'name="norme_tipo_c" value="{tipo_a.pk}"', pagina)
+
+
+class NormeAutomaticheTest(BaseConLibreria):
+    def test_norme_da_requisito_e_da_parole_chiave_con_esclusione(self):
+        from . import documenti
+        from .models import MisuraAnalisi, Norma, SoluzioneProtezione
+
+        analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        scheda = analisi.revisione_corrente.schede.first()
+        del_requisito = Norma.objects.create(codice="EN 70001", titolo="Norma del requisito")
+        della_soluzione = Norma.objects.create(codice="EN 70002", titolo="Norma della soluzione")
+        scheda.requisito.norme.add(del_requisito)
+        soluzione = SoluzioneProtezione.objects.create(nome="Prova interblocco", parole_chiave="porta di prova")
+        soluzione.norme.set([della_soluzione])
+        MisuraAnalisi.objects.create(scheda=scheda, ordine=99, tipo="PROT", testo="Una <b>porta di prova</b> chiusa.")
+
+        origini = scheda.origini_norme()
+        self.assertEqual(origini[del_requisito], [f"RESS {scheda.requisito.codice}"])
+        self.assertTrue(origini[della_soluzione][0].startswith("misura "))
+        self.assertIn(della_soluzione, scheda.norme_collegate())
+
+        # Il tecnico toglie la spunta alla norma della soluzione: resta solo quella del requisito.
+        self.client.force_login(self.compilatore)
+        pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
+        self.assertContains(pagina, "Norme ricavate in automatico")
+        form = pagina.context["form"]
+        self.assertIn(str(della_soluzione.pk), form.initial["norme_automatiche"])
+        dati = {}
+        for nome in form.fields:
+            valore = form.initial.get(nome)
+            if hasattr(valore, "__iter__") and not isinstance(valore, str):
+                dati[nome] = [getattr(v, "pk", v) for v in valore]
+            elif valore is not None:
+                dati[nome] = getattr(valore, "pk", valore)
+        dati["norme_automatiche"] = [n.pk for n in origini if n != della_soluzione]
+        misure = pagina.context["misure"]
+        dati.update({f"misure-{k}": v for k, v in misure.management_form.initial.items()})
+        dati["misure-TOTAL_FORMS"] = misure.initial_form_count()
+        for i, mf in enumerate(misure.forms):
+            if mf.instance.pk:
+                dati.update({f"misure-{i}-id": mf.instance.pk, f"misure-{i}-ordine": mf.instance.ordine,
+                             f"misure-{i}-tipo": mf.instance.tipo, f"misure-{i}-testo": mf.instance.testo})
+        risposta = self.client.post(reverse("scheda", args=[scheda.pk]), dati)
+        self.assertEqual(risposta.status_code, 302)
+        self.assertEqual(list(scheda.norme_escluse.all()), [della_soluzione])
+        self.assertNotIn(della_soluzione, scheda.norme_collegate())
+        self.assertIn(del_requisito, scheda.norme_collegate())
+        testo = DocumentiTest.leggi(documenti.valutazione(analisi.revisione_corrente))
+        self.assertIn("EN 70001", testo)
+        self.assertNotIn("EN 70002", testo)

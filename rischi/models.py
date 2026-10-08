@@ -159,6 +159,11 @@ class RequisitoRESS(models.Model):
     # Dato dal codice (vedi save): i requisiti si elencano nell'ordine dell'Allegato III.
     ordine = models.PositiveIntegerField(default=0, editable=False)
 
+    norme = models.ManyToManyField(
+        "Norma", blank=True, related_name="requisiti",
+        help_text="Norme tipiche del requisito: entrano da sole nell'area Norme delle schede del requisito.",
+    )
+
     class Meta:
         verbose_name = "requisito RESS"
         verbose_name_plural = "requisiti RESS"
@@ -315,6 +320,11 @@ class SoluzioneProtezione(models.Model):
         "testo proposto", blank=True, help_text="Si precompila nella misura quando si sceglie la soluzione."
     )
     norme = models.ManyToManyField(Norma, blank=True, related_name="soluzioni")
+    parole_chiave = models.TextField(
+        "parole chiave", blank=True,
+        help_text="Separate da virgola. Se il testo di una misura senza soluzione ne contiene una, la misura è "
+        "riconosciuta come questa soluzione e ne prende le norme (es. interblocc, porte interbloccate).",
+    )
 
     class Meta:
         verbose_name = "soluzione di protezione"
@@ -323,6 +333,15 @@ class SoluzioneProtezione(models.Model):
 
     def __str__(self):
         return self.nome
+
+    def parole(self):
+        return [p.strip().lower() for p in self.parole_chiave.replace("\n", ",").split(",") if p.strip()]
+
+
+def riconosci_soluzioni(testo, soluzioni):
+    """Soluzioni le cui parole chiave compaiono nel testo della misura."""
+    testo = semplice(testo).lower()
+    return [s for s in soluzioni if any(p in testo for p in s.parole())]
 
 
 class Stima(models.Model):
@@ -378,13 +397,42 @@ class Stima(models.Model):
     def ha_stima_finale(self):
         return self.se_finale is not None and self.cl_finale is not None
 
-    def norme_collegate(self):
-        """Norme che entrano da sole nella scheda: dei pericoli analizzati e delle soluzioni scelte nelle misure."""
+    def origini_norme(self, soluzioni=None):
+        """Norme ricavate in automatico, con da dove vengono: {norma: ["RESS 1.2.4.3", "pericolo 1.2.1", …]}.
+
+        Regole: norme tipiche del requisito RESS; norme dei pericoli analizzati; norme della soluzione di
+        protezione di ogni misura, scelta a mano o riconosciuta dalle parole chiave nel testo."""
+        if not self.pk:
+            return {}
+        if soluzioni is None:
+            soluzioni = list(SoluzioneProtezione.objects.exclude(parole_chiave="").prefetch_related("norme"))
+        origini = {}
+
+        def aggiungi(norme, origine):
+            for norma in norme:
+                elenco = origini.setdefault(norma, [])
+                if origine not in elenco:
+                    elenco.append(origine)
+
+        if self.requisito_id:
+            aggiungi(self.requisito.norme.all(), f"RESS {self.requisito.codice}")
+        for pericolo in self.pericoli.all():
+            aggiungi(pericolo.norme.all(), f"pericolo {pericolo.codice}")
+        da_misure = {}
+        for numero, misura in enumerate(self.misure.all(), start=1):
+            trovate = [misura.soluzione] if misura.soluzione else riconosci_soluzioni(misura.testo, soluzioni)
+            for norma in {n for soluzione in trovate for n in soluzione.norme.all()}:
+                da_misure.setdefault(norma, []).append(str(numero))
+        for norma, numeri in da_misure.items():
+            aggiungi([norma], ("misura " if len(numeri) == 1 else "misure ") + ", ".join(numeri))
+        return dict(sorted(origini.items(), key=lambda v: v[0].codice))
+
+    def norme_collegate(self, soluzioni=None):
+        """Norme ricavate in automatico, meno quelle escluse a mano dalla scheda."""
         if not self.pk:
             return []
-        norme = {n for p in self.pericoli.all() for n in p.norme.all()}
-        norme |= {n for misura in self.misure.all() if misura.soluzione for n in misura.soluzione.norme.all()}
-        return sorted(norme, key=lambda n: n.codice)
+        escluse = {n.pk for n in self.norme_escluse.all()}
+        return [n for n in self.origini_norme(soluzioni) if n.pk not in escluse]
 
 
 def prossimo_codice(modulo, codici_usati):
@@ -409,6 +457,10 @@ class SchedaModello(Stima):
     condizioni = models.ManyToManyField(CondizioneOperativa, blank=True)
     pericoli = models.ManyToManyField(Pericolo, blank=True, verbose_name="pericoli")
     norme = models.ManyToManyField(Norma, blank=True)
+    norme_escluse = models.ManyToManyField(
+        Norma, blank=True, related_name="schede_modello_escluse",
+        help_text="Norme ricavate in automatico che non riguardano questa scheda.",
+    )
     soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti")
     scheda_originale = models.CharField(max_length=40, blank=True, help_text="Riferimento alla valutazione di origine.")
     stato = models.CharField(max_length=10, choices=Stato.choices, default=Stato.BOZZA)
@@ -721,6 +773,10 @@ class SchedaAnalisi(ContenutoRevisione, Stima):
     condizioni = models.ManyToManyField(CondizioneOperativa, blank=True)
     pericoli = models.ManyToManyField(Pericolo, blank=True, verbose_name="pericoli")
     norme = models.ManyToManyField(Norma, blank=True)
+    norme_escluse = models.ManyToManyField(
+        Norma, blank=True, related_name="schede_escluse",
+        help_text="Norme ricavate in automatico che non riguardano questa scheda.",
+    )
     soggetti = models.ManyToManyField(Figura, blank=True, verbose_name="soggetti esposti")
     decisione = models.CharField(max_length=10, choices=Decisione.choices, default=Decisione.PROPOSTA)
     motivazione = models.TextField(blank=True)
