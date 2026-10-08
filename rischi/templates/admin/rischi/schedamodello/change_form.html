@@ -1,14 +1,13 @@
 {% extends "admin/change_form.html" %}
-{% comment %}Sezioni EN ISO 12100: la sezione 6 (riduzione del rischio) si apre con le considerazioni e prosegue con le misure di protezione, senza un titolo proprio.{% endcomment %}
+{% comment %}Sezioni EN ISO 12100, richiudibili: chiuse quando si apre una scheda esistente, aperte per una
+scheda nuova o con errori. La sezione 6 (riduzione del rischio) contiene anche le misure di protezione.{% endcomment %}
 {% block field_sets %}
-{% for fieldset in adminform %}{% if forloop.counter <= 6 %}
-  {% include "admin/includes/fieldset.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 %}
-{% endif %}{% endfor %}
-{% for inline_admin_formset in inline_admin_formsets %}
-    {% include inline_admin_formset.opts.template %}
+<div class="comandi-sezioni">
+  <button type="button" class="button" data-sezioni="apri">Apri tutte le sezioni</button>
+  <button type="button" class="button" data-sezioni="chiudi">Chiudi tutte</button>
+</div>
+{% for fieldset in adminform %}
+  {% include "admin/rischi/schedamodello/sezione.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 aperte=add con_misure=forloop.counter|divisibleby:6 %}
 {% endfor %}
-{% for fieldset in adminform %}{% if forloop.counter > 6 %}
-  {% include "admin/includes/fieldset.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 %}
-{% endif %}{% endfor %}
 {% endblock %}
 {% block inline_field_sets %}{% endblock %}

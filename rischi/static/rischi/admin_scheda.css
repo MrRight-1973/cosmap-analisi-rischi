@@ -22,3 +22,18 @@
 #misure-group .inline-heading {
     display: none;
 }
+
+/* Sezioni richiudibili: il titolo blu apre e chiude la sezione. */
+.comandi-sezioni { margin: 0 0 12px; display: flex; gap: 8px; }
+details.sezione > summary { list-style: none; cursor: pointer; }
+details.sezione > summary::-webkit-details-marker { display: none; }
+details.sezione > summary h2 { display: flex; justify-content: space-between; align-items: center; margin: 0; }
+details.sezione .apri-sezione::after { content: "▸ apri e modifica"; font-size: 0.75rem; text-transform: none; opacity: 0.85; }
+details.sezione[open] .apri-sezione::after { content: "▾ chiudi"; }
+fieldset.sezione-scheda { margin-bottom: 6px; }
+fieldset.sezione-scheda .inline-group { margin: 0; border: none; }
+
+/* Pulsante del grassetto sopra i testi */
+.pulsante-grassetto { display: block; margin: 0 0 3px; padding: 1px 8px; font-size: 0.75rem; cursor: pointer; }
+.aligned .pulsante-grassetto { align-self: flex-start; margin: 0 6px 0 0; }
+.form-row[hidden] { display: none !important; }

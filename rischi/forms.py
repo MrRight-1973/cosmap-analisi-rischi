@@ -202,8 +202,9 @@ CAMPI_CONSIDERAZIONI = (
     "considerazioni_stima_finale",
 )
 
-# Norme richiamate nella sezione 1 della scheda: cinque selezioni sotto le note.
-NUMERO_NORME = 5
+# Norme richiamate nella sezione 1 della scheda: venti selezioni sotto le note (a video compaiono
+# quelle compilate più una vuota, vedi rischi/static/rischi/scheda.js).
+NUMERO_NORME = 20
 CAMPI_NORME = tuple(f"norma_{i}" for i in range(1, NUMERO_NORME + 1))
 
 
@@ -215,8 +216,16 @@ def _campo_norma(numero):
     return campo
 
 
+def campi_norme():
+    """{"norma_1": campo, …}: da aggiungere al corpo della classe del form con locals().update(...)."""
+    return {nome: _campo_norma(i) for i, nome in enumerate(CAMPI_NORME, start=1)}
+
+
 class NormeSchedaMixin:
-    """Le cinque selezioni norma_1…norma_5 leggono e scrivono il campo molti-a-molti `norme` della scheda."""
+    """Le selezioni norma_1…norma_20 leggono e scrivono il campo molti-a-molti `norme` della scheda."""
+
+    def campi_norma(self):
+        return [self[campo] for campo in CAMPI_NORME]
 
     def _prepara_norme(self):
         attuali = list(self.instance.norme.order_by("codice")) if self.instance.pk else []
@@ -241,7 +250,7 @@ class SchedaForm(NormeSchedaMixin, forms.ModelForm):
     fr_finale = _scelta(VALORI_FR)
     pr_finale = _scelta(VALORI_PR)
     av_finale = _scelta(VALORI_AV)
-    norma_1, norma_2, norma_3, norma_4, norma_5 = (_campo_norma(i) for i in range(1, NUMERO_NORME + 1))
+    locals().update(campi_norme())  # norma_1 … norma_20
 
     CAMPI_CONTENUTO = (
         "modulo",

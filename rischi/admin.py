@@ -11,13 +11,12 @@ from .duplica import duplica
 from .forms import (
     CAMPI_CONSIDERAZIONI,
     CAMPI_NORME,
-    NUMERO_NORME,
     VALORI_AV,
     VALORI_FR,
     VALORI_PR,
     VALORI_SE,
     NormeSchedaMixin,
-    _campo_norma,
+    campi_norme,
     _scelta,
     descrivi_fattori,
 )
@@ -50,7 +49,7 @@ class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
     fr_finale = _scelta(VALORI_FR)
     pr_finale = _scelta(VALORI_PR)
     av_finale = _scelta(VALORI_AV)
-    norma_1, norma_2, norma_3, norma_4, norma_5 = (_campo_norma(i) for i in range(1, NUMERO_NORME + 1))
+    locals().update(campi_norme())  # norma_1 … norma_20
 
     class Meta:
         model = m.SchedaModello
@@ -86,6 +85,7 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
 
     class Media:
         css = {"all": ("rischi/admin_scheda.css",)}
+        js = ("rischi/scheda.js",)
     # Sezioni in sequenza EN ISO 12100, come la scheda nell'analisi; le misure di protezione stanno
     # in fondo alla sezione 6, dopo le considerazioni (vedi admin/rischi/schedamodello/change_form.html).
     fieldsets = (
