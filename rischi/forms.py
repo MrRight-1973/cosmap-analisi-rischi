@@ -16,6 +16,7 @@ from .models import (
     Revisione,
     RiferimentoNormativo,
     SchedaAnalisi,
+    SchedaModello,
 )
 
 VALORI_SE = [(None, "–"), (1, "1"), (2, "2"), (3, "3"), (4, "4")]
@@ -154,10 +155,42 @@ class MacchinaForm(forms.ModelForm):
 
 
 class ModuliMacchinaForm(forms.Form):
+    """Moduli della macchina e, per ogni modulo, le sue schede modello da attivare."""
+
     moduli = SceltaModuli(
-        help_text="Aggiungendo un modulo le sue schede entrano nella bozza come proposte. Togliendolo escono "
-        "le sue schede ancora da decidere; quelle già decise restano e vanno scartate a mano.",
+        help_text="Aggiungendo un modulo o una scheda, le schede entrano nella bozza come proposte. Togliendoli "
+        "escono le schede ancora da decidere; quelle già decise restano e vanno scartate a mano.",
     )
+    schede = forms.ModelMultipleChoiceField(
+        SchedaModello.objects.filter(modulo__attivo=True), required=False, widget=forms.CheckboxSelectMultiple
+    )
+    # Presente solo quando la pagina mostra le schede: senza, le schede escluse restano come sono.
+    con_schede = forms.BooleanField(required=False, widget=forms.HiddenInput, initial=True)
+
+    def escluse(self):
+        """Schede modello non spuntate, o None se la pagina non le mostrava."""
+        if not self.cleaned_data.get("con_schede"):
+            return None
+        return SchedaModello.objects.filter(modulo__attivo=True).exclude(
+            pk__in=[s.pk for s in self.cleaned_data["schede"]]
+        )
+
+    def gruppi(self):
+        """[(modulo, spuntato, [(scheda, spuntata)])] per disegnare moduli e schede annidati."""
+        if self.is_bound:
+            moduli = {str(v) for v in self.data.getlist("moduli")}
+            schede = {str(v) for v in self.data.getlist("schede")}
+        else:
+            moduli = {str(x.pk) for x in self.initial.get("moduli", [])}
+            schede = {str(x.pk) for x in self.initial.get("schede", [])}
+        elenco = SchedaModello.objects.filter(modulo__attivo=True).select_related("requisito")
+        per_modulo = {}
+        for scheda in elenco:
+            per_modulo.setdefault(scheda.modulo_id, []).append((scheda, str(scheda.pk) in schede))
+        return [
+            (modulo, str(modulo.pk) in moduli, sorted(per_modulo.get(modulo.pk, []), key=lambda v: v[0].codice))
+            for modulo in self.fields["moduli"].queryset
+        ]
 
 
 CAMPI_CONSIDERAZIONI = (

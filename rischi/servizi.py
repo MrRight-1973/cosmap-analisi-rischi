@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .registro import senza_registro_contenuti
@@ -190,9 +191,7 @@ def crea_analisi_da_libreria(macchina, utente):
     revisione = Revisione.objects.create(
         analisi=analisi, numero=0, motivo="Prima emissione", metodo=_metodo_corrente(), compilata_da=utente
     )
-    schede = SchedaModello.objects.filter(modulo__in=moduli_attivi(macchina)).select_related(
-        "modulo", "requisito"
-    )
+    schede = schede_attive(macchina).select_related("modulo", "requisito")
     for scheda in schede:
         _copia_scheda(scheda, revisione, origine=scheda, decisione=SchedaAnalisi.Decisione.PROPOSTA)
     allinea_figure(macchina, revisione)
@@ -217,17 +216,31 @@ def crea_analisi_da_copia(macchina, revisione_sorgente, utente):
     for scheda in revisione_sorgente.schede.filter(decisione__in=_DECISIONI_ATTIVE):
         _copia_scheda(scheda, revisione, origine=scheda.origine, decisione=SchedaAnalisi.Decisione.PROPOSTA)
     macchina.moduli.set(revisione_sorgente.analisi.macchina.moduli.all())
+    macchina.schede_escluse.set(revisione_sorgente.analisi.macchina.schede_escluse.all())
     allinea_figure(macchina, revisione, revisione_sorgente.analisi.macchina.descrizioni_figure())
     _crea_applicabilita(revisione, precedente=revisione_sorgente)
     return analisi
 
 
-@transaction.atomic
-def cambia_moduli(macchina, moduli, utente):
-    """Cambia i moduli della macchina e allinea la revisione in bozza.
+def schede_attive(macchina):
+    """Schede modello che entrano nell'analisi: quelle dei moduli scelti, tranne le escluse a mano."""
+    return SchedaModello.objects.filter(modulo__in=moduli_attivi(macchina)).exclude(
+        pk__in=macchina.schede_escluse.values("pk")
+    )
 
-    Le schede dei moduli aggiunti entrano come proposte; quelle dei moduli tolti
-    escono solo se ancora da decidere, le altre restano e vanno scartate a mano.
+
+def schede_attive_libreria(macchina):
+    """Schede modello spuntate nella pagina della macchina: tutte quelle della libreria, tranne le escluse
+    (anche per i moduli non scelti, così riattivando un modulo tornano le sue schede di prima)."""
+    return SchedaModello.objects.exclude(pk__in=macchina.schede_escluse.values("pk"))
+
+
+@transaction.atomic
+def cambia_moduli(macchina, moduli, utente, escluse=None):
+    """Cambia i moduli della macchina (e, se date, le schede modello escluse) e allinea la revisione in bozza.
+
+    Le schede dei moduli aggiunti e quelle riattivate entrano come proposte; quelle dei moduli tolti
+    e quelle escluse escono solo se ancora da decidere, le altre restano e vanno scartate a mano.
     Restituisce (aggiunte, tolte, rimaste).
     """
     richiedi_ruolo(utente, COMPILATORE)
@@ -236,18 +249,30 @@ def cambia_moduli(macchina, moduli, utente):
     if revisione and not revisione.modificabile:
         raise ValidationError("I moduli si cambiano solo con una revisione in bozza.")
     prima = set(macchina.moduli.all())
+    escluse_prima = set(macchina.schede_escluse.all())
     dopo = set(moduli)
     macchina.moduli.set(dopo)
+    if escluse is not None:
+        macchina.schede_escluse.set(escluse)
+    escluse_dopo = set(macchina.schede_escluse.all())
     if not revisione:
         return 0, 0, 0
     aggiunti, tolti = dopo - prima, prima - dopo
-    presenti = set(revisione.schede.values_list("codice", flat=True))
+    riattivate = escluse_prima - escluse_dopo
+    da_aggiungere = (
+        schede_attive(macchina)
+        .filter(Q(modulo__in=aggiunti) | Q(pk__in=[s.pk for s in riattivate]))
+        .exclude(codice__in=revisione.schede.values("codice"))
+        .exclude(pk__in=revisione.schede.exclude(origine=None).values("origine"))
+    )
     aggiunte = 0
-    for scheda in SchedaModello.objects.filter(modulo__in=aggiunti).exclude(codice__in=presenti):
+    for scheda in da_aggiungere:
         _copia_scheda(scheda, revisione, origine=scheda, decisione=SchedaAnalisi.Decisione.PROPOSTA)
         aggiunte += 1
     allinea_figure(macchina, revisione)
-    da_togliere = revisione.schede.filter(modulo__in=tolti)
+    da_togliere = revisione.schede.filter(
+        Q(modulo__in=tolti) | Q(origine__in=[s.pk for s in escluse_dopo - escluse_prima])
+    )
     rimaste = da_togliere.exclude(decisione=SchedaAnalisi.Decisione.PROPOSTA).count()
     tolte = 0
     for scheda in da_togliere.filter(decisione=SchedaAnalisi.Decisione.PROPOSTA):
