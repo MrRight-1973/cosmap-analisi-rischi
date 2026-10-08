@@ -212,7 +212,19 @@
     }));
   }
 
+  // Misure della scheda modello: intestazione Misura 1, 2, 3… anche dopo aver aggiunto o tolto righe.
+  function numeraMisure() {
+    document.querySelectorAll(".misure-numerate").forEach(function (gruppo) {
+      gruppo.querySelectorAll(".inline-related:not(.empty-form) .numero-misura").forEach(function (n, i) {
+        n.textContent = i + 1;
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    numeraMisure();
+    document.addEventListener("formset:added", numeraMisure);
+    document.addEventListener("formset:removed", numeraMisure);
     document.querySelectorAll("form textarea").forEach(preparaEditor);
     // Righe aggiunte nell'amministrazione (es. "Aggiungi un'altra misura")
     document.addEventListener("formset:added", function (e) {

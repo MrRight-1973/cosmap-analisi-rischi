@@ -1215,3 +1215,5 @@ class NormeDeiPericoliTest(BaseConLibreria):
         pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[modello.pk])).content.decode()
         self.assertIn('name="misure-0-testo"', pagina)
         self.assertNotIn('name="misure-0-norma"', pagina)
+        self.assertNotIn('name="misure-0-ordine"', pagina)
+        self.assertIn('Misura <span class="numero-misura">1</span>', pagina)
