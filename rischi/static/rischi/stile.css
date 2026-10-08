@@ -153,5 +153,18 @@ small.errore { color: var(--error-fg); }
 .modulo-schede summary:has(input[name=moduli]:not(:checked)) + ul { opacity: 0.55; }
 
 /* Pulsante del grassetto sopra i testi della scheda */
-.pulsante-grassetto { justify-self: start; margin: 0 0 3px; padding: 1px 8px !important; font-size: 0.75rem !important; }
+/* Editor dei testi formattati (scheda.js) */
+.testo-ricco { box-sizing: border-box; width: 100%; max-width: 60em; border: 1px solid var(--border-color); border-radius: 4px; background: var(--body-bg); }
+.testo-ricco textarea[hidden] { display: none !important; }
+.barra-testo { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-bottom: 1px solid var(--hairline-color); background: var(--darkened-bg); }
+.barra-testo button { margin: 0 !important; padding: 1px 7px !important; min-width: 2em; font-size: 0.75rem !important; line-height: 1.4; cursor: pointer;
+  color: var(--body-fg) !important; background: var(--body-bg) !important; border: 1px solid var(--border-color) !important; border-radius: 3px; }
+.barra-testo button:hover { background: var(--selected-bg) !important; }
+.editor-testo { padding: 4px 6px; overflow: auto; resize: vertical; max-height: 40em; line-height: 1.5; color: var(--body-fg); white-space: normal; word-wrap: break-word; }
+.editor-testo:focus { outline: 2px solid var(--link-hover-color); outline-offset: -1px; }
+.editor-testo ul, .editor-testo ol { margin: 2px 0 !important; padding-left: 1.8em !important; columns: auto !important; }
+.editor-testo ul li { list-style: disc !important; padding: 0 !important; }
+.editor-testo ol li { list-style: decimal !important; padding: 0 !important; }
+.editor-testo ul ul li { list-style: circle !important; }
+.testo-ricco.bloccato { background: var(--darkened-bg); }
 .campo[hidden] { display: none; }

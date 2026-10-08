@@ -325,6 +325,24 @@ class DocumentiTest(BaseConLibreria):
         self.assertIn("Prima parte molto importante e coda", testo)
         self.assertNotIn("**", testo)
 
+    def test_testo_formattato_nel_pdf(self):
+        from . import documenti
+
+        scheda = self.rev.schede.exclude(decisione=SchedaAnalisi.Decisione.SCARTATA).first()
+        scheda.note = (
+            "<b>Grassetto</b> e <i>corsivo</i> e <u>sotto</u> &lt;5 bar"
+            "<ul><li>primo</li><li>secondo</li></ul><div>fine</div>"
+        )
+        scheda.save()
+        self.assertEqual(
+            documenti._pulito(scheda.note),
+            "<b>Grassetto</b> e <i>corsivo</i> e <u>sotto</u> &lt;5 bar<br/>• primo<br/>• secondo<br/>fine",
+        )
+        testo = DocumentiTest.leggi(documenti.valutazione(self.rev))
+        self.assertIn("Grassetto e corsivo e sotto <5 bar", testo)
+        self.assertIn("• primo", testo)
+        self.assertNotIn("<b>", testo)
+
     def test_pagina_di_intestazione_con_logo(self):
         from django.core.files.base import ContentFile
         from PIL import Image
@@ -1057,3 +1075,41 @@ class SchedaModelloSezioniTest(BaseConLibreria):
         self.assertLess(pagina.index('id="misure-group"'), pagina.index("7. STIMA FINALE"))
         nuova = self.client.get(reverse("admin:rischi_schedamodello_add")).content.decode()
         self.assertEqual(nuova.count('<details class="sezione" open>'), 8)
+
+
+class TestoFormattatoTest(TestCase):
+    """HTML dell'editor delle schede: incollato da Word, Google Documenti, pagine web."""
+
+    def test_word(self):
+        from .testo import in_reportlab
+
+        word = (
+            "<html xmlns:o='urn:schemas-microsoft-com:office:office'><head><style>p {margin:0}</style></head>"
+            "<body><!--StartFragment--><p class=MsoNormal><b>Attenzione</b>: <span style='font-style:italic'>"
+            "lame</span><o:p>&nbsp;</o:p></p><p class=MsoNormal>guanti</p><!--EndFragment--></body></html>"
+        )
+        self.assertEqual(in_reportlab(word), "<b>Attenzione</b>: <i>lame</i><br/>guanti")
+
+    def test_google_documenti_e_stili(self):
+        from .testo import in_reportlab
+
+        html = (
+            '<b style="font-weight:normal" id="docs-internal-guid-1"><p><span style="font-weight:700">'
+            'Forte</span> <span style="text-decoration:underline">sotto</span> normale</p></b>'
+        )
+        self.assertEqual(in_reportlab(html), "<b>Forte</b> <u>sotto</u> normale")
+
+    def test_righe_vuote_ed_elenchi_annidati(self):
+        from .testo import in_reportlab, semplice
+
+        html = "<div>a</div><div><br></div><div>b<br></div><ol><li>uno<ul><li>sotto</li></ul></li></ol>"
+        self.assertEqual(
+            in_reportlab(html), "a<br/><br/>b<br/>1. uno<br/>&nbsp;&nbsp;&nbsp;&nbsp;• sotto"
+        )
+        self.assertEqual(semplice(html), "a\n\nb\n1. uno\n  • sotto")
+        self.assertEqual(semplice("solo **testo**"), "solo testo")
+
+    def test_codice_scartato(self):
+        from .testo import in_reportlab
+
+        self.assertEqual(in_reportlab('<p>ok<script>alert(1)</script><img src=x onerror="x"></p>'), "ok")
