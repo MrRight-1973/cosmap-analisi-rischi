@@ -10,14 +10,14 @@
 {% for f in form %}{% include "rischi/_campo.html" %}{% endfor %}
 </fieldset>
 <fieldset><legend>MODULI E SCHEDE MODELLO</legend>
-<p class="sotto">{{ form_moduli.moduli.help_text }} Apri un modulo per scegliere le sue schede modello da attivare.</p>
+<p class="sotto">{{ form_moduli.moduli.help_text }} Con il pulsante «Schede» a destra di ogni modulo si aprono le sue schede modello: togli la spunta a quelle che non servono per questa macchina.</p>
 {{ form_moduli.con_schede }}
 {% for modulo, spuntato, schede in form_moduli.gruppi %}
 <details class="modulo-schede">
   <summary>
     <label><input type="checkbox" name="moduli" value="{{ modulo.pk }}"{% if spuntato %} checked{% endif %}{% if not modificabile %} disabled{% endif %}>
       {{ modulo.nome }}{% if modulo.condizione %} <small>({{ modulo.condizione }})</small>{% endif %}</label>
-    <small class="conteggio">{% with attive=schede|attive %}{{ attive }} di {{ schede|length }} schede attive{% endwith %} ▾</small>
+    <small class="conteggio" title="Mostra le schede modello del modulo"><span class="freccia">▸</span> Schede: {% with attive=schede|attive %}{{ attive }} di {{ schede|length }} attive{% endwith %}</small>
   </summary>
   {% if schede %}
   <ul>
@@ -36,7 +36,7 @@
 {{ form_moduli.con_requisiti }}
 {% with requisiti=form_moduli.elenco_requisiti %}
 <details class="modulo-schede">
-  <summary><b>Requisiti dell'Allegato III</b> <small class="conteggio">{{ requisiti|attive }} di {{ requisiti|length }} considerati ▾</small></summary>
+  <summary><b>Requisiti dell'Allegato III</b> <small class="conteggio"><span class="freccia">▸</span> {{ requisiti|attive }} di {{ requisiti|length }} considerati</small></summary>
   <ul>
     {% for requisito, spuntato in requisiti %}
     <li><label><input type="checkbox" name="requisiti" value="{{ requisito.pk }}"{% if spuntato %} checked{% endif %}{% if not modificabile %} disabled{% endif %}>
