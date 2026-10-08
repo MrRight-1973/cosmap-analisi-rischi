@@ -41,6 +41,7 @@ from reportlab.platypus import (
 )
 
 from .models import Esito, Fabbricante, Revisione, SchedaAnalisi
+from .testo import e_formattato, in_reportlab
 
 REGOLAMENTO = "Regolamento (UE) 2023/1230"
 
@@ -116,36 +117,63 @@ ESITI_COLORE = {Esito.OK: "#E6F4E7", Esito.SUGGERITE: "#FFF6D6", Esito.RICHIESTE
 # ---------------------------------------------------------------------------
 
 _CARATTERI_CANDIDATI = [
-    ("C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/arialbd.ttf"),
-    ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-    ("/usr/share/fonts/dejavu/DejaVuSans.ttf", "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"),
-    ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
-    ("/Library/Fonts/Arial.ttf", "/Library/Fonts/Arial Bold.ttf"),
+    # normale, grassetto, corsivo, grassetto corsivo
+    ("C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/arialbd.ttf", "C:/Windows/Fonts/ariali.ttf", "C:/Windows/Fonts/arialbi.ttf"),
+    (
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Italic.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-BoldItalic.ttf",
+    ),
+    (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf",
+    ),
+    (
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Oblique.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-BoldOblique.ttf",
+    ),
+    ("/Library/Fonts/Arial.ttf", "/Library/Fonts/Arial Bold.ttf", "/Library/Fonts/Arial Italic.ttf", "/Library/Fonts/Arial Bold Italic.ttf"),
 ]
 _carattere = None
 
 
 def _carattere_registrato():
-    """(normale, grassetto, unicode completo) – registra il carattere una sola volta."""
+    """(normale, grassetto, unicode completo) – registra il carattere una sola volta.
+
+    Si preferisce una famiglia con anche il corsivo; senza, il corsivo esce come testo normale.
+    """
     global _carattere
     if _carattere is None:
         _carattere = ("Helvetica", "Helvetica-Bold", False)
-        for normale, grassetto in _CARATTERI_CANDIDATI:
-            if Path(normale).exists() and Path(grassetto).exists():
-                pdfmetrics.registerFont(TTFont("Testo", normale))
-                pdfmetrics.registerFont(TTFont("Testo-Grassetto", grassetto))
-                pdfmetrics.registerFontFamily("Testo", normal="Testo", bold="Testo-Grassetto")
-                _carattere = ("Testo", "Testo-Grassetto", True)
-                break
+        presenti = [c for c in _CARATTERI_CANDIDATI if Path(c[0]).exists() and Path(c[1]).exists()]
+        presenti.sort(key=lambda c: not all(Path(f).exists() for f in c))
+        if presenti:
+            normale, grassetto, corsivo, grassetto_corsivo = presenti[0]
+            pdfmetrics.registerFont(TTFont("Testo", normale))
+            pdfmetrics.registerFont(TTFont("Testo-Grassetto", grassetto))
+            nomi = {"normal": "Testo", "bold": "Testo-Grassetto", "italic": "Testo", "boldItalic": "Testo-Grassetto"}
+            if Path(corsivo).exists() and Path(grassetto_corsivo).exists():
+                pdfmetrics.registerFont(TTFont("Testo-Corsivo", corsivo))
+                pdfmetrics.registerFont(TTFont("Testo-GrassettoCorsivo", grassetto_corsivo))
+                nomi.update(italic="Testo-Corsivo", boldItalic="Testo-GrassettoCorsivo")
+            pdfmetrics.registerFontFamily("Testo", **nomi)
+            _carattere = ("Testo", "Testo-Grassetto", True)
     return _carattere
 
 
 def _pulito(testo):
-    """Testo sicuro per i paragrafi: caratteri speciali e a capo."""
+    """Testo sicuro per i paragrafi: caratteri speciali, a capo e formattazione delle schede."""
     testo = "" if testo is None else str(testo)
     if not _carattere_registrato()[2]:
         testo = testo.replace("≤", "<=").replace("≥", ">=").encode("cp1252", "replace").decode("cp1252")
-    # **testo** scritto nelle schede (pulsante G) esce in grassetto
+    if e_formattato(testo):  # testo dell'editor delle schede
+        return in_reportlab(testo)
+    # **testo** scritto nelle schede prima dell'editor esce in grassetto
     testo = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", escape(testo), flags=re.S)
     return testo.replace("\n", "<br/>")
 

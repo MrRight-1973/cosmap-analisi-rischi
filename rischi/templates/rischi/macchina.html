@@ -23,7 +23,7 @@
   <ul>
     {% for scheda, attiva in schede %}
     <li><label><input type="checkbox" name="schede" value="{{ scheda.pk }}"{% if attiva %} checked{% endif %}{% if not modificabile %} disabled{% endif %}>
-      <b>{{ scheda.codice }}</b> {{ scheda.requisito.codice }} {{ scheda.requisito.titolo }}{% if scheda.zona_pericolosa %} <small>– {{ scheda.zona_pericolosa|truncatechars:70 }}</small>{% endif %}</label></li>
+      <b>{{ scheda.codice }}</b> {{ scheda.requisito.codice }} {{ scheda.requisito.titolo }}{% if scheda.zona_pericolosa %} <small>– {{ scheda.zona_pericolosa|semplice|truncatechars:70 }}</small>{% endif %}</label></li>
     {% endfor %}
   </ul>
   {% else %}<p class="sotto">Nessuna scheda modello in questo modulo.</p>{% endif %}

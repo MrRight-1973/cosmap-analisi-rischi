@@ -12,6 +12,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from .testo import semplice
+
 
 # ---------------------------------------------------------------------------
 # Metodo di stima (ISO/TR 14121-2, metodo ibrido)
@@ -393,7 +395,7 @@ class MisuraModello(models.Model):
         ordering = ["ordine", "pk"]
 
     def __str__(self):
-        return self.testo[:60]
+        return semplice(self.testo)[:60]
 
 
 # ---------------------------------------------------------------------------
@@ -701,7 +703,7 @@ class MisuraAnalisi(ContenutoRevisione):
         return self.scheda.revisione
 
     def __str__(self):
-        return self.testo[:60]
+        return semplice(self.testo)[:60]
 
 
 class ApplicabilitaRequisito(ContenutoRevisione):
