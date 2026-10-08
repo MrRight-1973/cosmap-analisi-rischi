@@ -492,6 +492,10 @@ class Macchina(models.Model):
     moduli = models.ManyToManyField(
         Modulo, blank=True, related_name="macchine", help_text="Moduli della libreria attivati per questa macchina."
     )
+    schede_escluse = models.ManyToManyField(
+        "SchedaModello", blank=True, related_name="macchine_escluse",
+        help_text="Schede modello dei moduli attivati che non entrano nell'analisi di questa macchina.",
+    )
     altre_legislazioni = models.ManyToManyField(
         LegislazioneUE, blank=True, help_text="Oltre al Regolamento (UE) 2023/1230."
     )

@@ -314,7 +314,10 @@ def macchina(request, pk):
         not analisi or analisi.revisione_corrente.modificabile
     )
     form = MacchinaForm(request.POST or None, instance=macchina)
-    form_moduli = ModuliMacchinaForm(request.POST or None, initial={"moduli": macchina.moduli.all()})
+    form_moduli = ModuliMacchinaForm(
+        request.POST or None,
+        initial={"moduli": macchina.moduli.all(), "schede": servizi.schede_attive_libreria(macchina)},
+    )
     if not modificabile:
         campi = list(form.fields.values()) + list(form_moduli.fields.values())
         for campo in campi:
@@ -327,7 +330,7 @@ def macchina(request, pk):
                 with transaction.atomic():
                     form.save()
                     aggiunte, tolte, rimaste = servizi.cambia_moduli(
-                        macchina, form_moduli.cleaned_data["moduli"], request.user
+                        macchina, form_moduli.cleaned_data["moduli"], request.user, form_moduli.escluse()
                     )
             except (PermissionDenied, ValidationError) as e:
                 _errore(request, e)
@@ -338,7 +341,7 @@ def macchina(request, pk):
                 if rimaste:
                     messages.warning(
                         request,
-                        f"{rimaste} schede dei moduli tolti erano già decise e restano nell'analisi: scartale se non servono.",
+                        f"{rimaste} schede tolte erano già decise e restano nell'analisi: scartale se non servono.",
                     )
                 return redirect("analisi", pk=analisi.pk) if analisi else redirect("elenco_commesse")
     return render(

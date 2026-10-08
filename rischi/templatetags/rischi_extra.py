@@ -12,3 +12,9 @@ def esito(se, cl, valore):
         return format_html('<span class="esito vuoto">–</span>')
     classe, testo = ETICHETTE[valore]
     return format_html('<span class="esito {}" title="Se {} · Cl {}">{}</span>', classe, se, cl, testo)
+
+
+@register.filter
+def attive(schede):
+    """Numero di schede spuntate in una lista di coppie (scheda, spuntata)."""
+    return sum(1 for _, spuntata in schede if spuntata)

@@ -142,3 +142,12 @@ small.errore { color: var(--error-fg); }
 /* Misure sempre entro i bordi */
 .modulo fieldset > legend, #content button, .bottone, .campo input, .campo select, .campo textarea, .azioni textarea { box-sizing: border-box; }
 .riquadro.griglia-2 > div { margin: 0; }
+
+/* Dati della macchina: moduli con le loro schede modello */
+.modulo-schede { border-bottom: 1px solid var(--hairline-color); font-size: 0.8125rem; }
+.modulo-schede summary { padding: 8px 0; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+.modulo-schede summary label { flex: 1; }
+.modulo-schede .conteggio { color: var(--body-quiet-color); }
+.modulo-schede ul { list-style: none; margin: 0 0 8px 28px; padding: 0; }
+.modulo-schede li { padding: 2px 0; }
+.modulo-schede summary:has(input[name=moduli]:not(:checked)) + ul { opacity: 0.55; }

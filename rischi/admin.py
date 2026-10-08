@@ -1,9 +1,13 @@
 from django import forms
 from django.contrib import admin, messages
+from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
+from django.contrib.auth import admin as _admin_utenti  # noqa: F401 (registra Gruppi prima di aggiungere Duplica)
+from django.contrib.auth.models import Group
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from . import models as m
+from .duplica import duplica
 from .forms import (
     CAMPI_CONSIDERAZIONI,
     CAMPI_NORME,
@@ -19,7 +23,19 @@ from .forms import (
 )
 
 
-class MisuraModelloInline(admin.StackedInline):
+class SoloVistaCollegati:
+    """Nei campi collegati della scheda modello resta solo l'occhio per vedere la voce: niente aggiungi,
+    modifica o elimina (le voci si gestiscono dai loro elenchi in Libreria e utenti)."""
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        campo = super().formfield_for_dbfield(db_field, request, **kwargs)
+        widget = getattr(campo, "widget", None)
+        if isinstance(widget, RelatedFieldWidgetWrapper):
+            widget.can_add_related = widget.can_change_related = widget.can_delete_related = False
+        return campo
+
+
+class MisuraModelloInline(SoloVistaCollegati, admin.StackedInline):
     model = m.MisuraModello
     extra = 0
     verbose_name_plural = "Misure di protezione"
@@ -59,7 +75,7 @@ class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
 
 
 @admin.register(m.SchedaModello)
-class SchedaModelloAdmin(admin.ModelAdmin):
+class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     form = SchedaModelloForm
     list_display = ("codice", "modulo", "requisito", "zona_impianto", "stato")
     list_filter = ("modulo", "zona_impianto", "stato")
@@ -260,3 +276,10 @@ class MacchinaAdmin(admin.ModelAdmin):
     list_display = ("commessa", "denominazione", "modello", "matricola", "tipo")
     inlines = [FiguraMacchinaInline]
 
+
+
+# "Duplica" accanto a "Elimina" nel menu Azione di tutti gli elenchi della libreria e dei gruppi
+# (non degli utenti: la copia porterebbe con sé la password; non del registro, che è di sola lettura).
+for _modello, _admin in admin.site._registry.items():
+    if (_modello._meta.app_label == "rischi" and _modello is not m.RegistroModifica) or _modello is Group:
+        _admin.actions = [*(_admin.actions or ()), duplica]

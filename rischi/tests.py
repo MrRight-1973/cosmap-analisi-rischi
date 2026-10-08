@@ -410,6 +410,37 @@ class ModuliDellaMacchinaTest(BaseConLibreria):
         self.assertEqual(self.rev.schede.filter(modulo=self.tavola).count(), 1)
         self.assertNotIn(self.tavola, self.macchina.moduli.all())
 
+    def test_escludere_e_riattivare_una_scheda(self):
+        moduli = list(self.macchina.moduli.all())
+        scheda = self.rev.schede.filter(decisione=SchedaAnalisi.Decisione.PROPOSTA).exclude(origine=None).first()
+        modello = scheda.origine
+        aggiunte, tolte, rimaste = servizi.cambia_moduli(self.macchina, moduli, self.compilatore, [modello])
+        self.assertEqual((aggiunte, tolte, rimaste), (0, 1, 0))
+        self.assertFalse(self.rev.schede.filter(origine=modello).exists())
+        self.assertNotIn(modello, servizi.schede_attive(self.macchina))
+        aggiunte, tolte, rimaste = servizi.cambia_moduli(self.macchina, moduli, self.compilatore, [])
+        self.assertEqual((aggiunte, tolte, rimaste), (1, 0, 0))
+        self.assertTrue(self.rev.schede.filter(origine=modello).exists())
+
+    def test_schede_escluse_dalla_pagina_della_macchina(self):
+        self.client.force_login(self.compilatore)
+        url = reverse("macchina", args=[self.macchina.pk])
+        moduli = list(self.macchina.moduli.all()) + [self.tavola]
+        schede_tavola = list(SchedaModello.objects.filter(modulo=self.tavola))
+        attive = list(SchedaModello.objects.values_list("pk", flat=True))
+        esclusa = schede_tavola[0]
+        attive.remove(esclusa.pk)
+        self.client.post(url, {
+            "denominazione": self.macchina.denominazione, "tipo": self.macchina.tipo, "con_schede": "True",
+            "moduli": [x.pk for x in moduli], "schede": attive,
+        })
+        self.assertEqual(list(self.macchina.schede_escluse.all()), [esclusa])
+        self.assertEqual(self.rev.schede.filter(modulo=self.tavola).count(), len(schede_tavola) - 1)
+        self.assertFalse(self.rev.schede.filter(origine=esclusa).exists())
+        # Nella pagina la scheda esclusa compare senza spunta
+        pagina = self.client.get(url).content.decode()
+        self.assertIn(f'name="schede" value="{esclusa.pk}">', pagina)
+
     def test_non_si_cambiano_con_revisione_approvata(self):
         servizi.invia_in_verifica(self.rev, self.compilatore)
         servizi.segna_verificata(self.rev, self.verificatore)
@@ -420,7 +451,7 @@ class ModuliDellaMacchinaTest(BaseConLibreria):
     def test_dalla_pagina_della_macchina(self):
         self.client.force_login(self.compilatore)
         url = reverse("macchina", args=[self.macchina.pk])
-        self.assertContains(self.client.get(url), "Moduli della libreria")
+        self.assertContains(self.client.get(url), "MODULI E SCHEDE MODELLO")
         risposta = self.client.post(
             url,
             {
@@ -924,3 +955,42 @@ class AggiornaDaModelloTest(TestCase):
         self.client.post(reverse("aggiorna_da_modello", args=[scheda.pk]))
         scheda.refresh_from_db()
         self.assertEqual(scheda.zona_impianto, "Tavola")
+
+
+class LibreriaAzioniTest(BaseConLibreria):
+    def setUp(self):
+        self.capo = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(self.capo)
+
+    def test_duplica_una_scheda_modello(self):
+        originale = SchedaModello.objects.filter(misure__isnull=False).distinct().first()
+        originale.modulo.sigla = "GEN"
+        originale.modulo.save()
+        url = reverse("admin:rischi_schedamodello_changelist")
+        risposta = self.client.post(url, {"action": "duplica", "_selected_action": [originale.pk]})
+        copia = SchedaModello.objects.order_by("-pk").first()
+        self.assertRedirects(risposta, reverse("admin:rischi_schedamodello_change", args=[copia.pk]))
+        self.assertNotEqual(copia.codice, originale.codice)
+        self.assertEqual(copia.modulo, originale.modulo)
+        self.assertEqual(copia.misure.count(), originale.misure.count())
+        self.assertEqual(set(copia.pericoli.all()), set(originale.pericoli.all()))
+
+    def test_duplica_voci_con_nome_univoco(self):
+        from .models import Figura, Norma
+
+        norma = Norma.objects.first()
+        self.client.post(reverse("admin:rischi_norma_changelist"), {"action": "duplica", "_selected_action": [norma.pk]})
+        self.assertTrue(Norma.objects.filter(codice=f"{norma.codice} (copia)").exists())
+        figura = Figura.objects.create(nome="Operatore prova")
+        url = reverse("admin:rischi_figura_changelist")
+        self.client.post(url, {"action": "duplica", "_selected_action": [figura.pk]})
+        self.client.post(url, {"action": "duplica", "_selected_action": [figura.pk]})
+        self.assertTrue(Figura.objects.filter(nome="Operatore prova (copia 2)").exists())
+
+    def test_scheda_modello_solo_occhio_sui_collegati(self):
+        scheda = SchedaModello.objects.first()
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
+        self.assertIn("view-related", pagina)
+        self.assertNotIn("add-related", pagina)
+        self.assertNotIn("change-related", pagina)
+        self.assertNotIn("delete-related", pagina)
