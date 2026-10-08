@@ -1113,3 +1113,12 @@ class TestoFormattatoTest(TestCase):
         from .testo import in_reportlab
 
         self.assertEqual(in_reportlab('<p>ok<script>alert(1)</script><img src=x onerror="x"></p>'), "ok")
+
+
+class StaticiAggiornatiTest(BaseConLibreria):
+    def test_css_e_script_con_data_di_modifica(self):
+        self.client.force_login(User.objects.create_superuser("capo", "capo@example.com", "x"))
+        scheda = SchedaModello.objects.first()
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
+        self.assertRegex(pagina, r"rischi/admin_scheda\.css\?v=\d+")
+        self.assertRegex(pagina, r"rischi/scheda\.js\?v=\d+")

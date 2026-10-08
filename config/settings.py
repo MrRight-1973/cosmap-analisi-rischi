@@ -100,3 +100,10 @@ LOGIN_REDIRECT_URL = "elenco_commesse"
 LOGOUT_REDIRECT_URL = "login"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# I file statici portano la data di modifica nell'indirizzo: dopo un aggiornamento il browser
+# non usa CSS e script vecchi rimasti in memoria.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "rischi.statici.StaticiAggiornati"},
+}
