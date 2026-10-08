@@ -253,8 +253,20 @@ def campi_norme():
     return {nome: _campo_norma(i) for i, nome in enumerate(CAMPI_NORME, start=1)}
 
 
+def campo_norme_automatiche():
+    """Norme ricavate in automatico (requisito, pericoli, misure): spuntate entrano nella scheda."""
+    return forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "norme-automatiche"}),
+        label="Norme ricavate in automatico",
+        help_text="Dal requisito RESS, dai pericoli e dalle misure (soluzione scelta o riconosciuta dal testo). "
+        "Togli la spunta a quelle che non riguardano questa scheda. Si aggiornano dopo il salvataggio.",
+    )
+
+
 class NormeSchedaMixin:
-    """Le selezioni norma_1…norma_20 leggono e scrivono il campo molti-a-molti `norme` della scheda."""
+    """Le selezioni norma_1…norma_20 leggono e scrivono il campo molti-a-molti `norme` della scheda;
+    le norme ricavate in automatico non spuntate finiscono in `norme_escluse`."""
 
     def campi_norma(self):
         return [self[campo] for campo in CAMPI_NORME]
@@ -263,6 +275,23 @@ class NormeSchedaMixin:
         attuali = list(self.instance.norme.order_by("codice")) if self.instance.pk else []
         for campo, norma in zip(CAMPI_NORME, attuali):
             self.initial[campo] = norma.pk
+        campo = self.fields.get("norme_automatiche")
+        if campo is None:
+            return
+        self.origini_norme = self.instance.origini_norme() if self.instance.pk else {}
+        # Quelle già scelte a mano nella scheda non si ripetono
+        scelte_a_mano = set(attuali)
+        campo.choices = [
+            (str(n.pk), f"{n.codice}{' – ' + n.titolo if n.titolo else ''}  (da {', '.join(origini)})")
+            for n, origini in self.origini_norme.items()
+            if n not in scelte_a_mano
+        ]
+        escluse = {n.pk for n in self.instance.norme_escluse.all()} if self.instance.pk else set()
+        self.initial["norme_automatiche"] = [str(n.pk) for n in self.origini_norme if n.pk not in escluse]
+        if not campo.choices:
+            campo.help_text = (
+                "Nessuna per ora: arrivano dal requisito RESS, dai pericoli e dalle misure dopo il salvataggio."
+            )
 
     def norme_scelte(self):
         scelte = [self.cleaned_data.get(campo) for campo in CAMPI_NORME]
@@ -271,6 +300,12 @@ class NormeSchedaMixin:
     def _save_m2m(self):
         super()._save_m2m()
         self.instance.norme.set(self.norme_scelte())
+        if "norme_automatiche" in self.fields and not self.fields["norme_automatiche"].disabled:
+            tenute = set(self.cleaned_data.get("norme_automatiche") or [])
+            proposte = [n for n in getattr(self, "origini_norme", {}) if str(n.pk) not in tenute]
+            # Le escluse che oggi non sono proposte (es. pericolo tolto) restano escluse
+            altre = self.instance.norme_escluse.exclude(pk__in=[n.pk for n in getattr(self, "origini_norme", {})])
+            self.instance.norme_escluse.set([*proposte, *altre])
 
 
 class SchedaForm(NormeSchedaMixin, forms.ModelForm):
@@ -283,6 +318,7 @@ class SchedaForm(NormeSchedaMixin, forms.ModelForm):
     pr_finale = _scelta(VALORI_PR)
     av_finale = _scelta(VALORI_AV)
     locals().update(campi_norme())  # norma_1 … norma_20
+    norme_automatiche = campo_norme_automatiche()
 
     CAMPI_CONTENUTO = (
         "modulo",

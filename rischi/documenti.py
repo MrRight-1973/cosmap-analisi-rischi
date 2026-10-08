@@ -40,7 +40,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .models import Esito, Fabbricante, Norma, Revisione, SchedaAnalisi
+from .models import Esito, Fabbricante, Norma, Revisione, SchedaAnalisi, SoluzioneProtezione
 from .testo import e_formattato, in_reportlab
 
 REGOLAMENTO = "Regolamento (UE) 2023/1230"
@@ -405,7 +405,8 @@ def _schede_attive(revisione):
         revisione.schede.exclude(decisione=SchedaAnalisi.Decisione.SCARTATA)
         .select_related("modulo", "requisito", "revisione__metodo")
         .prefetch_related(
-            "misure__norma", "misure__soluzione__norme", "pericoli__norme", "condizioni", "norme", "soggetti"
+            "misure__norma", "misure__soluzione__norme", "pericoli__norme", "requisito__norme", "norme_escluse",
+            "condizioni", "norme", "soggetti",
         )
     )
 
@@ -414,6 +415,11 @@ def _nome(utente):
     if not utente:
         return "–"
     return utente.get_full_name() or utente.username
+
+
+def _soluzioni():
+    """Soluzioni di protezione con parole chiave, lette una volta per documento (vedi Stima.origini_norme)."""
+    return list(SoluzioneProtezione.objects.exclude(parole_chiave="").prefetch_related("norme"))
 
 
 def norme_generali(revisione):
@@ -429,8 +435,9 @@ def norme_applicate(revisione):
     """Norme dell'analisi: generali, delle schede attive, dei loro pericoli e delle soluzioni scelte nelle misure.
     Restituisce (armonizzate, altre), ordinate per codice."""
     norme = {n.pk: n for n in norme_generali(revisione)}
+    soluzioni = _soluzioni()
     for scheda in _schede_attive(revisione):
-        for norma in [*scheda.norme.all(), *scheda.norme_collegate()]:
+        for norma in [*scheda.norme.all(), *scheda.norme_collegate(soluzioni)]:
             norme[norma.pk] = norma
         for misura in scheda.misure.all():
             if misura.norma:
