@@ -149,3 +149,12 @@ def semplice(testo):
         rientro = "  " * (riga["livello"] - 1) if riga["prefisso"] else ""
         righe.append(rientro + riga["prefisso"] + "".join(d for d, _ in riga["pezzi"]).rstrip())
     return "\n".join(righe).replace("\xa0", " ")
+
+
+def in_html(testo):
+    """HTML sicuro per mostrare il testo in una pagina (sola lettura)."""
+    testo = "" if testo is None else str(testo)
+    if not e_formattato(testo):
+        testo = escape(testo)
+        return re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", testo, flags=re.S).replace("\n", "<br>")
+    return in_reportlab(testo).replace("<br/>", "<br>")

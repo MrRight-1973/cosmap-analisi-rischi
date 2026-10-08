@@ -20,6 +20,7 @@ from .forms import (
     _scelta,
     descrivi_fattori,
 )
+from .testo import in_html
 
 
 class SoloVistaCollegati:
@@ -80,7 +81,7 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     list_filter = ("modulo", ("requisito", admin.RelatedOnlyFieldListFilter), "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
     filter_horizontal = ("pericoli",)
-    readonly_fields = ("codice", "calcolo_iniziale", "calcolo_finale")
+    readonly_fields = ("codice", "note_requisito", "calcolo_iniziale", "calcolo_finale")
     inlines = [MisuraModelloInline]
 
     class Media:
@@ -90,7 +91,8 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     # in fondo alla sezione 6, dopo le considerazioni (vedi admin/rischi/schedamodello/change_form.html).
     fieldsets = (
         ("1. IDENTIFICAZIONE SCHEDA MODELLO", {
-            "fields": ("codice", "modulo", "requisito", "stato", "scheda_originale", "note", *CAMPI_NORME),
+            "fields": ("codice", "modulo", "requisito", "stato", "note_requisito", "stampa_note_requisito", "note",
+                       *CAMPI_NORME),
         }),
         ("2. IDENTIFICAZIONE DEL PERICOLO (RESS 1.1.1 a)", {
             "fields": ("considerazioni_pericoli", "pericoli"),
@@ -134,6 +136,13 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
             'border-radius:10px;font-weight:600">{}</span>',
             fr, pr, av, cl, sfondo, colore, m.Esito(esito).label,
         )
+
+    @admin.display(description="Note")
+    def note_requisito(self, obj):
+        """Testo del requisito RESS (Allegato III), si modifica dalla pagina del requisito."""
+        if not obj.requisito_id:
+            return "Scegli il requisito e salva: qui compare il testo del requisito."
+        return format_html('<div class="note-requisito">{}</div>', mark_safe(in_html(obj.requisito.descrizione) or "–"))
 
     @admin.display(description="Classe ed esito iniziale")
     def calcolo_iniziale(self, obj):

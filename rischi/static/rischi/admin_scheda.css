@@ -50,3 +50,4 @@ fieldset.sezione-scheda .inline-group { margin: 0; border: none; }
 .aligned .testo-ricco { flex: 1; }
 .inline-group .testo-ricco { min-width: 30em; }
 .form-row[hidden] { display: none !important; }
+.note-requisito { max-height: 16em; overflow: auto; padding: 4px 8px; border-left: 3px solid var(--border-color); background: var(--darkened-bg); line-height: 1.5; max-width: 60em; }

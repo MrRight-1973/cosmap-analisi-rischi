@@ -168,3 +168,5 @@ small.errore { color: var(--error-fg); }
 .editor-testo ul ul li { list-style: circle !important; }
 .testo-ricco.bloccato { background: var(--darkened-bg); }
 .campo[hidden] { display: none; }
+.note-requisito { max-height: 16em; overflow: auto; padding: 4px 8px; border-left: 3px solid var(--border-color); background: var(--darkened-bg); line-height: 1.5; max-width: 60em; }
+.campo > input[type=checkbox] { justify-self: start; }

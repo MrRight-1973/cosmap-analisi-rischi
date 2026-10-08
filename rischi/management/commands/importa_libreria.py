@@ -13,6 +13,7 @@ import openpyxl
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from rischi.allegato import RINUMERATI, aggiorna_requisiti
 from rischi.models import (
     CellaMatrice,
     CondizioneOperativa,
@@ -169,7 +170,7 @@ class Command(BaseCommand):
         # Punto della Direttiva 2006/42/CE -> punto del Regolamento, per le schede delle librerie vecchie
         self.da_direttiva = {}
         for r in ws.iter_rows(min_row=2, values_only=True):
-            codice = testo(r[4])
+            codice = RINUMERATI.get(testo(r[4]), testo(r[4]))
             if not codice:
                 continue
             if testo(r[0]) not in ("—", "-", ""):
@@ -183,6 +184,8 @@ class Command(BaseCommand):
                 },
             )
             n += 1
+        # Titoli e testi ufficiali dell'Allegato III al posto di quelli del foglio
+        aggiorna_requisiti(RequisitoRESS, self.riferimento)
         self.stdout.write(f"Requisiti RESS: {n}")
 
     # -- Norme ----------------------------------------------------------------
@@ -319,7 +322,7 @@ class Command(BaseCommand):
             codice = testo(r[COL["codice"]])
             if not codice:
                 continue
-            ress = testo(r[COL["ress"]])
+            ress = RINUMERATI.get(testo(r[COL["ress"]]), testo(r[COL["ress"]]))
             requisito = RequisitoRESS.objects.filter(
                 riferimento=self.riferimento, codice=getattr(self, "da_direttiva", {}).get(ress, ress)
             ).first() or RequisitoRESS.objects.filter(riferimento=self.riferimento, codice=ress).first()
