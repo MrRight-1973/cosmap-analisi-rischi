@@ -99,7 +99,8 @@ def _copia_scheda(sorgente, revisione, **extra):
     nuova.soggetti.set(sorgente.soggetti.all())
     for misura in sorgente.misure.all():
         MisuraAnalisi.objects.create(
-            scheda=nuova, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma
+            scheda=nuova, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma,
+            soluzione=misura.soluzione
         )
     return nuova
 
@@ -126,7 +127,8 @@ def aggiorna_da_modello(scheda, utente):
     scheda.misure.all().delete()
     for misura in modello.misure.all():
         MisuraAnalisi.objects.create(
-            scheda=scheda, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma
+            scheda=scheda, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma,
+            soluzione=misura.soluzione
         )
     allinea_figure(scheda.revisione.analisi.macchina, scheda.revisione)
     return modello
@@ -219,6 +221,7 @@ def crea_analisi_da_copia(macchina, revisione_sorgente, utente):
         _copia_scheda(scheda, revisione, origine=scheda.origine, decisione=SchedaAnalisi.Decisione.PROPOSTA)
     macchina.moduli.set(revisione_sorgente.analisi.macchina.moduli.all())
     macchina.schede_escluse.set(revisione_sorgente.analisi.macchina.schede_escluse.all())
+    macchina.norme_tipo_c.set(revisione_sorgente.analisi.macchina.norme_tipo_c.all())
     allinea_figure(macchina, revisione, revisione_sorgente.analisi.macchina.descrizioni_figure())
     _crea_applicabilita(revisione, precedente=revisione_sorgente)
     return analisi

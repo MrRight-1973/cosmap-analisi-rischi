@@ -1,4 +1,4 @@
-{% load i18n admin_urls %}
+{% load i18n admin_urls rischi_extra %}
 {% comment %}Come admin/edit_inline/stacked.html, con le misure numerate Misura 1, 2, 3… (vedi scheda.js){% endcomment %}<div class="js-inline-admin-formset inline-group misure-numerate"
      id="{{ inline_admin_formset.formset.prefix }}-group"
      data-inline-type="stacked"
@@ -35,3 +35,4 @@
   {% if inline_admin_formset.is_collapsible %}</details>{% endif %}
 </fieldset>
 </div>
+{% dati_soluzioni %}
