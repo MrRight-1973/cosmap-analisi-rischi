@@ -628,8 +628,11 @@ def _scheda(doc, s, descrizioni):
     testata = doc.storia[-2:]
     del doc.storia[-2:]
     # La testata non resta sola in fondo alla pagina: va con la sezione 1.
-    _sezione(doc, 1, [("Modulo", str(s.modulo)), ("Note", s.note), ("Norme", _elenco_norme(s.norme.all()))],
-             prima=testata)
+    dettagli = [("Modulo", str(s.modulo))]
+    if s.stampa_note_requisito and s.requisito.descrizione:
+        dettagli.append((f"Requisito {s.requisito.codice} – testo del Regolamento", s.requisito.descrizione))
+    dettagli += [("Note", s.note), ("Norme", _elenco_norme(s.norme.all()))]
+    _sezione(doc, 1, dettagli, prima=testata)
     _sezione(doc, 2, [("Pericoli", "\n".join(f"{p.codice} {p.descrizione}" for p in s.pericoli.all()))],
              s.considerazioni_pericoli, considerazioni_prima=True)
     _sezione(doc, 3, [

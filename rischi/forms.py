@@ -270,6 +270,7 @@ class SchedaForm(NormeSchedaMixin, forms.ModelForm):
         "av_finale",
         "testo_istruzioni",
         "note",
+        "stampa_note_requisito",
         *CAMPI_NORME,
         *CAMPI_CONSIDERAZIONI,
     )
@@ -294,6 +295,7 @@ class SchedaForm(NormeSchedaMixin, forms.ModelForm):
             "av_finale",
             "testo_istruzioni",
             "note",
+            "stampa_note_requisito",
             *CAMPI_CONSIDERAZIONI,
             "decisione",
             "motivazione",

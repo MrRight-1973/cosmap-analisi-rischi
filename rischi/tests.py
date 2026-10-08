@@ -1122,3 +1122,41 @@ class StaticiAggiornatiTest(BaseConLibreria):
         pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
         self.assertRegex(pagina, r"rischi/admin_scheda\.css\?v=\d+")
         self.assertRegex(pagina, r"rischi/scheda\.js\?v=\d+")
+
+
+class RequisitiAllegatoIIITest(BaseConLibreria):
+    def test_titoli_e_testi_del_regolamento(self):
+        from .models import RequisitoRESS
+
+        requisito = RequisitoRESS.objects.get(codice="1.1.1")
+        self.assertEqual(requisito.titolo, "Applicabilità")
+        self.assertIn("quasi-macchine", requisito.descrizione)
+        self.assertEqual(RequisitoRESS.objects.get(codice="1.2.4.1").titolo, "Arresto normale")
+        # 1.7.4.3 della Direttiva è 1.7.5 nel Regolamento
+        self.assertFalse(RequisitoRESS.objects.filter(codice="1.7.4.3").exists())
+        self.assertEqual(RequisitoRESS.objects.get(codice="1.7.5").titolo, "Pubblicazioni illustrative o promozionali")
+        # Il testo introduttivo di 1.7.4 compare nei suoi sottopunti
+        self.assertIn("1.7.4. Istruzioni per l'uso", RequisitoRESS.objects.get(codice="1.7.4.2").descrizione)
+        codici = list(RequisitoRESS.objects.values_list("codice", flat=True))
+        self.assertEqual(codici.index("1.5.9") + 1, codici.index("1.5.10"))
+
+    def test_note_del_requisito_nella_scheda_modello_e_nel_pdf(self):
+        from . import documenti
+
+        utente = User.objects.create_superuser("capo", "capo@example.com", "x")
+        self.client.force_login(utente)
+        modello = SchedaModello.objects.filter(requisito__codice="1.1.5").first()
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[modello.pk])).content.decode()
+        self.assertIn("note-requisito", pagina)
+        self.assertIn("movimentati e trasportati in modo sicuro", pagina)
+        self.assertNotIn('name="scheda_originale"', pagina)
+
+        analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        rev = analisi.revisione_corrente
+        scheda = rev.schede.get(requisito__codice="1.1.5")
+        self.assertNotIn("movimentati e trasportati", DocumentiTest.leggi(documenti.valutazione(rev)))
+        scheda.stampa_note_requisito = True
+        scheda.save()
+        testo = DocumentiTest.leggi(documenti.valutazione(rev))
+        self.assertIn("Requisito 1.1.5 – testo del Regolamento", testo)
+        self.assertIn("movimentati e trasportati in modo sicuro", testo)

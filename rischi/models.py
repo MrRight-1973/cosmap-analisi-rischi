@@ -312,6 +312,11 @@ class Stima(models.Model):
     av_finale = models.PositiveSmallIntegerField("Av finale", null=True, blank=True)
     testo_istruzioni = models.TextField("indicazioni per le istruzioni / rischio residuo", blank=True)
     note = models.TextField("note e considerazioni generali", blank=True)
+    stampa_note_requisito = models.BooleanField(
+        "stampa le note del requisito nel PDF",
+        default=False,
+        help_text="Nella valutazione dei rischi riporta il testo del requisito RESS (Allegato III del Regolamento).",
+    )
     # Considerazioni del tecnico per ogni passo della valutazione (EN ISO 12100)
     considerazioni_limiti = models.TextField("considerazioni", blank=True)
     considerazioni_pericoli = models.TextField("considerazioni", blank=True)
