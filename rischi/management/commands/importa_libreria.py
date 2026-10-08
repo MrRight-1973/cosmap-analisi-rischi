@@ -14,6 +14,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from rischi.allegato import RINUMERATI, aggiorna_requisiti
+from rischi.dati.sintesi_norme import SINTESI
 from rischi.models import (
     CellaMatrice,
     CondizioneOperativa,
@@ -92,6 +93,12 @@ def intero(valore):
     except ValueError:
         return None
 
+
+
+def _nota_nuova(codice):
+    """Nota di una norma creata perché citata: la sintesi se c'è, poi l'avviso di completare i dati."""
+    avviso = "Aggiunta dall'import: completare i dati."
+    return f"{SINTESI[codice]}\n\n{avviso}" if codice in SINTESI else avviso
 
 class Command(BaseCommand):
     help = "Importa moduli, schede modello, requisiti, norme e metodo dal file Excel della libreria."
@@ -202,6 +209,9 @@ class Command(BaseCommand):
                 "edizione_vigente": testo(r[3]),
                 "nota": testo(r[4]),
             }
+            # In testa la sintesi di cosa tratta la norma (rischi/dati/sintesi_norme.py)
+            if codice in SINTESI:
+                valori["nota"] = "\n\n".join(v for v in (SINTESI[codice], valori["nota"]) if v)
             if len(r) > 6:
                 valori["armonizzata"] = testo(r[5]).lower() in ("sì", "si", "x")
                 if testo(r[6]) in Norma.Tipo.values:
@@ -224,7 +234,7 @@ class Command(BaseCommand):
                 if not norma:
                     norma = Norma.objects.filter(codice__startswith=f"{codice} ").first()
                 if not norma:
-                    norma = Norma.objects.create(codice=codice, nota="Aggiunta dall'import: completare i dati.")
+                    norma = Norma.objects.create(codice=codice, nota=_nota_nuova(codice))
                 if norma.tipo == Norma.Tipo.ALTRO and tipo != Norma.Tipo.ALTRO:
                     norma.tipo = tipo
                     norma.save()
@@ -266,7 +276,7 @@ class Command(BaseCommand):
             norma = None
             if testo(r[5]):
                 norma, _ = Norma.objects.get_or_create(
-                    codice=testo(r[5]), defaults={"nota": "Aggiunta dall'import: completare i dati."}
+                    codice=testo(r[5]), defaults={"nota": _nota_nuova(testo(r[5]))}
                 )
             misure.setdefault(codice, []).append((intero(r[1]) or 0, tipo, testo_misura, norma))
         return misure

@@ -1332,3 +1332,12 @@ class NormeAutomaticheTest(BaseConLibreria):
         testo = DocumentiTest.leggi(documenti.valutazione(analisi.revisione_corrente))
         self.assertIn("EN 70001", testo)
         self.assertNotIn("EN 70002", testo)
+
+
+class SintesiNormeTest(BaseConLibreria):
+    def test_ogni_norma_della_libreria_ha_la_sintesi(self):
+        from .dati.sintesi_norme import SINTESI
+        from .models import Norma
+
+        for norma in Norma.objects.filter(codice__in=SINTESI):
+            self.assertTrue(norma.nota.startswith(SINTESI[norma.codice]), (norma.codice, norma.nota[:200]))
