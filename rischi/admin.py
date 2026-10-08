@@ -78,7 +78,7 @@ class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
 class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     form = SchedaModelloForm
     list_display = ("codice", "modulo", "requisito", "zona_impianto", "stato")
-    list_filter = ("modulo", "zona_impianto", "stato")
+    list_filter = ("modulo", ("requisito", admin.RelatedOnlyFieldListFilter), "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
     filter_horizontal = ("pericoli",)
     readonly_fields = ("codice", "calcolo_iniziale", "calcolo_finale")
