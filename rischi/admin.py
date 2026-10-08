@@ -40,7 +40,9 @@ class MisuraModelloInline(SoloVistaCollegati, admin.StackedInline):
     model = m.MisuraModello
     extra = 0
     # Le norme della scheda stanno nella sezione 1 (anche quelle dei pericoli): niente norma per misura.
-    fields = ("ordine", "tipo", "testo")
+    # Niente ordine: le misure si numerano da sole (Misura 1, 2, 3…) nell'ordine in cui compaiono.
+    fields = ("tipo", "testo")
+    template = "admin/rischi/schedamodello/misure_stacked.html"
     verbose_name_plural = "Misure di protezione"
 
 
@@ -167,6 +169,17 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
             messages.info(request, f"Codice aggiornato da {vecchio} a {obj.codice} (modulo cambiato).")
         elif not change:
             messages.info(request, f"Codice assegnato: {obj.codice}.")
+
+    def save_formset(self, request, form, formset, change):
+        """Le misure prendono il numero progressivo (1, 2, 3…) nell'ordine in cui compaiono nella pagina."""
+        super().save_formset(request, form, formset, change)
+        if formset.model is not m.MisuraModello:
+            return
+        restanti = [f.instance for f in formset.forms if f.instance.pk and f not in formset.deleted_forms]
+        for numero, misura in enumerate(restanti, start=1):
+            if misura.ordine != numero:
+                misura.ordine = numero
+                misura.save(update_fields=["ordine"])
 
 
 class ModuloForm(forms.ModelForm):
