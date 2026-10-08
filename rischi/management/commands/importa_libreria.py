@@ -166,22 +166,20 @@ class Command(BaseCommand):
 
     def importa_requisiti(self, ws):
         n = 0
-        for ordine, r in enumerate(ws.iter_rows(min_row=2, values_only=True)):
+        # Punto della Direttiva 2006/42/CE -> punto del Regolamento, per le schede delle librerie vecchie
+        self.da_direttiva = {}
+        for r in ws.iter_rows(min_row=2, values_only=True):
             codice = testo(r[4])
             if not codice:
                 continue
-            direttiva = testo(r[0])
-            nuovo = direttiva in ("—", "-", "")
+            if testo(r[0]) not in ("—", "-", ""):
+                self.da_direttiva.setdefault(testo(r[0]), codice)
             RequisitoRESS.objects.update_or_create(
                 riferimento=self.riferimento,
                 codice=codice,
                 defaults={
                     "titolo": re.sub(r"\s*\(NUOVO\)\s*$", "", testo(r[1]))[:200],
-                    "codice_direttiva": "" if nuovo else direttiva,
-                    "nuovo": nuovo,
-                    "novita": testo(r[5]),
-                    "azione": testo(r[6]),
-                    "ordine": ordine,
+                    "descrizione": testo(r[5]),
                 },
             )
             n += 1
@@ -323,7 +321,7 @@ class Command(BaseCommand):
                 continue
             ress = testo(r[COL["ress"]])
             requisito = RequisitoRESS.objects.filter(
-                riferimento=self.riferimento, codice_direttiva=ress
+                riferimento=self.riferimento, codice=getattr(self, "da_direttiva", {}).get(ress, ress)
             ).first() or RequisitoRESS.objects.filter(riferimento=self.riferimento, codice=ress).first()
             if not requisito:
                 avvisi.append(f"{codice}: requisito {ress} non trovato, scheda saltata")

@@ -11,7 +11,7 @@
 <tbody>
 {% for f, a, n in righe %}
 <tr class="{% if n == 0 and a.applicabile %}con-anomalia{% endif %}">
-  <td>{{ f.id }}{{ a.requisito.codice }} {{ a.requisito.titolo }}{% if a.requisito.nuovo %} <span class="etichetta">nuovo</span>{% endif %}</td>
+  <td>{{ f.id }}{{ a.requisito.codice }} {{ a.requisito.titolo }}</td>
   <td>{{ n }}</td>
   <td>{% if modificabile %}{{ f.applicabile }}{% else %}{{ a.applicabile|yesno:"sì,no" }}{% endif %}</td>
   <td>{% if modificabile %}{{ f.motivazione }}{% else %}{{ a.motivazione }}{% endif %}</td>

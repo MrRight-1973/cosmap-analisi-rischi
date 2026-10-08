@@ -201,10 +201,15 @@ class ModuloAdmin(admin.ModelAdmin):
 
 
 @admin.register(m.RequisitoRESS)
-class RequisitoAdmin(admin.ModelAdmin):
-    list_display = ("codice", "titolo", "codice_direttiva", "nuovo", "riferimento")
-    list_filter = ("riferimento", "nuovo")
-    search_fields = ("codice", "titolo")
+class RequisitoAdmin(SoloVistaCollegati, admin.ModelAdmin):
+    list_display = ("codice", "titolo", "riferimento")
+    list_filter = ("riferimento",)
+    search_fields = ("codice", "titolo", "descrizione")
+    fields = ("riferimento", "codice", "titolo", "descrizione")
+
+    class Media:
+        css = {"all": ("rischi/admin_scheda.css",)}
+        js = ("rischi/scheda.js",)
 
 
 @admin.register(m.Norma)

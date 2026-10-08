@@ -8,6 +8,8 @@ Ogni revisione contiene una copia completa delle schede: modificare la
 libreria non altera mai un'analisi esistente.
 """
 
+import re
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -139,17 +141,23 @@ class RiferimentoNormativo(models.Model):
         return self.codice
 
 
+def ordine_codice(codice):
+    """Posizione di un punto dell'Allegato III: 1.1.2 < 1.1.10 < 1.2.1 < 2.2.1.1."""
+    numeri = [int(n) for n in re.findall(r"\d+", codice or "")][:4]
+    numeri += [0] * (4 - len(numeri))
+    ordine = 0
+    for n in numeri:
+        ordine = ordine * 100 + min(n, 99)
+    return ordine
+
+
 class RequisitoRESS(models.Model):
     riferimento = models.ForeignKey(RiferimentoNormativo, on_delete=models.PROTECT)
     codice = models.CharField(max_length=20, help_text="Punto dell'Allegato III del Regolamento.")
     titolo = models.CharField(max_length=200)
-    codice_direttiva = models.CharField(
-        max_length=20, blank=True, help_text="Punto dell'Allegato I della Direttiva 2006/42/CE."
-    )
-    nuovo = models.BooleanField(default=False, help_text="Requisito introdotto dal Regolamento.")
-    novita = models.TextField("novità del Regolamento", blank=True)
-    azione = models.TextField("azione per la libreria", blank=True)
-    ordine = models.PositiveIntegerField(default=0)
+    descrizione = models.TextField(blank=True, help_text="Testo del requisito nell'Allegato III del Regolamento.")
+    # Dato dal codice (vedi save): i requisiti si elencano nell'ordine dell'Allegato III.
+    ordine = models.PositiveIntegerField(default=0, editable=False)
 
     class Meta:
         verbose_name = "requisito RESS"
@@ -159,6 +167,10 @@ class RequisitoRESS(models.Model):
 
     def __str__(self):
         return f"{self.codice} {self.titolo}"
+
+    def save(self, *args, **kwargs):
+        self.ordine = ordine_codice(self.codice)
+        super().save(*args, **kwargs)
 
 
 class Pericolo(models.Model):
