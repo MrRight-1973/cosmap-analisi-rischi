@@ -1182,6 +1182,8 @@ class RequisitiAllegatoIIITest(BaseConLibreria):
         analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
         rev = analisi.revisione_corrente
         scheda = rev.schede.get(requisito__codice="1.1.5")
+        scheda.stampa_note_requisito = False  # attivo di default: spento non si stampa
+        scheda.save()
         self.assertNotIn("movimentati e trasportati", DocumentiTest.leggi(documenti.valutazione(rev)))
         scheda.stampa_note_requisito = True
         scheda.save()
@@ -1519,3 +1521,57 @@ class NuoviModuliTest(BaseConLibreria):
         # Una seconda esecuzione non duplica le schede nuove
         applica(apps, None)
         self.assertEqual(SchedaModello.objects.filter(modulo__sigla="MAN").count(), 8)
+
+
+class RitocchiLibreriaTest(BaseConLibreria):
+    def setUp(self):
+        super().setUp()
+        self.client.force_login(User.objects.create_superuser("capo", "capo@example.com", "x"))
+
+    def test_elenco_libreria_senza_aggiungi_e_modifica(self):
+        pagina = self.client.get(reverse("admin:index")).content.decode()
+        self.assertIn(reverse("admin:rischi_schedamodello_changelist"), pagina)
+        self.assertNotIn('class="addlink"', pagina)
+        self.assertNotIn('class="changelink"', pagina)
+
+    def test_frecce_spostano_e_rinumerano(self):
+        from .models import CondizioneOperativa
+
+        nomi = list(CondizioneOperativa.objects.values_list("nome", flat=True))
+        self.assertGreater(len(nomi), 2)
+        elenco = self.client.get(reverse("admin:rischi_condizioneoperativa_changelist")).content.decode()
+        self.assertIn("Sposta in giù", elenco)
+        self.assertNotIn('name="form-0-ordine"', elenco)
+        primo = CondizioneOperativa.objects.get(nome=nomi[0])
+        self.client.post(reverse("admin:rischi_condizioneoperativa_sposta", args=[primo.pk, "giu"]))
+        self.assertEqual(list(CondizioneOperativa.objects.values_list("nome", flat=True)), [nomi[1], nomi[0], *nomi[2:]])
+        self.assertEqual(list(CondizioneOperativa.objects.values_list("ordine", flat=True)),
+                         [10 * i for i in range(1, len(nomi) + 1)])
+        # In cima non si sale oltre; la voce nuova va in fondo
+        self.client.post(reverse("admin:rischi_condizioneoperativa_sposta", args=[CondizioneOperativa.objects.first().pk, "su"]))
+        self.assertEqual(CondizioneOperativa.objects.first().nome, nomi[1])
+        self.client.post(reverse("admin:rischi_condizioneoperativa_add"), {"nome": "Condizione nuova"})
+        self.assertEqual(CondizioneOperativa.objects.last().nome, "Condizione nuova")
+        # Con GET non cambia nulla
+        self.client.get(reverse("admin:rischi_condizioneoperativa_sposta", args=[primo.pk, "giu"]))
+        self.assertEqual(CondizioneOperativa.objects.first().nome, nomi[1])
+
+    def test_note_requisito_stampate_e_note_vuote(self):
+        import importlib
+
+        from django.apps import apps
+
+        scheda = SchedaModello.objects.first()
+        SchedaModello.objects.filter(pk=scheda.pk).update(stampa_note_requisito=False, note="Vecchia nota")
+        importlib.import_module("rischi.migrations.0035_note_requisito_e_note_vuote").applica(apps, None)
+        scheda.refresh_from_db()
+        self.assertEqual((scheda.stampa_note_requisito, scheda.note), (True, ""))
+        self.assertTrue(SchedaModello(modulo=scheda.modulo, requisito=scheda.requisito).stampa_note_requisito)
+
+    def test_pericoli_a_caselle_per_gruppo(self):
+        scheda = SchedaModello.objects.filter(pericoli__isnull=False).first()
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
+        self.assertIn('class="scelta-pericoli"', pagina)
+        self.assertIn("1. Pericoli meccanici", pagina)
+        self.assertIn(f'name="pericoli" value="{scheda.pericoli.first().pk}"', pagina)
+        self.assertNotIn("SelectFilter", pagina)

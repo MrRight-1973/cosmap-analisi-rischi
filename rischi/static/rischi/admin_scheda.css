@@ -62,3 +62,10 @@ fieldset.sezione-scheda .inline-group { margin: 0; border: none; }
 /* Sezione 9: il titolo della sezione basta, niente secondo titolo "Immagini allegate" */
 #allegati-group > fieldset > h2.inline-heading { display: none; }
 #allegati-group .field-testo .editore-testo, #allegati-group .field-testo textarea { width: 100%; }
+
+/* Pericoli della scheda modello: caselle di spunta divise per gruppo, su due colonne */
+.aligned #id_pericoli { columns: 2 26em; column-gap: 2em; max-width: 70em; flex: 1; }
+.aligned #id_pericoli > div { break-inside: avoid; margin: 0 0 10px; }
+.aligned #id_pericoli > div > label { display: block; width: auto; float: none; padding: 0 0 2px; font-weight: bold; }
+.aligned #id_pericoli > div > div { margin: 1px 0; }
+.aligned #id_pericoli > div > div label { display: inline; width: auto; min-width: 0; float: none; padding: 0; font-weight: normal; }
