@@ -11,6 +11,7 @@ from .registro import senza_registro_contenuti
 
 from .models import (
     Analisi,
+    AllegatoAnalisi,
     ApplicabilitaRequisito,
     Esito,
     Figura,
@@ -98,6 +99,10 @@ def _copia_scheda(sorgente, revisione, **extra):
     nuova.norme.set(sorgente.norme.all())
     nuova.norme_escluse.set(sorgente.norme_escluse.all())
     nuova.soggetti.set(sorgente.soggetti.all())
+    for allegato in sorgente.allegati.all():
+        AllegatoAnalisi.objects.create(
+            scheda=nuova, file=allegato.file.name, didascalia=allegato.didascalia, ordine=allegato.ordine
+        )
     for misura in sorgente.misure.all():
         MisuraAnalisi.objects.create(
             scheda=nuova, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma,
@@ -127,6 +132,12 @@ def aggiorna_da_modello(scheda, utente):
     scheda.norme_escluse.set(modello.norme_escluse.all())
     scheda.soggetti.set(modello.soggetti.all())
     scheda.misure.all().delete()
+    # Il file resta: può essere lo stesso della scheda modello o di altre schede
+    scheda.allegati.all().delete()
+    for allegato in modello.allegati.all():
+        AllegatoAnalisi.objects.create(
+            scheda=scheda, file=allegato.file.name, didascalia=allegato.didascalia, ordine=allegato.ordine
+        )
     for misura in modello.misure.all():
         MisuraAnalisi.objects.create(
             scheda=scheda, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma,

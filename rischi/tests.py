@@ -755,6 +755,7 @@ class CodiceAutomaticoTest(TestCase):
         return {
             "modulo": modulo.pk, "requisito": requisito.pk, "stato": "BOZZA",
             "misure-TOTAL_FORMS": 0, "misure-INITIAL_FORMS": 0, "misure-MIN_NUM_FORMS": 0, "misure-MAX_NUM_FORMS": 1000,
+            "allegati-TOTAL_FORMS": 0, "allegati-INITIAL_FORMS": 0, "allegati-MIN_NUM_FORMS": 0, "allegati-MAX_NUM_FORMS": 1000,
         }
 
     def test_nuova_scheda_e_cambio_di_modulo(self):
@@ -1094,14 +1095,14 @@ class SchedaModelloSezioniTest(BaseConLibreria):
         self.client.force_login(capo)
         scheda = SchedaModello.objects.first()
         pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[scheda.pk])).content.decode()
-        self.assertEqual(pagina.count('<details class="sezione">'), 8)
+        self.assertEqual(pagina.count('<details class="sezione">'), 9)
         self.assertIn('name="norma_20"', pagina)
         self.assertIn("rischi/scheda.js", pagina)
         # le misure stanno dentro la sezione 6
         self.assertLess(pagina.index("6. RIDUZIONE DEL RISCHIO"), pagina.index('id="misure-group"'))
         self.assertLess(pagina.index('id="misure-group"'), pagina.index("7. STIMA FINALE"))
         nuova = self.client.get(reverse("admin:rischi_schedamodello_add")).content.decode()
-        self.assertEqual(nuova.count('<details class="sezione" open>'), 8)
+        self.assertEqual(nuova.count('<details class="sezione" open>'), 9)
 
 
 class TestoFormattatoTest(TestCase):
@@ -1366,3 +1367,85 @@ class CapitoliValutazioneTest(BaseConLibreria):
         utente = User.objects.create_superuser("capo", "capo@example.com", "x")
         self.client.force_login(utente)
         self.assertContains(self.client.get(reverse("admin:rischi_capitolovalutazione_changelist")), "Principi generali")
+
+
+class ImmaginiAllegateTest(BaseConLibreria):
+    def setUp(self):
+        import tempfile
+
+        from django.test import override_settings
+
+        self.media = tempfile.TemporaryDirectory()
+        self.impostazioni = override_settings(MEDIA_ROOT=self.media.name)
+        self.impostazioni.enable()
+
+    def tearDown(self):
+        self.impostazioni.disable()
+        self.media.cleanup()
+
+    @staticmethod
+    def png():
+        from PIL import Image
+
+        buffer = io.BytesIO()
+        Image.new("RGB", (400, 200), "red").save(buffer, "PNG")
+        return buffer.getvalue()
+
+    @staticmethod
+    def pdf(testo):
+        from reportlab.pdfgen.canvas import Canvas
+
+        buffer = io.BytesIO()
+        tela = Canvas(buffer)
+        tela.drawString(100, 700, testo)
+        tela.save()
+        return buffer.getvalue()
+
+    def test_allegati_dal_modello_alla_valutazione(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from . import documenti
+        from .models import AllegatoAnalisi, AllegatoModello
+
+        prima = servizi.crea_analisi_da_libreria(self.nuova_macchina("25-19"), self.compilatore)
+        modello = prima.revisione_corrente.schede.exclude(decisione=SchedaAnalisi.Decisione.SCARTATA)[0].origine
+        capo = User.objects.create_superuser("capo9", password="prova-prova-123")
+        self.client.force_login(capo)
+        pagina = self.client.get(reverse("admin:rischi_schedamodello_change", args=[modello.pk])).content.decode()
+        self.assertIn("9. IMMAGINI ALLEGATE", pagina)
+        self.assertLess(pagina.index("9. IMMAGINI ALLEGATE"), pagina.index('id="allegati-group"'))
+
+        AllegatoModello.objects.create(
+            scheda=modello, file=SimpleUploadedFile("protezione.png", self.png()), didascalia="Riparo frontale", ordine=1
+        )
+        AllegatoModello.objects.create(
+            scheda=modello, file=SimpleUploadedFile("schema.pdf", self.pdf("Schema elettrico allegato")), ordine=2
+        )
+        # Un file che non è immagine né PDF non si carica.
+        with self.assertRaises(ValidationError):
+            AllegatoModello(scheda=modello, file=SimpleUploadedFile("testo.txt", b"x")).full_clean()
+
+        analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        scheda = analisi.revisione_corrente.schede.get(origine=modello)
+        self.assertEqual([a.nome_file for a in scheda.allegati.all()], ["protezione.png", "schema.pdf"])
+
+        # Nella commessa il tecnico aggiunge e toglie immagini dalla scheda.
+        self.client.force_login(self.compilatore)
+        self.assertContains(self.client.get(reverse("scheda", args=[scheda.pk])), "9. IMMAGINI ALLEGATE")
+        risposta = self.client.post(
+            reverse("aggiungi_allegato", args=[scheda.pk]),
+            {"file": SimpleUploadedFile("foto.png", self.png()), "didascalia": "Foto della zona"},
+        )
+        self.assertEqual(risposta.status_code, 302)
+        aggiunto = scheda.allegati.get(didascalia="Foto della zona")
+        self.assertEqual(aggiunto.ordine, 3)
+
+        valutazione = documenti.valutazione(analisi.revisione_corrente)
+        testo = DocumentiTest.leggi(valutazione)
+        self.assertIn("9. IMMAGINI ALLEGATE", testo)
+        self.assertIn("Riparo frontale", testo)
+        self.assertIn("PDF allegato in appendice: schema.pdf", testo)
+        self.assertIn("Schema elettrico allegato", testo)  # pagina del PDF aggiunta in fondo
+
+        self.client.post(reverse("elimina_allegato", args=[aggiunto.pk]))
+        self.assertFalse(AllegatoAnalisi.objects.filter(pk=aggiunto.pk).exists())

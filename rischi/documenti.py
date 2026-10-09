@@ -406,7 +406,7 @@ def _schede_attive(revisione):
         .select_related("modulo", "requisito", "revisione__metodo")
         .prefetch_related(
             "misure__norma", "misure__soluzione__norme", "pericoli__norme", "requisito__norme", "norme_escluse",
-            "condizioni", "norme", "soggetti",
+            "condizioni", "norme", "soggetti", "allegati",
         )
     )
 
@@ -606,6 +606,7 @@ SEZIONI_SCHEDA = [
     "6. RIDUZIONE DEL RISCHIO (RESS 1.1.1 f, g)",
     "7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)",
     "8. VALUTAZIONE DEL RISCHIO RESIDUO",
+    "9. IMMAGINI ALLEGATE",
 ]
 
 
@@ -683,7 +684,57 @@ def _scheda(doc, s, descrizioni):
             s.testo_istruzioni,
             ESITI_COLORE[Esito.SUGGERITE] if da_segnalare else "#F3F4F6",
         ))
+    allegati = list(s.allegati.all())
+    if allegati:
+        _sezione(doc, 9, contenuto=lambda: _allegati(doc, allegati))
     doc.spazio(4)
+
+
+def _immagine(allegato, larghezza=LARGHEZZA, altezza=12 * cm):
+    """Immagine allegata ridotta nel riquadro dato, o None se il file manca o non si legge."""
+    try:
+        percorso = allegato.file.path
+        w, h = ImageReader(percorso).getSize()
+    except Exception:
+        return None
+    scala = min(larghezza / w, altezza / h, 1)
+    return Image(percorso, width=w * scala, height=h * scala)
+
+
+def _allegati(doc, allegati):
+    """Sezione 9: immagini stampate nella scheda con la didascalia; i PDF sono in appendice al documento."""
+    for allegato in allegati:
+        if allegato.e_immagine:
+            immagine = _immagine(allegato)
+            if immagine is None:
+                doc.p(f"Immagine non disponibile: {allegato.nome_file}")
+                continue
+            blocco = [immagine]
+            if allegato.didascalia:
+                blocco.append(Paragraph(_pulito(allegato.didascalia), doc.stili["centro"]))
+            doc.storia.append(KeepTogether(blocco))
+            doc.spazio(4)
+        else:
+            doc.p(f"PDF allegato in appendice: {allegato.didascalia or allegato.nome_file}")
+
+
+def _con_pdf_allegati(contenuto, schede):
+    """Aggiunge in fondo al documento le pagine dei PDF allegati alle schede, nell'ordine delle schede."""
+    pdf = [a for s in schede for a in s.allegati.all() if not a.e_immagine]
+    if not pdf:
+        return contenuto
+    from pypdf import PdfReader, PdfWriter
+
+    scrittore = PdfWriter(clone_from=PdfReader(io.BytesIO(contenuto)))
+    for allegato in pdf:
+        try:
+            with allegato.file.open("rb") as f:
+                scrittore.append(PdfReader(io.BytesIO(f.read())))
+        except Exception:  # file mancante o non leggibile: resta solo la riga nella scheda
+            continue
+    uscita = io.BytesIO()
+    scrittore.write(uscita)
+    return uscita.getvalue()
 
 
 def _logo(fabbricante, larghezza=7 * cm, altezza=3.5 * cm):
@@ -841,7 +892,7 @@ def valutazione(revisione):
             [[f"{s.requisito.codice} {s.requisito.titolo}", s.motivazione, s.codice] for s in scartate],
             [6, 8.5, 2.5],
         )
-    return doc.salva()
+    return _con_pdf_allegati(doc.salva(), schede)
 
 
 # ---------------------------------------------------------------------------

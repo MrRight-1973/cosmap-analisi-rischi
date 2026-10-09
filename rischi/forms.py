@@ -2,6 +2,7 @@ from django import forms
 from django.forms import inlineformset_factory, modelformset_factory
 
 from .models import (
+    AllegatoAnalisi,
     SoluzioneProtezione,
     TipoMisura,
     ApplicabilitaRequisito,
@@ -428,6 +429,13 @@ MisureFormSet = inlineformset_factory(
     can_delete=True,
     widgets={"testo": forms.Textarea(attrs={"rows": 4}), "ordine": forms.NumberInput(attrs={"style": "width:4em"})},
 )
+
+
+class AllegatoForm(forms.ModelForm):
+    class Meta:
+        model = AllegatoAnalisi
+        fields = ["file", "didascalia"]
+        widgets = {"file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf"})}
 
 
 ApplicabilitaFormSet = modelformset_factory(

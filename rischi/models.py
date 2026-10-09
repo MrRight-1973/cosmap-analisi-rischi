@@ -12,6 +12,7 @@ import re
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from django.db import models
 
 from .testo import semplice
@@ -507,6 +508,46 @@ class MisuraModello(models.Model):
         return semplice(self.testo)[:60]
 
 
+ESTENSIONI_ALLEGATI = ["jpg", "jpeg", "png", "gif", "bmp", "pdf"]
+ESTENSIONI_IMMAGINE = ("jpg", "jpeg", "png", "gif", "bmp")
+
+
+class Allegato(models.Model):
+    """Immagine o PDF della sezione 9 di una scheda: le immagini si stampano nella scheda, i PDF in appendice."""
+
+    file = models.FileField(
+        upload_to="allegati/%Y/",
+        validators=[FileExtensionValidator(ESTENSIONI_ALLEGATI)],
+        help_text="Immagine (JPG, PNG, GIF, BMP) o PDF.",
+    )
+    didascalia = models.CharField(max_length=200, blank=True)
+    ordine = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        abstract = True
+        verbose_name = "immagine allegata"
+        verbose_name_plural = "immagini allegate"
+        ordering = ["ordine", "pk"]
+
+    def __str__(self):
+        return self.didascalia or self.nome_file
+
+    @property
+    def nome_file(self):
+        return self.file.name.rsplit("/", 1)[-1]
+
+    @property
+    def e_immagine(self):
+        return self.file.name.lower().rsplit(".", 1)[-1] in ESTENSIONI_IMMAGINE
+
+
+class AllegatoModello(Allegato):
+    scheda = models.ForeignKey(SchedaModello, on_delete=models.CASCADE, related_name="allegati")
+
+    class Meta(Allegato.Meta):
+        abstract = False
+
+
 # ---------------------------------------------------------------------------
 # Commessa e analisi
 # ---------------------------------------------------------------------------
@@ -849,6 +890,16 @@ class MisuraAnalisi(ContenutoRevisione):
 
     def __str__(self):
         return semplice(self.testo)[:60]
+
+
+class AllegatoAnalisi(ContenutoRevisione, Allegato):
+    scheda = models.ForeignKey(SchedaAnalisi, on_delete=models.CASCADE, related_name="allegati")
+
+    class Meta(Allegato.Meta):
+        abstract = False
+
+    def _revisione(self):
+        return self.scheda.revisione
 
 
 class ApplicabilitaRequisito(ContenutoRevisione):

@@ -1,5 +1,5 @@
-{% comment %}Sezione della scheda modello richiudibile: il titolo apre e chiude la sezione; la sezione 6
-comprende anche le misure di protezione (con_misure). Le righe dei campi sono quelle di
+{% comment %}Sezione della scheda modello richiudibile: il titolo apre e chiude la sezione; ogni riga collegata
+(misure nella 6, allegati nella 9) sta nella sezione indicata dal suo attributo sezione. Le righe dei campi sono quelle di
 admin/includes/fieldset.html.{% endcomment %}
 <fieldset class="module aligned sezione-scheda"{% if fieldset.name %} aria-labelledby="{{ prefix }}-{{ id_prefix}}-{{ id_suffix }}-heading"{% endif %}>
 <details class="sezione"{% if aperte %} open{% endif %}>
@@ -37,10 +37,8 @@ admin/includes/fieldset.html.{% endcomment %}
             {% if not line.fields|length == 1 %}</div>{% endif %}
         </div>
     {% endfor %}
-    {% if con_misure %}
     {% for inline_admin_formset in inline_admin_formsets %}
-        {% include inline_admin_formset.opts.template %}
+        {% if inline_admin_formset.opts.sezione == numero %}{% include inline_admin_formset.opts.template %}{% endif %}
     {% endfor %}
-    {% endif %}
 </details>
 </fieldset>
