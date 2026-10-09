@@ -4,6 +4,9 @@ from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib.auth import admin as _admin_utenti  # noqa: F401 (registra Gruppi prima di aggiungere Duplica)
 from django.contrib.auth.models import Group
 from django.db import models
+from django.db.models import Max
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
@@ -37,6 +40,60 @@ class SoloVistaCollegati:
         if isinstance(widget, RelatedFieldWidgetWrapper):
             widget.can_add_related = widget.can_change_related = widget.can_delete_related = False
         return campo
+
+
+class OrdinabileAdmin(admin.ModelAdmin):
+    """Ordine delle voci con i pulsanti ↑ e ↓ nell'elenco al posto del numero: la voce scambia il posto con
+    quella vicina e tutte le voci si rinumerano 10, 20, 30…; le voci nuove vanno in fondo."""
+
+    exclude = ("ordine",)
+    sortable_by = ()  # l'elenco resta nell'ordine scelto con le frecce
+
+    def get_list_display(self, request):
+        return (*super().get_list_display(request), "sposta")
+
+    def get_urls(self):
+        info = self.opts.app_label, self.opts.model_name
+        return [
+            path("<int:pk>/sposta/<str:verso>/", self.admin_site.admin_view(self.sposta_voce),
+                 name="%s_%s_sposta" % info),
+            *super().get_urls(),
+        ]
+
+    @admin.display(description="ordine")
+    def sposta(self, obj):
+        # Pulsanti del modulo dell'elenco (che ha già il token CSRF) inviati all'indirizzo dello spostamento
+        nome = f"admin:{self.opts.app_label}_{self.opts.model_name}_sposta"
+        return format_html(
+            '<span style="white-space:nowrap">'
+            '<button type="submit" class="button" formaction="{}" formnovalidate title="Sposta in su" '
+            'style="padding:2px 8px;margin-right:4px">↑</button>'
+            '<button type="submit" class="button" formaction="{}" formnovalidate title="Sposta in giù" '
+            'style="padding:2px 8px">↓</button></span>',
+            reverse(nome, args=[obj.pk, "su"]), reverse(nome, args=[obj.pk, "giu"]),
+        )
+
+    def sposta_voce(self, request, pk, verso):
+        indietro = request.META.get("HTTP_REFERER") or reverse(
+            f"admin:{self.opts.app_label}_{self.opts.model_name}_changelist")
+        if request.method != "POST" or not self.has_change_permission(request):
+            return redirect(indietro)
+        voce = get_object_or_404(self.model, pk=pk)
+        voci = list(self.model.objects.all())  # nell'ordine del modello (ordine, poi nome o numero)
+        i = voci.index(voce)
+        j = i - 1 if verso == "su" else i + 1
+        if 0 <= j < len(voci):
+            voci[i], voci[j] = voci[j], voci[i]
+        for numero, v in enumerate(voci, start=1):
+            if v.ordine != numero * 10:
+                v.ordine = numero * 10
+                v.save(update_fields=["ordine"])
+        return redirect(indietro)
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.ordine = (self.model.objects.aggregate(Max("ordine"))["ordine__max"] or 0) + 10
+        super().save_model(request, obj, form, change)
 
 
 class MisuraModelloInline(SoloVistaCollegati, admin.StackedInline):
@@ -74,6 +131,23 @@ class AllegatoModelloInline(admin.StackedInline):
         return format_html('<a href="{}" target="_blank">PDF: {}</a>', obj.file.url, obj.nome_file)
 
 
+GRUPPI_PERICOLI = {
+    "1": "Pericoli meccanici", "2": "Pericoli elettrici", "3": "Pericoli termici", "4": "Rumore",
+    "5": "Vibrazioni", "6": "Radiazioni", "7": "Materiali e sostanze", "8": "Ergonomia",
+    "9": "Ambiente di utilizzo", "10": "Combinazioni di pericoli",
+}
+
+
+def pericoli_per_gruppo():
+    """Pericoli divisi per gruppo (il primo numero del codice, EN ISO 12100 tabella B.1), in ordine di codice."""
+    gruppi = {}
+    pericoli = sorted(m.Pericolo.objects.all(), key=lambda p: m.ordine_codice(p.codice))
+    for pericolo in pericoli:
+        numero = pericolo.codice.split(".")[0]
+        gruppi.setdefault(numero, []).append((pericolo.pk, str(pericolo)))
+    return [(f"{numero}. {GRUPPI_PERICOLI.get(numero, 'Altri pericoli')}", voci) for numero, voci in gruppi.items()]
+
+
 class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
     se_iniziale = _scelta(VALORI_SE)
     fr_iniziale = _scelta(VALORI_FR)
@@ -92,6 +166,7 @@ class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
         widgets = {
             "condizioni": forms.CheckboxSelectMultiple,
             "soggetti": forms.CheckboxSelectMultiple,
+            "pericoli": forms.CheckboxSelectMultiple(attrs={"class": "scelta-pericoli"}),
             **{campo: forms.Textarea(attrs={"rows": 3, "cols": 80}) for campo in CAMPI_CONSIDERAZIONI},
         }
 
@@ -99,6 +174,8 @@ class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         descrivi_fattori(self.fields, m.MetodoStima.corrente())
         self._prepara_norme()
+        if "pericoli" in self.fields:
+            self.fields["pericoli"].choices = pericoli_per_gruppo()
 
     def clean(self):
         dati = super().clean()
@@ -114,7 +191,6 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     list_display = ("codice", "modulo", "requisito", "zona_impianto", "stato")
     list_filter = ("modulo", ("requisito", admin.RelatedOnlyFieldListFilter), "zona_impianto", "stato")
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
-    filter_horizontal = ("pericoli",)
     readonly_fields = ("codice", "note_requisito", "calcolo_iniziale", "calcolo_finale")
     inlines = [MisuraModelloInline, AllegatoModelloInline]
 
@@ -232,10 +308,9 @@ class ModuloForm(forms.ModelForm):
 
 
 @admin.register(m.Modulo)
-class ModuloAdmin(admin.ModelAdmin):
+class ModuloAdmin(OrdinabileAdmin):
     form = ModuloForm
-    list_display = ("nome", "sigla", "condizione", "sempre_attivo", "numero_schede", "attivo", "ordine")
-    list_editable = ("ordine",)
+    list_display = ("nome", "sigla", "condizione", "sempre_attivo", "numero_schede", "attivo")
     readonly_fields = ("elenco_schede",)
 
     def save_model(self, request, obj, form, change):
@@ -349,7 +424,7 @@ class RegistroAdmin(admin.ModelAdmin):
         return False
 
 
-for modello in (m.CondizioneOperativa, m.RiferimentoNormativo, m.Cliente, m.Fabbricante, m.LegislazioneUE):
+for modello in (m.RiferimentoNormativo, m.Cliente, m.Fabbricante, m.LegislazioneUE):
     admin.site.register(modello)
 
 
@@ -399,12 +474,12 @@ class SoluzioneProtezioneAdmin(admin.ModelAdmin):
 
 
 @admin.register(m.CapitoloValutazione)
-class CapitoloValutazioneAdmin(admin.ModelAdmin):
-    """Capitoli di testo stampati nella valutazione dei rischi dopo la copertina, nell'ordine indicato."""
+class CapitoloValutazioneAdmin(OrdinabileAdmin):
+    """Capitoli di testo stampati nella valutazione dei rischi dopo la copertina, nell'ordine dell'elenco."""
 
-    list_display = ("titolo", "ordine", "attivo")
-    list_editable = ("ordine", "attivo")
-    fields = ("titolo", "testo", "ordine", "attivo")
+    list_display = ("titolo", "attivo")
+    list_editable = ("attivo",)
+    fields = ("titolo", "testo", "attivo")
 
     class Media:
         css = {"all": ("rischi/admin_scheda.css",)}
@@ -418,9 +493,13 @@ class CapitoloValutazioneAdmin(admin.ModelAdmin):
 
 
 @admin.register(m.Figura)
-class FiguraAdmin(admin.ModelAdmin):
-    list_display = ("nome", "tipo", "ordine")
-    list_editable = ("ordine",)
+class FiguraAdmin(OrdinabileAdmin):
+    list_display = ("nome", "tipo")
+
+
+@admin.register(m.CondizioneOperativa)
+class CondizioneOperativaAdmin(OrdinabileAdmin):
+    list_display = ("nome",)
 
 
 class FiguraMacchinaInline(admin.TabularInline):

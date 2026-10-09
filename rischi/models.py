@@ -362,7 +362,7 @@ class Stima(models.Model):
     note = models.TextField("note e considerazioni generali", blank=True)
     stampa_note_requisito = models.BooleanField(
         "stampa le note del requisito nel PDF",
-        default=False,
+        default=True,
         help_text="Nella valutazione dei rischi riporta il testo del requisito RESS (Allegato III del Regolamento).",
     )
     # Considerazioni del tecnico per ogni passo della valutazione (EN ISO 12100)
