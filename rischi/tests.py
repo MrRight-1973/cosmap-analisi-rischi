@@ -1456,3 +1456,32 @@ class ImmaginiAllegateTest(BaseConLibreria):
 
         self.client.post(reverse("elimina_allegato", args=[aggiunto.pk]))
         self.assertFalse(AllegatoAnalisi.objects.filter(pk=aggiunto.pk).exists())
+
+
+class ConsiderazioniPrecompilateTest(BaseConLibreria):
+    def test_riempie_solo_i_campi_vuoti_con_lo_stesso_requisito(self):
+        import importlib
+        import json
+
+        from django.apps import apps
+
+        from .models import RequisitoRESS
+
+        carica = importlib.import_module("rischi.migrations.0033_considerazioni_schede_modello").carica
+        dati = json.loads((Path(settings.BASE_DIR) / "rischi" / "dati" / "considerazioni_schede.json").read_text("utf-8"))
+        self.assertEqual(len(dati), 78)
+        voce = dati["TAV-01"]
+        requisito = RequisitoRESS.objects.get(riferimento=self.riferimento, codice=voce["requisito"])
+        altro = RequisitoRESS.objects.exclude(pk=requisito.pk).first()
+        modulo = Modulo.objects.first()
+        SchedaModello.objects.filter(codice__in=["TAV-01", "TAV-02"]).delete()
+        scritta = SchedaModello.objects.create(
+            codice="TAV-01", modulo=modulo, requisito=requisito, considerazioni_pericoli="Scritto dal tecnico."
+        )
+        diversa = SchedaModello.objects.create(codice="TAV-02", modulo=modulo, requisito=altro)
+        carica(apps, None)
+        scritta.refresh_from_db()
+        diversa.refresh_from_db()
+        self.assertEqual(scritta.considerazioni_pericoli, "Scritto dal tecnico.")
+        self.assertEqual(scritta.considerazioni_stima_iniziale, voce["campi"]["considerazioni_stima_iniziale"])
+        self.assertEqual(diversa.considerazioni_stima_iniziale, "")
