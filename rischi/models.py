@@ -520,7 +520,24 @@ class Allegato(models.Model):
         validators=[FileExtensionValidator(ESTENSIONI_ALLEGATI)],
         help_text="Immagine (JPG, PNG, GIF, BMP) o PDF.",
     )
-    didascalia = models.CharField(max_length=200, blank=True)
+    class Allineamento(models.TextChoices):
+        SINISTRA = "SX", "a sinistra"
+        CENTRO = "CENTRO", "al centro"
+        DESTRA = "DX", "a destra"
+
+    class PosizioneTesto(models.TextChoices):
+        SOTTO = "SOTTO", "sotto l'immagine"
+        SOPRA = "SOPRA", "sopra l'immagine"
+        SINISTRA = "SX", "a sinistra dell'immagine"
+        DESTRA = "DX", "a destra dell'immagine"
+
+    allineamento = models.CharField(
+        "posizione dell'immagine nella pagina", max_length=6, choices=Allineamento.choices, default=Allineamento.CENTRO
+    )
+    testo = models.TextField(blank=True, help_text="Testo che accompagna l'immagine nella scheda.")
+    posizione_testo = models.CharField(
+        "posizione del testo", max_length=5, choices=PosizioneTesto.choices, default=PosizioneTesto.SOTTO
+    )
     ordine = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -530,7 +547,7 @@ class Allegato(models.Model):
         ordering = ["ordine", "pk"]
 
     def __str__(self):
-        return self.didascalia or self.nome_file
+        return self.nome_file
 
     @property
     def nome_file(self):

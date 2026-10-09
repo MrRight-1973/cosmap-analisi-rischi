@@ -59,3 +59,6 @@ fieldset.sezione-scheda .inline-group { margin: 0; border: none; }
 
 /* Anteprima delle immagini allegate (sezione 9) */
 .anteprima-allegato { max-width: 160px; max-height: 110px; border: 1px solid var(--hairline-color); }
+/* Sezione 9: il titolo della sezione basta, niente secondo titolo "Immagini allegate" */
+#allegati-group > fieldset > h2.inline-heading { display: none; }
+#allegati-group .field-testo .editore-testo, #allegati-group .field-testo textarea { width: 100%; }

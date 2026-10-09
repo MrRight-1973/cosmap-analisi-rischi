@@ -1416,7 +1416,7 @@ class ImmaginiAllegateTest(BaseConLibreria):
         self.assertLess(pagina.index("9. IMMAGINI ALLEGATE"), pagina.index('id="allegati-group"'))
 
         AllegatoModello.objects.create(
-            scheda=modello, file=SimpleUploadedFile("protezione.png", self.png()), didascalia="Riparo frontale", ordine=1
+            scheda=modello, file=SimpleUploadedFile("protezione.png", self.png()), testo="Riparo <b>frontale</b>", allineamento="SX", posizione_testo="DX", ordine=1
         )
         AllegatoModello.objects.create(
             scheda=modello, file=SimpleUploadedFile("schema.pdf", self.pdf("Schema elettrico allegato")), ordine=2
@@ -1428,22 +1428,29 @@ class ImmaginiAllegateTest(BaseConLibreria):
         analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
         scheda = analisi.revisione_corrente.schede.get(origine=modello)
         self.assertEqual([a.nome_file for a in scheda.allegati.all()], ["protezione.png", "schema.pdf"])
+        self.assertEqual(scheda.allegati.first().posizione_testo, "DX")
 
         # Nella commessa il tecnico aggiunge e toglie immagini dalla scheda.
         self.client.force_login(self.compilatore)
-        self.assertContains(self.client.get(reverse("scheda", args=[scheda.pk])), "9. IMMAGINI ALLEGATE")
+        pagina = self.client.get(reverse("scheda", args=[scheda.pk])).content.decode()
+        self.assertIn("9. IMMAGINI ALLEGATE", pagina)
+        # "Salva scheda" sta accanto ad "Aggiorna dalla scheda modello" e invia il modulo della scheda
+        self.assertIn('form="form-scheda">Salva scheda</button>', pagina)
+        self.assertLess(pagina.index("Salva scheda"), pagina.index("Aggiorna dalla scheda modello"))
         risposta = self.client.post(
             reverse("aggiungi_allegato", args=[scheda.pk]),
-            {"file": SimpleUploadedFile("foto.png", self.png()), "didascalia": "Foto della zona"},
+            {"file": SimpleUploadedFile("foto.png", self.png()), "testo": "Foto della zona", "allineamento": "DX", "posizione_testo": "SOPRA"},
         )
         self.assertEqual(risposta.status_code, 302)
-        aggiunto = scheda.allegati.get(didascalia="Foto della zona")
+        aggiunto = scheda.allegati.get(testo="Foto della zona")
         self.assertEqual(aggiunto.ordine, 3)
+        self.assertEqual((aggiunto.allineamento, aggiunto.posizione_testo), ("DX", "SOPRA"))
 
         valutazione = documenti.valutazione(analisi.revisione_corrente)
         testo = DocumentiTest.leggi(valutazione)
         self.assertIn("9. IMMAGINI ALLEGATE", testo)
         self.assertIn("Riparo frontale", testo)
+        self.assertIn("Foto della zona", testo)
         self.assertIn("PDF allegato in appendice: schema.pdf", testo)
         self.assertIn("Schema elettrico allegato", testo)  # pagina del PDF aggiunta in fondo
 
