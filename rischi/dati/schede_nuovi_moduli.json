@@ -1,0 +1,2657 @@
+[
+ {
+  "modulo": "SWC",
+  "requisito": "1.2.1",
+  "zona_impianto": "Software e programmazione",
+  "zona_pericolosa": "Unità CNC o robot che esegue un programma o punti appresi errati",
+  "condizioni": [
+   "Programmazione",
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.1",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Programmatore",
+   "Operatore di attrezzaggio"
+  ],
+  "iniziale": {
+   "Se": 4,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 2,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Simulazione completa del percorso nel CAD CAM C3 con controllo di collisioni, fine corsa e assi prima del trasferimento."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Limitazione sicura dello spazio di lavoro e della velocità nel controllore robot o CNC, indipendente dal programma."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Prima esecuzione di programmi nuovi o modificati solo in modo prova, a velocità ridotta e passo-passo."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale descrive la procedura di validazione dei programmi e dei punti appresi prima della produzione."
+   }
+  ],
+  "testo_istruzioni": "Collaudare ogni programma nuovo o modificato in modo prova a velocità ridotta, restando fuori dalla traiettoria. Non disattivare i limiti sicuri dello spazio di lavoro.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Un errore nel programma CAD CAM C3 o un punto appreso sbagliato porta l'unità o il robot fuori traiettoria. Ne derivano urto (1.2.6) e schiacciamento (1.2.1) con energia cinetica elevata (1.1.4).",
+   "considerazioni_limiti": "La zona è lo spazio di lavoro dell'unità CNC o del robot. Il pericolo si manifesta alla prima esecuzione in programmazione e, se l'errore sfugge, nel funzionamento normale.",
+   "considerazioni_soggetti": "Il programmatore e l'operatore di attrezzaggio provano i programmi nuovi vicino alla macchina e osservano il primo ciclo da distanza ravvicinata.",
+   "considerazioni_stima_iniziale": "Se 4: un robot o un'unità a piena velocità fuori traiettoria può causare lesioni gravissime. Fr 4: nuovi programmi e modifiche si provano ogni settimana. Pr 3: senza verifiche l'errore di programma è possibile. Av 3: il movimento anomalo è rapido, evitarlo è solo possibile. Cl 10: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: simulazione completa nel CAD CAM C3 e prima esecuzione solo in modo prova a velocità ridotta. Protezioni: limiti sicuri di spazio e velocità indipendenti dal programma. Informazioni: procedura di validazione nel manuale.",
+   "considerazioni_stima_finale": "Se scende a 3 perché la velocità ridotta e i limiti sicuri contengono davvero il danno di un movimento errato. Pr scende a 2 per la simulazione, Av a 1 per la lentezza del primo ciclo. Fr 4 resta reale. Cl 7: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "SWC",
+  "requisito": "1.1.9",
+  "zona_impianto": "Software e programmazione",
+  "zona_pericolosa": "Accesso remoto a PLC, CNC e robot tramite la rete del cliente",
+  "condizioni": [
+   "Manutenzione",
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "10.1.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 4,
+   "Fr": 3,
+   "Pr": 2,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 3,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Funzioni di sicurezza su PLC di sicurezza separato, non raggiungibile né modificabile dalla teleassistenza."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Accesso remoto solo su richiesta, abilitato da selettore a chiave locale, con VPN cifrata, autenticazione e registro accessi."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Da remoto non si possono avviare cicli o movimenti: l'avvio richiede un comando dal pannello locale."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica segmentazione di rete richiesta al cliente e avviso al personale prima di ogni sessione."
+   }
+  ],
+  "testo_istruzioni": "Abilitare la teleassistenza solo quando serve e avvisare il personale presente. Collegare l'impianto alla rete del cliente solo tramite una rete separata e protetta.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Un accesso remoto non autorizzato o una modifica errata di parametri può alterare velocità, posizioni o funzioni di sicurezza. Ne derivano movimenti imprevisti (1.1.4), aggravati dalla presenza di persone in zona (10.1.1).",
+   "considerazioni_limiti": "La zona riguarda PLC, CNC, controllore robot e collegamento alla rete del cliente. L'esposizione si ha durante la teleassistenza in manutenzione e nel funzionamento normale successivo alla modifica.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino all'impianto mentre la sessione è attiva. Il manutentore meccanico interviene in macchina e può non sapere che qualcuno opera da remoto.",
+   "considerazioni_stima_iniziale": "Se 4: una funzione di sicurezza alterata o un movimento imprevisto può causare lesioni gravissime. Fr 3: le sessioni di teleassistenza sono occasionali. Pr 2: un'alterazione dannosa è rara. Av 3: il movimento si può evitare solo se percepito in tempo. Cl 8: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: funzioni di sicurezza su PLC dedicato, irraggiungibile da remoto. Protezioni: accesso abilitato localmente a chiave, VPN e registro; nessun avvio da remoto. Informazioni: regole di rete e avviso al personale.",
+   "considerazioni_stima_finale": "Se scende a 3: con la sicurezza non alterabile, una modifica remota agisce solo sul processo, a ripari chiusi. Pr e Av scendono a 1 per abilitazione locale e assenza di avvii remoti. Fr 3 resta reale. Cl 5: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "TRC",
+  "requisito": "1.3.7",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Mandrini e bordo della tavola in rotazione continua davanti all'operatore",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.2.5",
+   "1.2.1",
+   "1.2.2"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 4,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Velocità periferica della tavola limitata nel tratto di carico; nessun punto di convergenza con parti fisse, spazi minimi EN ISO 13854."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Barra o bordo sensibile sul fronte di carico che arresta la tavola se la mano viene trascinata."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Arresto di emergenza e comando di arresto a pedale raggiungibili dalla postazione di carico."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale vieta guanti larghi e indumenti svolazzanti e indica di fermare la tavola per pezzi incastrati."
+   }
+  ],
+  "testo_istruzioni": "Non trattenere i pezzi che non entrano nel mandrino: fermare la tavola. Usare guanti aderenti e non indossare indumenti larghi.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il carico avviene a tavola in movimento: la mano o il guanto possono essere trascinati dal mandrino (1.2.5). Il trascinamento verso parti fisse genera schiacciamento (1.2.1) e cesoiamento (1.2.2).",
+   "considerazioni_limiti": "La zona è il tratto di carico della tavola continua, tra mandrini in avanzamento e struttura fissa. Si è esposti in funzionamento normale, per tutto il turno.",
+   "considerazioni_soggetti": "L'operatore di conduzione inserisce i pezzi nei mandrini mentre la tavola gira, con le mani sempre a contatto con le parti in moto.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento contro parti fisse può causare perdita di dita. Fr 5: il carico è continuo. Pr 4: con mani sempre su parti in moto il trascinamento è probabile. Av 3: la tavola è lenta ma non si ferma da sola. Cl 12: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: velocità limitata nel tratto di carico ed eliminazione dei punti di convergenza. Protezioni: bordo sensibile sul fronte e arresti a portata di mano. Informazioni: guanti aderenti e arresto per pezzi incastrati.",
+   "considerazioni_stima_finale": "Se scende a 2: senza punti di convergenza il trascinamento produce solo contusioni. Pr scende a 2 e Av a 1 per velocità bassa e bordo sensibile. Fr 5 resta reale. Cl 8: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "TRC",
+  "requisito": "1.3.8.2",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Mandrini porta-pezzo in rotazione e loro trasmissioni sulla tavola",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.8",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Rotazione dei mandrini disinserita nel settore di carico e scarico; trasmissioni sotto la tavola chiuse da carter fissi."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Controllo di mandrino fermo nel settore di carico: se un mandrino gira la tavola si arresta."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale richiede capelli raccolti, niente indumenti larghi e avverte del pericolo di impigliamento."
+   }
+  ],
+  "testo_istruzioni": "Non avvicinare le mani ai mandrini fuori dal settore di carico. Tenere capelli raccolti e indumenti aderenti.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "I mandrini ruotano il pezzo davanti alle unità di pulitura. Un contatto con mandrino o pezzo in rotazione può impigliare guanti o indumenti (1.2.4), con abrasione (1.2.8) e urto (1.2.6).",
+   "considerazioni_limiti": "La zona sono i mandrini sulla tavola, in particolare all'ingresso e all'uscita del settore di carico. Si è esposti in funzionamento normale, a ogni carico e scarico.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica e scarica i pezzi nei mandrini e lavora a contatto con la tavola per tutto il turno.",
+   "considerazioni_stima_iniziale": "Se 3: l'impigliamento può causare fratture o lesioni permanenti alla mano. Fr 5: il carico è continuo. Pr 3: con mandrini in rotazione nel settore il contatto è possibile. Av 3: l'impigliamento è rapido. Cl 11: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: mandrini fermi nel settore di carico e trasmissioni chiuse da carter fissi. Protezioni: controllo di mandrino fermo che arresta la tavola. Informazioni: abbigliamento adeguato.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché nel settore di carico i mandrini sono fermi e controllati. Se 3 resta per il tipo di danno; Fr 5 è la frequenza reale. Cl 7: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "TRC",
+  "requisito": "1.1.6",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Postazione di carico manuale sulla tavola continua",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "8.1.2",
+   "8.1.1",
+   "8.2.2"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 4,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Velocità della tavola regolabile dall'operatore entro limiti, in funzione del pezzo."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Altezza di carico tra 900 e 1100 mm circa; mandrini raggiungibili senza sporgersi."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica pesi massimi, pause e rotazione degli addetti alla postazione di carico."
+   }
+  ],
+  "testo_istruzioni": "Impostare una velocità della tavola compatibile con il pezzo. Rispettare pesi massimi, pause e rotazione indicati nel manuale.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "La tavola continua impone il ritmo del carico: gesti ripetitivi (8.1.2), posture forzate per inseguire il mandrino (8.1.1) e affaticamento da ritmo vincolato (8.2.2).",
+   "considerazioni_limiti": "La zona è la postazione di carico della tavola continua. Si è esposti in funzionamento normale, per tutta la durata del turno.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica i pezzi seguendo il ritmo della tavola, senza poter fermare il gesto.",
+   "considerazioni_stima_iniziale": "Se 2: disturbi muscoloscheletrici reversibili con cure. Fr 5: il gesto si ripete più volte al minuto. Pr 4: con ritmo imposto il sovraccarico è probabile. Av 3: l'operatore può correggere la postura solo in parte. Cl 12: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: velocità regolabile dall'operatore, altezza ergonomica e mandrini raggiungibili. Informazioni: pesi massimi, pause e rotazione degli addetti.",
+   "considerazioni_stima_finale": "Pr scende a 2 e Av a 1: il ritmo è adattabile e le posture sono corrette. Il ritmo vincolato resta in parte. Se 2 e Fr 5 restano. Cl 8: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "TRC",
+  "requisito": "1.4.3",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Accesso dalla postazione di carico alle stazioni di pulitura sulla tavola",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.6",
+   "1.2.4"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Ripari fissi a tunnel sopra la tavola tra settore di carico e stazioni di lavoro, con distanze EN ISO 13857."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Barriera fotoelettrica oltre il settore di carico che arresta tavola e unità; distanza calcolata con il tempo di arresto."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Ripristino manuale dall'esterno della zona dopo l'intervento della barriera."
+   }
+  ],
+  "testo_istruzioni": "Verificare ogni giorno il funzionamento della barriera e lo stato dei ripari a tunnel.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Dalla postazione di carico la tavola continua porta i pezzi verso le unità di pulitura. Seguendo il pezzo, la mano raggiunge zone di schiacciamento (1.2.1), urto (1.2.6) e impigliamento con spazzole (1.2.4).",
+   "considerazioni_limiti": "La zona è il passaggio tra settore di carico e stazioni di lavoro. Si è esposti in funzionamento normale, mentre si carica a tavola in moto.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora per tutto il turno davanti alla tavola e può allungarsi oltre il settore di carico.",
+   "considerazioni_stima_iniziale": "Se 3: il contatto con unità e spazzole può causare lesioni permanenti alla mano. Fr 5: la presenza è continua. Pr 3: senza ripari l'ingresso oltre il settore è possibile. Av 3: il moto è continuo e prevedibile solo in parte. Cl 11: RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: ripari a tunnel dimensionati con EN ISO 13857 e barriera oltre il settore di carico, posizionata con il tempo di arresto. Progettazione: ripristino manuale dall'esterno.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché ripari e barriera impediscono di raggiungere le stazioni in moto. Se 3 resta; Fr 5 è la presenza reale. Cl 7: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "TRC",
+  "requisito": "1.5.5",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Pezzi lavorati in uscita dalla tavola continua",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "3.1.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Tratto di raffreddamento tra l'ultima stazione e lo scarico, dimensionato sulla velocità della tavola."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica i guanti da usare per lo scarico dei pezzi."
+   }
+  ],
+  "testo_istruzioni": "Usare guanti di protezione per maneggiare i pezzi appena lavorati.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "La smerigliatura e la lucidatura riscaldano il pezzo per attrito. Allo scarico il contatto con superfici calde può causare ustioni (3.1.1).",
+   "considerazioni_limiti": "La zona è quella dei pezzi in uscita, nel settore di scarico della tavola. Si è esposti in funzionamento normale, a ogni scarico manuale.",
+   "considerazioni_soggetti": "L'operatore di conduzione preleva a mano i pezzi appena lavorati, a contatto diretto con le superfici riscaldate.",
+   "considerazioni_stima_iniziale": "Se 2: ustioni lievi, reversibili con cure mediche. Fr 5: lo scarico è continuo. Pr 3: senza raffreddamento il contatto con pezzi caldi è possibile. Av 3: il calore si percepisce, ma la presa è già avvenuta. Cl 11: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: tratto di raffreddamento tra ultima stazione e scarico, legato alla velocità della tavola. Informazioni: guanti indicati nel manuale.",
+   "considerazioni_stima_finale": "Pr scende a 1 perché il tratto di raffreddamento abbassa la temperatura allo scarico. Av 3 resta: dipende dall'uso dei guanti. Se 2 e Fr 5 restano. Cl 9: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "BMF",
+  "requisito": "1.3.7",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Bancale mobile e struttura fissa durante la traslazione",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.2",
+   "1.1.4"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Spazi minimi EN ISO 13854 tra bancale in movimento e struttura fissa; nessun punto di convergenza sul fronte di carico."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Ripari fissi sui lati del bancale; fronte di carico sorvegliato da barriera che consente la traslazione solo a zona libera."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale vieta di intervenire sul bancale durante la traslazione."
+   }
+  ],
+  "testo_istruzioni": "Non intervenire sul bancale durante la traslazione; formazione degli operatori al carico.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il bancale trasla tra stazione di carico e zona di lavoro con massa elevata (1.1.4). Tra bancale e struttura fissa si formano punti di schiacciamento (1.2.1) e cesoiamento (1.2.2).",
+   "considerazioni_limiti": "La zona è il percorso del bancale lungo la struttura fissa, lato carico. Si è esposti in funzionamento normale, a ogni traslazione.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica i pezzi sul bancale e si trova vicino quando inizia la traslazione.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento può causare perdita di dita o lesioni permanenti. Fr 5: la traslazione si ripete più volte all'ora. Pr 3: con operatore vicino il contatto è possibile. Av 3: il movimento è prevedibile ma rapido. Cl 11: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: spazi minimi e assenza di punti di convergenza. Protezioni: ripari fissi laterali e barriera sul fronte di carico. Informazioni: divieto di intervento durante la traslazione.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché la traslazione avviene solo a zona libera e gli spazi minimi evitano lo schiacciamento. Se 3 resta; Fr 5 è reale. Cl 7: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "BMF",
+  "requisito": "1.4.3",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Stazione di carico con l'unità al lavoro sull'altra stazione",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.1",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Divisorio fisso tra le due stazioni, dimensionato con EN ISO 13857 e resistente alle proiezioni."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Scanner o barriera sulla stazione di carico: con presenza l'unità non può entrare in quella stazione."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Posizione dell'unità controllata in sicurezza con limiti degli assi e PL adeguato; ripristino manuale dall'esterno."
+   }
+  ],
+  "testo_istruzioni": "Verificare ogni giorno il funzionamento dello scanner o della barriera della stazione di carico.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Mentre l'unità lavora su una stazione, l'operatore carica sull'altra. Se l'unità si sposta verso la stazione occupata si hanno urto (1.2.6) e schiacciamento (1.2.1) con energia elevata (1.1.4).",
+   "considerazioni_limiti": "La zona è la stazione di carico adiacente a quella in lavorazione. Si è esposti in funzionamento normale, a ogni ciclo di carico in tempo mascherato.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica e scarica i pezzi nella stazione libera mentre l'unità lavora a breve distanza.",
+   "considerazioni_stima_iniziale": "Se 3: l'urto con unità e utensili può causare lesioni permanenti. Fr 5: il carico si ripete più volte all'ora. Pr 3: senza rilevamento l'ingresso dell'unità con operatore presente è possibile. Av 3: il movimento è rapido. Cl 11: RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: divisorio fisso tra le stazioni e scanner che inibisce l'ingresso dell'unità con operatore presente. Progettazione: limiti sicuri degli assi e ripristino manuale.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché l'unità non può raggiungere la stazione occupata. Se 3 resta; Fr 5 è reale. Cl 7: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "BMF",
+  "requisito": "1.1.6",
+  "zona_impianto": "Zona di carico",
+  "zona_pericolosa": "Postazione di carico al bancale",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "8.1.1",
+   "8.1.2"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Altezza del bancale ergonomica; posizioni dei pezzi raggiungibili senza sporgersi."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica i pesi massimi dei pezzi da movimentare a mano."
+   }
+  ],
+  "testo_istruzioni": "",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il carico manuale dei pezzi sul bancale comporta posture incongrue e sforzi (8.1.1). La ripetizione dei gesti può sovraccaricare mano, polso e braccio (8.1.2).",
+   "considerazioni_limiti": "La zona è la postazione di carico al bancale. L'esposizione avviene in funzionamento normale, per tutta la durata del turno.",
+   "considerazioni_soggetti": "L'operatore di conduzione dispone e preleva manualmente e ripetutamente i pezzi sul bancale.",
+   "considerazioni_stima_iniziale": "Se 2: disturbi muscoloscheletrici reversibili con cure mediche. Fr 5: il gesto si ripete più volte all'ora. Pr 3: con altezze o distanze inadeguate il sovraccarico è possibile. Av 3: la postura si corregge solo in parte. Cl 11: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: altezza del bancale ergonomica e posizioni raggiungibili senza sporgersi. Informazioni: pesi massimi nel manuale.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché altezza, raggiungibilità e limiti di peso eliminano posture forzate. Se 2 resta; Fr 5 è reale. Cl 7: OK."
+  }
+ },
+ {
+  "modulo": "BMF",
+  "requisito": "1.3.9",
+  "zona_impianto": "Zona di lavoro",
+  "zona_pericolosa": "Unità di lavoro in traslazione tra le stazioni del banco fisso",
+  "condizioni": [
+   "Normale",
+   "Manutenzione",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "1.1.3",
+   "1.1.4",
+   "1.2.1",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 4,
+   "Fr": 4,
+   "Pr": 2,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Spazi minimi di 500 mm tra unità e strutture fisse lungo la corsa; freni di stazionamento sugli assi verticali."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Arresto sicuro monitorato in posizione e fine corsa meccanici; traslazione solo con stazione di destinazione libera."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Velocità ridotta sicura per i movimenti con porte aperte, comandati con dispositivo di abilitazione."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive di sostenere meccanicamente gli assi verticali prima di interventi sotto l'unità."
+   }
+  ],
+  "testo_istruzioni": "Prima di lavorare sotto l'unità, sostenere gli assi verticali e isolare le energie. Verificare periodicamente i freni.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Un guasto di comando, freno o alimentazione può far muovere l'unità tra le stazioni o scendere un asse verticale (1.1.3). La massa in moto (1.1.4) causa urto (1.2.6) e schiacciamento (1.2.1).",
+   "considerazioni_limiti": "La zona è la corsa dell'unità tra le stazioni e lo spazio sotto gli assi verticali. Si è esposti in funzionamento normale, manutenzione e sblocco anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora alla stazione verso cui l'unità può muoversi. Il manutentore meccanico interviene sotto o accanto all'unità ferma.",
+   "considerazioni_stima_iniziale": "Se 4: lo schiacciamento del corpo sotto l'unità può essere mortale. Fr 4: sblocchi e interventi sono settimanali. Pr 2: un movimento incontrollato è raro. Av 3: evitarlo è possibile solo se percepito. Cl 9: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: spazi minimi lungo la corsa e freni sugli assi verticali. Protezioni: arresto sicuro monitorato, fine corsa meccanici, velocità ridotta sicura con abilitazione. Informazioni: sostegno meccanico prima degli interventi.",
+   "considerazioni_stima_finale": "Se scende a 3: gli spazi minimi e i freni evitano lo schiacciamento del corpo, resta quello di un arto. Pr e Av scendono a 1 per arresto monitorato e velocità ridotta. Fr 4 resta reale. Cl 6: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "ROB",
+  "requisito": "1.6.4",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Robot in movimento durante l'apprendimento dei punti con l'operatore in cella",
+  "condizioni": [
+   "Programmazione"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.1",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Programmatore",
+   "Operatore di attrezzaggio"
+  ],
+  "iniziale": {
+   "Se": 4,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 2,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Modo manuale a velocità ridotta sicura, non oltre 250 mm/s, monitorata secondo EN ISO 10218."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Dispositivo di abilitazione a tre posizioni e arresto di emergenza sul pannello portatile."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "In apprendimento nastri fermi e altri robot in arresto sicuro; una sola persona abilitata in cella."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica le posizioni sicure da cui apprendere i punti, fuori dalla traiettoria del robot."
+   }
+  ],
+  "testo_istruzioni": "Apprendere i punti restando fuori dalla traiettoria e mai tra robot e smerigliatrice. Un solo operatore in cella, con il pannello portatile in mano.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Durante l'apprendimento il robot si muove con l'operatore in cella. Un comando errato o un movimento imprevisto causa urto (1.2.6) e schiacciamento (1.2.1) contro smerigliatrici e strutture (1.1.4).",
+   "considerazioni_limiti": "La zona è lo spazio di lavoro del robot e quello tra robot, pezzo e smerigliatrici. Si è esposti in programmazione, a porte aperte.",
+   "considerazioni_soggetti": "Il programmatore e l'operatore di attrezzaggio entrano in cella per apprendere i punti da vicino, con il pannello portatile.",
+   "considerazioni_stima_iniziale": "Se 4: un robot a piena velocità può causare lesioni mortali. Fr 4: l'apprendimento si fa ogni settimana per nuovi articoli. Pr 3: con la persona vicina al robot il contatto è possibile. Av 3: il movimento è rapido. Cl 10: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: nastri fermi, altri robot in arresto sicuro, una sola persona abilitata. Protezioni: velocità ridotta sicura, abilitazione a tre posizioni ed emergenza sul pannello. Informazioni: posizioni sicure nel manuale.",
+   "considerazioni_stima_finale": "Se scende a 3: la velocità ridotta sicura limita davvero l'energia d'impatto. Pr scende a 2, resta il rischio di intrappolamento lento. Av 1 per abilitazione e lentezza. Fr 4 resta reale. Cl 7: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "ROB",
+  "requisito": "1.3.3",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Pezzo che sfugge dalla pinza del robot durante la smerigliatura",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Terzi di passaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Pinza con presa di forma e mantenimento della presa in mancanza di aria o energia."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Cabina chiusa con pannelli e visive dimensionati per l'impatto del pezzo, secondo EN ISO 14120."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Controllo di presenza del pezzo in pinza: se manca il robot si arresta."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica di sostituire le visive danneggiate e le prese della pinza usurate."
+   }
+  ],
+  "testo_istruzioni": "Sostituire subito visive e pannelli danneggiati. Controllare periodicamente l'usura delle prese della pinza.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il nastro trascina il pezzo con forza: se la presa cede, il pezzo viene proiettato con energia elevata (1.1.4). Il pezzo può colpire chi si trova vicino alla cella (1.2.6).",
+   "considerazioni_limiti": "La zona è il pezzo nella pinza e lo spazio attorno alle smerigliatrici. Si è esposti in funzionamento normale, nei pressi delle pareti della cella.",
+   "considerazioni_soggetti": "L'operatore di conduzione sorveglia la cella da vicino. I terzi di passaggio transitano lungo le pareti della cabina.",
+   "considerazioni_stima_iniziale": "Se 3: un pezzo in ottone proiettato può causare lesioni permanenti. Fr 4: la presenza vicino alla cella è quotidiana. Pr 3: con presa non garantita la proiezione è possibile. Av 3: la proiezione è improvvisa. Cl 10: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: presa di forma mantenuta senza energia. Protezioni: cabina e visive resistenti all'impatto, controllo del pezzo in pinza. Informazioni: sostituzione di visive e prese usurate.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché la cabina trattiene il pezzo e la presa non cede senza energia. Se 3 resta se la cabina fosse danneggiata; Fr 4 reale. Cl 6: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "IMC",
+  "requisito": "1.2.4.4",
+  "zona_impianto": "Impianto combinato",
+  "zona_pericolosa": "Isola robotizzata e tavola rotante collegate nel punto di scambio",
+  "condizioni": [
+   "Normale",
+   "Sblocco anomalie",
+   "Installazione"
+  ],
+  "pericoli": [
+   "10.1.1",
+   "1.2.1",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Manutentore meccanico",
+   "Installatore / collaudatore"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Arresto di emergenza comune: ogni pulsante arresta isola e tavola, con funzione di sicurezza a PL adeguato."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "L'arresto di una sezione porta l'altra in stato sicuro coordinato tramite segnali o bus di sicurezza."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Pannelli di entrambe le sezioni indicano stato e causa dell'arresto."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale riporta lo schema delle zone di arresto e i comandi di ripristino."
+   }
+  ],
+  "testo_istruzioni": "Prima di intervenire nel punto di scambio, verificare sul pannello che entrambe le sezioni siano in arresto.",
+  "note": "Valutare caso per caso la configurazione IR + TR. Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Arresti ed emergenze non coordinati lasciano una sezione in moto mentre l'altra è ferma. Nel punto di scambio si sommano più fattori (10.1.1): schiacciamento (1.2.1) e urto (1.2.6).",
+   "considerazioni_limiti": "La zona è il confine tra isola e tavola, nel punto di scambio. Si è esposti in funzionamento normale, in sblocco anomalie e durante l'installazione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora tra le due sezioni. Il manutentore sblocca i pezzi nel punto di scambio. L'installatore collega e prova i segnali.",
+   "considerazioni_stima_iniziale": "Se 3: dal punto di scambio si raggiungono tavola e pinza, con lesioni permanenti alla mano. Fr 4: gli sblocchi sono settimanali. Pr 3: con arresti non coordinati il moto residuo è possibile. Av 3: il movimento è improvviso. Cl 10: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: emergenza comune e arresti coordinati con segnali di sicurezza. Protezioni: stato e causa dell'arresto sui pannelli. Informazioni: schema delle zone di arresto.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché ogni arresto ferma in modo coordinato entrambe le sezioni. Se 3 resta; Fr 4 è reale. Cl 6: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "IMC",
+  "requisito": "1.3.7",
+  "zona_impianto": "Impianto combinato",
+  "zona_pericolosa": "Pinza del robot e mandrino della tavola nel punto di scambio del pezzo",
+  "condizioni": [
+   "Normale",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.2",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Punto di scambio lontano dalla postazione di carico, oltre il divisorio della tavola."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Riparo fisso a tunnel attorno al punto di scambio, con distanze EN ISO 13857."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Limiti sicuri degli assi del robot: la pinza non esce dalla cella oltre il punto di scambio."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica come sbloccare un pezzo nel punto di scambio a sezioni ferme."
+   }
+  ],
+  "testo_istruzioni": "Non raggiungere il punto di scambio con le mani: sbloccare i pezzi solo a isola e tavola ferme.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Nel punto di scambio la pinza del robot deposita o preleva il pezzo nel mandrino della tavola. Tra pinza, pezzo e mandrino si hanno schiacciamento (1.2.1), cesoiamento (1.2.2) e urto (1.2.6).",
+   "considerazioni_limiti": "La zona è il punto di scambio tra isola e tavola. Si è esposti in funzionamento normale e in sblocco anomalie, se il punto è raggiungibile.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora alla tavola vicino al punto di scambio e interviene per pezzi mal posizionati.",
+   "considerazioni_stima_iniziale": "Se 3: tra pinza e mandrino le dita possono subire lesioni permanenti. Fr 5: lo scambio si ripete più volte all'ora. Pr 3: con punto raggiungibile il contatto è possibile. Av 3: il moto della pinza è rapido. Cl 11: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: punto di scambio lontano dal carico. Protezioni: riparo a tunnel e limiti sicuri del robot. Informazioni: sblocco a sezioni ferme.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché il punto di scambio non è raggiungibile in funzionamento. Se 3 resta; Fr 5 è reale. Cl 7: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "IMC",
+  "requisito": "1.6.4",
+  "zona_impianto": "Impianto combinato",
+  "zona_pericolosa": "Ingresso in una cella con l'altra sezione dell'impianto in funzione",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.1",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 4,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Impianto diviso in zone con ripari fissi di separazione tra le celle, distanze EN ISO 13857."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Porte di ogni zona con interblocco e bloccaggio: l'apertura arresta solo la zona interessata, con PL adeguato."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Limiti sicuri degli assi nella zona in funzione e punto di scambio inibito con una zona aperta."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale e le targhe indicano zone, comandi e stato; lucchetto personale per l'accesso."
+   }
+  ],
+  "testo_istruzioni": "Entrare solo nella zona arrestata, con lucchetto personale. Verificare sulle lampade di stato quale zona è in funzione.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Entrando in una cella si può raggiungere l'altra sezione in funzione. Robot o tavola in moto causano urto (1.2.6) e schiacciamento (1.2.1) con energia elevata (1.1.4).",
+   "considerazioni_limiti": "La zona è il confine tra le celle dell'impianto combinato. Si è esposti in regolazione, manutenzione e sblocco anomalie, con una sezione ancora in produzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione sblocca pezzi in una cella. L'operatore di attrezzaggio e il manutentore intervengono mentre l'altra sezione continua a produrre.",
+   "considerazioni_stima_iniziale": "Se 4: un robot in automatico può causare lesioni mortali. Fr 4: gli accessi con l'altra sezione in moto sono settimanali. Pr 3: senza separazione il contatto è possibile. Av 3: il moto automatico è rapido. Cl 10: RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: zone separate da ripari fissi. Protezioni: interblocchi per zona con bloccaggio, limiti sicuri del robot e scambio inibito. Informazioni: targhe, lampade di stato e lucchetto personale.",
+   "considerazioni_stima_finale": "Se scende a 3: la separazione fisica impedisce di raggiungere il robot in moto, resta la tavola o il punto di confine. Pr e Av scendono a 1. Fr 4 resta reale. Cl 6: SUGGERITE, vedere rischio residuo."
+  }
+ },
+ {
+  "modulo": "IRT",
+  "requisito": "1.3.8.2",
+  "zona_impianto": "Cella robot IRT",
+  "zona_pericolosa": "Utensile in rotazione sull'elettromandrino e area di lavoro del robot",
+  "condizioni": [
+   "Normale",
+   "Regolazione / attrezzamento",
+   "Programmazione"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.5",
+   "1.2.8",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio",
+   "Programmatore"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Robot ed elettromandrino dentro la cella chiusa; porte interbloccate con bloccaggio fino all'arresto del mandrino (EN ISO 14119, PL d)."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "In modalità manuale e in programmazione rotazione del mandrino inibita con arresto sicuro (STO) e robot a velocità ridotta."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Limiti software sicuri dell'area di lavoro: l'utensile non raggiunge pareti e porte della cella."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale vieta di eludere gli interblocchi e indica di attendere l'arresto dell'utensile prima di entrare."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di impigliamento con l'utensile in rotazione. Entrare in cella solo a mandrino fermo. Non eludere gli interblocchi. Non indossare indumenti larghi, capelli raccolti.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il robot porta disco, spazzola o nastro in rotazione sull'elettromandrino. Indumenti o capelli possono impigliarsi (1.2.4), la mano essere trascinata (1.2.5) o abrasa (1.2.8). Il robot in movimento può urtare con l'utensile (1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è l'utensile in rotazione e l'area di lavoro del robot. L'esposizione avviene in produzione, in attrezzaggio e in programmazione dei percorsi.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino alle porte della cella. L'operatore di attrezzaggio e il programmatore entrano nella cella e si avvicinano all'utensile.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento sull'utensile può causare lesioni permanenti alla mano. Fr 4: accessi, attrezzaggi e programmazioni sono quotidiani o settimanali. Pr 3: senza ripari il contatto è possibile. Av 3: rotazione e movimenti rapidi rendono la fuga solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: in modalità manuale il mandrino è fermo con arresto sicuro e il robot va a velocità ridotta. Protezioni: cella chiusa con porte interbloccate e bloccaggio fino a fermo, limiti software sicuri. Informazioni: divieto di eludere gli interblocchi.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1: con persone in cella il mandrino è fermo e il robot è lento. Se 3 resta, Fr 4 resta reale. Cl 6: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "IRT",
+  "requisito": "1.3.6",
+  "zona_impianto": "Cella robot IRT",
+  "zona_pericolosa": "Utensile premuto dal compensatore di forza sul pezzo e attrezzatura di presa",
+  "condizioni": [
+   "Normale",
+   "Programmazione",
+   "Regolazione / attrezzamento"
+  ],
+  "pericoli": [
+   "1.1.5",
+   "1.1.6",
+   "1.1.4",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Programmatore",
+   "Operatore di attrezzaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Compensatore con forza massima limitata e corsa monitorata: a fine corsa o forza fuori soglia il robot esegue un arresto controllato."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Attrezzatura di presa e utensili dimensionati per la forza massima del compensatore sui pezzi più grandi."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Pannelli della cella in grado di trattenere pezzi o parti di utensile proiettati; porte interbloccate."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica le forze di contatto per tipo di pezzo e la verifica del percorso a velocità ridotta su pezzi nuovi."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di proiezione del pezzo o dell'utensile con forza errata. Impostare la forza indicata nel manuale. Provare i percorsi nuovi a velocità ridotta, fuori dalla cella.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Su pezzi grandi o con geometrie variabili il compensatore può arrivare a fine corsa o applicare forza eccessiva (1.1.5). Il pezzo può strapparsi dalla presa o l'utensile rompersi (1.1.6) ed essere proiettato (1.1.4, 1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è il punto di contatto tra utensile e pezzo e lo spazio circostante. Il rischio nasce in produzione e nella messa a punto di pezzi nuovi.",
+   "considerazioni_soggetti": "L'operatore di conduzione sta vicino alla cella in produzione. Il programmatore e l'operatore di attrezzaggio mettono a punto forze e percorsi su pezzi nuovi.",
+   "considerazioni_stima_iniziale": "Se 3: un pezzo o un utensile proiettato può causare lesioni permanenti. Fr 4: cambi di pezzo e messe a punto sono quotidiani o settimanali. Pr 3: con geometrie variabili l'errore di forza è possibile. Av 3: la proiezione è improvvisa. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: forza limitata, corsa monitorata con arresto controllato, presa e utensili dimensionati per la forza massima. Protezioni: pannelli della cella che trattengono le proiezioni. Informazioni: forze per tipo di pezzo e prova a velocità ridotta.",
+   "considerazioni_stima_finale": "Pr scende a 1 per il monitoraggio di forza e corsa, Av a 1 perché la cella trattiene le proiezioni. Se 3 resta, Fr 4 resta reale. Cl 6: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "IRT",
+  "requisito": "1.3.2",
+  "zona_impianto": "Cella robot IRT",
+  "zona_pericolosa": "Dischi e spazzole sull'elettromandrino e spazio della cella",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.1.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Terzi di passaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Velocità del mandrino limitata da software per ogni utensile del magazzino, non oltre quella ammessa per il diametro."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Pannelli e porte della cella in lamiera e policarbonato dimensionati per trattenere i frammenti; porte interbloccate."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica utensili ammessi, velocità massima e controllo di usura e squilibrio."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di rottura dell'utensile. Usare solo dischi e spazzole con velocità ammessa non inferiore a quella impostata. Sostituire utensili usurati o squilibrati.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Dischi e spazzole ad alta velocità periferica possono rompersi per sovravelocità, usura o urto sul pezzo (1.1.6). Frammenti, fili o tele vengono proiettati con energia cinetica (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa è lo spazio intorno all'utensile, fino alle pareti della cella. L'esposizione avviene in produzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione sorveglia la cella da vicino. I terzi di passaggio transitano vicino ai pannelli.",
+   "considerazioni_stima_iniziale": "Se 3: un frammento può causare lesioni permanenti, ad esempio agli occhi. Fr 4: la presenza vicino alla cella è quotidiana. Pr 3: la rottura di un utensile usurato o urtato è possibile. Av 3: la proiezione è improvvisa. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: velocità del mandrino limitata per ogni utensile. Protezioni: pannelli e porte della cella che trattengono i frammenti. Informazioni: utensili ammessi, velocità massima e controlli di usura.",
+   "considerazioni_stima_finale": "Pr scende a 1 per la velocità limitata, Av a 1 perché i pannelli trattengono i frammenti. Se 3 resta, Fr 4 resta reale. Cl 6: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "IRT",
+  "requisito": "1.6.4",
+  "zona_impianto": "Cella robot IRT",
+  "zona_pericolosa": "Area di lavoro del robot durante l'apprendimento del percorso",
+  "condizioni": [
+   "Programmazione"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.6",
+   "8.2.2"
+  ],
+  "soggetti": [
+   "Programmatore"
+  ],
+  "iniziale": {
+   "Se": 4,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Percorso acquisito con visore VR o digitalizzatore a robot fermo; il robot esegue il percorso solo con il programmatore fuori dalla cella."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Prima esecuzione del percorso a velocità ridotta monitorata (max 250 mm/s) e mandrino fermo (EN ISO 10218-2)."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Se serve operare in cella: dispositivo di abilitazione a tre posizioni e arresto di emergenza sul digitalizzatore o sul terminale."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale vieta di indossare il visore VR con il robot in movimento e descrive la procedura di apprendimento."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di urto durante le prove in modalità manuale. Non usare il visore VR con il robot abilitato. Tenere premuto il dispositivo di abilitazione e restare fuori dal percorso.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Durante l'apprendimento il programmatore è vicino al robot. Un movimento inatteso può urtarlo (1.2.6) o schiacciarlo contro strutture (1.2.1). Il visore VR riduce la percezione dell'ambiente reale (8.2.2).",
+   "considerazioni_limiti": "La zona pericolosa è l'area di lavoro del robot dentro la cella. L'esposizione avviene solo in programmazione.",
+   "considerazioni_soggetti": "Il programmatore acquisisce i percorsi vicino al robot con visore o digitalizzatore.",
+   "considerazioni_stima_iniziale": "Se 4: lo schiacciamento da robot industriale può essere mortale. Fr 4: l'apprendimento di pezzi nuovi è settimanale. Pr 3: con il visore indossato il contatto è possibile. Av 3: il movimento inatteso è rapido. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: acquisizione a robot fermo, esecuzione solo a cella vuota e prima prova a velocità ridotta con mandrino fermo. Protezioni: abilitazione a tre posizioni e arresto di emergenza. Informazioni: divieto del visore con robot in movimento.",
+   "considerazioni_stima_finale": "Se scende da 4 a 3 perché la velocità ridotta monitorata limita l'energia dell'urto. Pr e Av scendono a 1. Fr 4 resta reale. Cl 6: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "IRT",
+  "requisito": "1.5.2",
+  "zona_impianto": "Cella robot IRTF",
+  "zona_pericolosa": "Nastri e spazzole di satinatura, pezzo in inox, condotti di aspirazione",
+  "condizioni": [
+   "Normale",
+   "Pulizia"
+  ],
+  "pericoli": [
+   "2.2.1",
+   "7.2.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Addetto alle pulizie"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 2,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Robot, pinza, elettromandrino, carter e condotti collegati alla stessa terra equipotenziale."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Condotti di aspirazione metallici con continuità elettrica tra i tratti; niente tubi flessibili isolanti."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive la verifica periodica della continuità dei collegamenti a terra."
+   }
+  ],
+  "testo_istruzioni": "",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Nella satinatura e fiorettatura dell'inox i nastri in tessuto non tessuto e le spazzole accumulano cariche (2.2.1). La scarica può dare scosse o innescare polveri nei condotti (7.2.1).",
+   "considerazioni_limiti": "La zona pericolosa sono nastri, spazzole, pezzo e condotti di aspirazione. L'esposizione avviene in produzione e nella pulizia dei condotti.",
+   "considerazioni_soggetti": "L'operatore di conduzione tocca carter e parti della cella. L'addetto alle pulizie interviene su condotti e depositi di polvere.",
+   "considerazioni_stima_iniziale": "Se 2: la scossa o un piccolo innesco richiedono cure mediche reversibili. Fr 4: il contatto con le parti della cella è quotidiano. Pr 2: con parti metalliche l'accumulo pericoloso è raro. Av 3: la scarica è improvvisa. Cl 9: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione: collegamento equipotenziale di robot, pinza, mandrino, carter e condotti metallici continui. Informazioni: verifica periodica della continuità.",
+   "considerazioni_stima_finale": "Pr scende a 1 e Av a 1 perché le cariche vengono disperse a terra. Se 2 resta, Fr 4 resta reale. Cl 6: esito OK."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.3.8.2",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Parte operativa della spazzola o del nastro dove l'operatore appoggia il pezzo",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.5",
+   "1.2.8"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Cuffia regolabile che lascia scoperto solo il settore di lavoro della spazzola o del nastro (EN ISO 16089)."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Senso di rotazione verso il basso, lontano dall'operatore; poggiapezzo regolabile davanti al nastro."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Arresto rapido con comando a ginocchio o a pedale per ogni gruppo, raggiungibile senza lasciare il pezzo."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale vieta indumenti larghi, guanti non aderenti e capelli sciolti; richiede formazione specifica."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di trascinamento della mano: la zona di lavoro resta necessariamente accessibile. Usare guanti aderenti senza parti libere, capelli raccolti, nessun indumento largo. Usare attrezzi portapezzo per pezzi piccoli. Solo personale formato.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Sulla macchina manuale l'operatore tiene il pezzo contro spazzola o nastro in rotazione. Guanti e indumenti possono impigliarsi (1.2.4), la mano essere trascinata (1.2.5) o abrasa (1.2.8).",
+   "considerazioni_limiti": "La zona pericolosa è la parte operativa scoperta di spazzola e nastro. L'esposizione è continua durante il funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora con le mani a pochi centimetri dall'utensile per tutto il turno.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento della mano può causare la perdita di dita. Fr 5: l'esposizione è continua per tutto il turno. Pr 3: con il pezzo in mano il contatto è possibile. Av 3: il trascinamento è rapido. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: rotazione verso il basso e poggiapezzo. Protezioni: cuffia regolabile sul solo settore di lavoro e arresto rapido a ginocchio o pedale. Informazioni: abbigliamento, guanti aderenti e formazione.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 2 per cuffia, poggiapezzo e senso di rotazione. Av resta 3 perché il trascinamento resta rapido. Se 3 e Fr 5 restano. Cl 10: misure RICHIESTE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.3.3",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Spazio davanti alla spazzola o al nastro, traiettoria del pezzo strappato",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.6",
+   "1.2.5"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Terzi di passaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Senso di rotazione verso il basso: il pezzo strappato viene lanciato nella cuffia e verso il pavimento, non verso l'operatore."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Cuffia con bocca di aspirazione che intercetta il pezzo lanciato; schermo trasparente regolabile davanti al volto."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica di tenere il pezzo sotto l'asse dell'utensile, usare attrezzi portapezzo e la visiera."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di urto da pezzo strappato. Tenere il pezzo sotto l'asse dell'utensile, mai sul bordo superiore. Usare attrezzi portapezzo per pezzi piccoli e visiera. Non sostare davanti alla macchina.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "La spazzola o il nastro possono agganciare uno spigolo e strappare il pezzo dalla mano (1.2.5). Il pezzo viene lanciato con energia cinetica (1.1.4) e può colpire l'operatore o terzi (1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è lo spazio davanti all'utensile lungo la traiettoria del pezzo. L'esposizione è continua in produzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione tiene il pezzo contro l'utensile. I terzi di passaggio possono trovarsi sulla traiettoria del pezzo lanciato.",
+   "considerazioni_stima_iniziale": "Se 3: un pezzo in ottone lanciato al volto può causare lesioni permanenti. Fr 5: l'esposizione è continua. Pr 3: con maniglie e rubinetti sagomati lo strappo è possibile. Av 3: il lancio è improvviso. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: senso di rotazione che lancia il pezzo verso cuffia e pavimento. Protezioni: cuffia con aspirazione e schermo trasparente davanti al volto. Informazioni: presa sotto l'asse, attrezzi portapezzo e visiera.",
+   "considerazioni_stima_finale": "Se scende da 3 a 2 perché lo schermo protegge volto e occhi e limita il danno a contusioni. Pr scende a 2 per il senso di rotazione. Av resta 3, Fr 5 resta reale. Cl 10: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.3.2",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Spazzole e nastri dei due gruppi e spazio davanti al settore scoperto",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.1.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Velocità periferica limitata a quella ammessa per spazzole e nastri; tensionamento e centratura del nastro."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Cuffie in acciaio dimensionate per trattenere i frammenti e schermo trasparente davanti al settore scoperto."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica utensili ammessi, velocità massima, prova a vuoto all'avviamento e uso di occhiali."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di proiezione di fili e frammenti dal settore scoperto. Usare solo spazzole e nastri con velocità ammessa adeguata. All'avviamento di un utensile nuovo stare fuori dal suo piano. Indossare occhiali di protezione.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Spazzole e nastri possono rompersi per sovravelocità, usura o giunzione difettosa del nastro (1.1.6). Fili metallici, frammenti o il nastro vengono proiettati con energia cinetica (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa è lo spazio davanti al settore scoperto dell'utensile. L'esposizione è continua in produzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora davanti al settore scoperto per tutto il turno.",
+   "considerazioni_stima_iniziale": "Se 3: un frammento o un filo può causare lesioni permanenti agli occhi. Fr 5: l'esposizione è continua. Pr 3: la rottura di spazzole usurate o la perdita di fili è possibile. Av 3: la proiezione è improvvisa. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: velocità periferica limitata e corretto tensionamento del nastro. Protezioni: cuffie in acciaio e schermo trasparente. Informazioni: utensili ammessi, prova a vuoto e occhiali.",
+   "considerazioni_stima_finale": "Se scende da 3 a 2 perché schermo e cuffie proteggono il volto e limitano il danno. Pr scende a 2 per la velocità limitata. Av resta 3, Fr 5 resta reale. Cl 10: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.5.9",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Mani e braccia dell'operatore che tengono il pezzo contro l'utensile",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "5.1.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Gruppi equilibrati dinamicamente, mandrini rigidi e basamento su supporti antivibranti."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Attrezzi portapezzo con impugnature smorzanti per i pezzi piccoli."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica il valore di vibrazione misurato, la sostituzione di utensili squilibrati e la rotazione delle mansioni."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo da vibrazioni mano-braccio. Il datore di lavoro valuta l'esposizione giornaliera con il valore indicato nel manuale. Sostituire spazzole e nastri squilibrati. Alternare le mansioni.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "La spazzola o il nastro trasmettono vibrazioni al pezzo e quindi a mani e braccia. L'esposizione prolungata causa la sindrome da vibrazioni mano-braccio (5.1.1).",
+   "considerazioni_limiti": "La zona interessata sono mani e braccia dell'operatore. L'esposizione dura per tutto il funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione tiene il pezzo contro l'utensile per gran parte del turno.",
+   "considerazioni_stima_iniziale": "Se 3: la sindrome vascolare e neurologica può dare esiti permanenti. Fr 5: l'esposizione è quotidiana e continua. Pr 3: con utensili squilibrati il superamento dei valori è possibile. Av 3: il disturbo si sviluppa senza segnali evidenti. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: equilibratura, mandrini rigidi, supporti antivibranti e portapezzo smorzanti. Informazioni: valore di vibrazione, sostituzione degli utensili squilibrati e rotazione delle mansioni.",
+   "considerazioni_stima_finale": "Pr scende a 2 per la riduzione delle vibrazioni alla fonte. Av scende a 1 perché valore dichiarato e rotazione permettono di limitare l'esposizione. Se 3 e Fr 5 restano. Cl 8: misure RICHIESTE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.1.6",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Posto di lavoro in piedi davanti ai gruppi",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "8.1.1",
+   "8.1.2"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 4,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Altezza dell'asse dei gruppi adatta al lavoro in piedi, con pedana regolabile e spazio libero per i piedi."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Poggiapezzo e appoggio per gli avambracci regolabili per ridurre la forza di spinta."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica massa massima dei pezzi, regolazione della postazione, pause e alternanza delle mansioni."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di affaticamento muscolo-scheletrico. Regolare pedana e appoggi per ogni operatore. Rispettare pause e alternanza delle mansioni. Non lavorare a mano libera pezzi oltre la massa indicata.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "L'operatore lavora in piedi tenendo e spingendo il pezzo contro l'utensile. Posture fisse e sforzi (8.1.1) e movimenti ripetitivi di polsi e spalle (8.1.2) causano disturbi muscolo-scheletrici.",
+   "considerazioni_limiti": "La postazione è davanti ai gruppi della macchina manuale. L'esposizione è continua nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione resta in piedi alla macchina per tutto il turno.",
+   "considerazioni_stima_iniziale": "Se 2: i disturbi muscolo-scheletrici sono reversibili con cure mediche. Fr 5: l'esposizione è quotidiana e continua. Pr 4: senza regolazioni il sovraccarico è probabile. Av 3: l'affaticamento si accumula, evitarlo è solo possibile. Cl 12: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: altezza dei gruppi, pedana regolabile, poggiapezzo e appoggio per gli avambracci. Informazioni: massa massima, regolazione, pause e alternanza.",
+   "considerazioni_stima_finale": "Pr scende da 4 a 2 per postazione regolabile e appoggi. Av resta 3. Se 2 resta, Fr 5 resta reale. Cl 10: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.2.4.3",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Spazzole e nastri dei due gruppi in rotazione e in arresto per inerzia",
+  "condizioni": [
+   "Normale",
+   "Situazione di emergenza",
+   "Regolazione / attrezzamento"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.5",
+   "1.2.8"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Arresto di emergenza a fungo per ogni lato di lavoro e comando a ginocchio: arrestano entrambi i gruppi (EN ISO 13850, categoria 1)."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Frenatura elettrica tramite inverter che riduce il tempo di arresto delle spazzole a pochi secondi."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Cuffia apribile per il cambio utensile interbloccata con bloccaggio fino a fermo (EN ISO 14119)."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica i tempi di arresto e la verifica periodica di arresto di emergenza e freno."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo durante la frenatura. Non toccare spazzole e nastri finché non sono fermi. Verificare periodicamente arresti di emergenza e tempo di frenatura.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Le spazzole di grande diametro hanno molta inerzia e senza freno girano a lungo dopo l'arresto. La mano può impigliarsi (1.2.4), essere trascinata (1.2.5) o abrasa (1.2.8) durante l'arresto.",
+   "considerazioni_limiti": "La zona pericolosa sono i due gruppi in rotazione e in arresto per inerzia. L'esposizione avviene in produzione, in emergenza e al cambio utensile.",
+   "considerazioni_soggetti": "L'operatore di conduzione deve arrestare la macchina da entrambi i lati. L'operatore di attrezzaggio cambia spazzole e nastri dopo l'arresto.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento della mano può causare la perdita di dita. Fr 4: arresti e cambi utensile sono quotidiani. Pr 3: senza freno il contatto con l'utensile ancora in rotazione è possibile. Av 3: l'utensile in rallentamento sembra fermo. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: arresto di emergenza su ogni lato che ferma entrambi i gruppi e frenatura elettrica. Protezioni: cuffia apribile interbloccata con bloccaggio fino a fermo. Informazioni: tempi di arresto e verifiche periodiche.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 per frenatura rapida e bloccaggio fino a fermo. Se 3 resta, Fr 4 resta reale. Cl 6: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.5.5",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Pezzo riscaldato dall'attrito tenuto in mano dall'operatore",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "3.1.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 4,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Attrezzi portapezzo con impugnature isolanti per pezzi piccoli o lavorazioni lunghe."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Contenitore di appoggio per il raffreddamento dei pezzi accanto alla postazione."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive guanti aderenti con protezione termica e meccanica (EN 407, EN 388) e l'alternanza dei pezzi."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di ustione da pezzo caldo. Usare guanti aderenti con protezione termica. Alternare i pezzi e appoggiarli a raffreddare. Usare portapezzo per lavorazioni lunghe.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "L'attrito di spazzola o nastro riscalda il pezzo in ottone, inox o alluminio oltre i 60 gradi. Il contatto prolungato con la mano causa ustioni (3.1.1).",
+   "considerazioni_limiti": "La zona interessata è la mano che tiene il pezzo. L'esposizione è continua nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione tiene ogni pezzo in mano durante la lavorazione.",
+   "considerazioni_stima_iniziale": "Se 2: l'ustione da contatto è reversibile con cure mediche. Fr 5: l'esposizione è continua. Pr 4: con lavorazioni prolungate il surriscaldamento è probabile. Av 3: lasciare il pezzo sull'utensile è pericoloso, evitare è solo possibile. Cl 12: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: portapezzo con impugnature isolanti. Protezioni: contenitore di appoggio per il raffreddamento. Informazioni: guanti aderenti con protezione termica e alternanza dei pezzi.",
+   "considerazioni_stima_finale": "Pr scende a 2 per portapezzo e alternanza. Av scende a 1 perché i guanti danno il tempo di appoggiare il pezzo. Se 2 resta, Fr 5 resta reale. Cl 8: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "MAN",
+  "requisito": "1.4.1",
+  "zona_impianto": "Postazione manuale",
+  "zona_pericolosa": "Parti non operative di spazzole e nastri e fessura tra cuffia e utensile",
+  "condizioni": [
+   "Normale",
+   "Regolazione / attrezzamento"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.5",
+   "1.1.4"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Cuffie in acciaio robuste, fissate con attrezzi, con aspirazione integrata e senza spigoli vivi."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Bordo anteriore della cuffia regolabile senza attrezzi per seguire l'usura della spazzola, con fermo di apertura massima."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Parte apribile per il cambio utensile interbloccata con bloccaggio fino a fermo (EN ISO 14119)."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica la distanza massima tra bordo della cuffia e utensile e la regolazione a ogni cambio turno."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo se la cuffia non segue l'usura dell'utensile. Regolare il bordo della cuffia a ogni turno e dopo ogni cambio utensile. Non lavorare con la cuffia aperta o rimossa.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Se la cuffia non segue l'usura, la parte non operativa dell'utensile resta scoperta (1.2.4). Tra bordo della cuffia e spazzola si crea una fessura di trascinamento (1.2.5). Una cuffia debole non trattiene i frammenti (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa sono le parti non operative degli utensili e la fessura con la cuffia. L'esposizione avviene in produzione e in regolazione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora davanti alla cuffia. L'operatore di attrezzaggio regola la cuffia e cambia gli utensili.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento nella fessura può causare la perdita di dita. Fr 5: l'esposizione è continua. Pr 3: con l'usura delle spazzole una cuffia non regolata è possibile. Av 3: il trascinamento è rapido. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: cuffie robuste fissate con attrezzi e con aspirazione. Protezioni: bordo regolabile senza attrezzi con fermo e parte apribile interbloccata. Informazioni: distanza massima e regolazione a ogni turno.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 2 per la regolazione rapida del bordo. Av resta 3. Se 3 resta, Fr 5 resta reale. Cl 10: misure RICHIESTE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "CUT",
+  "requisito": "1.3.3",
+  "zona_impianto": "Magazzino utensili",
+  "zona_pericolosa": "Magazzino utensili, pinza di cambio e spazio sottostante",
+  "condizioni": [
+   "Normale",
+   "Regolazione / attrezzamento",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "1.1.3",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Sedi del magazzino con ritenuta meccanica a molla che trattiene l'utensile anche senza energia."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Pinza di cambio a presa positiva, normalmente chiusa, con sensore di presenza utensile; resta chiusa per mancanza d'aria."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Cambio utensile automatico solo con cella chiusa e porte interbloccate."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive calzature di sicurezza e la rimozione degli utensili prima della manutenzione del magazzino."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di caduta dell'utensile durante attrezzaggio e sblocco anomalie. Indossare calzature di sicurezza. Togliere gli utensili prima di intervenire su magazzino e pinza.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Dischi e spazzole pesano fino a circa 10 kg (1.1.3). Possono sfilarsi dalla sede del magazzino o dalla pinza di cambio e cadere sulla persona (1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è sotto e davanti al magazzino e alla pinza di cambio. L'esposizione avviene in attrezzaggio e nello sblocco di cambi utensile falliti.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio carica e toglie gli utensili. Il manutentore meccanico interviene su magazzino e pinza.",
+   "considerazioni_stima_iniziale": "Se 2: la caduta di un utensile su piede o mano dà lesioni reversibili con cure mediche. Fr 4: attrezzaggi e sblocchi sono quotidiani o settimanali. Pr 3: senza ritenute la caduta è possibile. Av 3: la caduta è improvvisa. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione: sedi con ritenuta meccanica, pinza a presa positiva normalmente chiusa con sensore. Protezioni: cambio automatico solo a cella chiusa. Informazioni: calzature di sicurezza e rimozione degli utensili.",
+   "considerazioni_stima_finale": "Pr scende a 1 per ritenute e pinza normalmente chiusa. Av resta 3 perché la caduta resta improvvisa. Se 2 resta, Fr 4 resta reale. Cl 8: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "CUT",
+  "requisito": "1.3.7",
+  "zona_impianto": "Magazzino utensili",
+  "zona_pericolosa": "Sedi del magazzino in movimento e struttura fissa",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.2",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Magazzino dentro la cella o chiuso da ripari fissi; apertura di carico con sportello interbloccato."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Con sportello aperto il magazzino si muove solo con comando ad azione mantenuta, a velocità ridotta, da fuori della zona."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale descrive il caricamento e vieta di inserire le mani durante il posizionamento del magazzino."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di schiacciamento durante il posizionamento a comando mantenuto. Non inserire le mani nel magazzino mentre si muove. Rilasciare il comando in caso di pericolo.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il magazzino ruota o trasla per portare l'utensile alla posizione di cambio. La mano può essere schiacciata (1.2.1) o cesoiata (1.2.2) tra sedi e struttura, o urtata (1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è tra le sedi del magazzino e la struttura fissa. L'esposizione avviene in attrezzaggio e manutenzione.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio carica gli utensili nel magazzino. Il manutentore meccanico interviene su meccanismi e sensori.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento della mano può causare lesioni permanenti. Fr 4: il caricamento utensili è quotidiano o settimanale. Pr 3: senza ripari il contatto è possibile. Av 3: il movimento è rapido. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: con sportello aperto movimento solo ad azione mantenuta e velocità ridotta. Protezioni: ripari fissi e sportello interbloccato. Informazioni: procedura di caricamento.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 per interblocco e movimento lento ad azione mantenuta. Se 3 resta, Fr 4 resta reale. Cl 6: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "CUT",
+  "requisito": "1.6.4",
+  "zona_impianto": "Magazzino utensili",
+  "zona_pericolosa": "Posizione di carico utensili e area di lavoro del robot o dell'unità",
+  "condizioni": [
+   "Regolazione / attrezzamento"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.6",
+   "8.1.1"
+  ],
+  "soggetti": [
+   "Operatore di attrezzaggio",
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 4,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Caricamento da uno sportello esterno alla cella, separato dall'area del robot con parete fissa."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Sportello di carico interbloccato con bloccaggio; robot o unità in arresto sicuro monitorato finché è aperto (EN ISO 10218-2, PL d)."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Identificazione degli utensili e conferma da pannello prima della ripartenza, per evitare utensili errati."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale descrive la procedura di caricamento, le masse degli utensili e l'uso di guanti."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di schiacciamento della mano nel magazzino in posizionamento. Caricare solo dallo sportello esterno. Verificare l'utensile caricato prima della ripartenza.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Per caricare gli utensili l'operatore entrava nella cella vicino al robot. Un avvio inatteso può schiacciarlo (1.2.1) o urtarlo (1.2.6). Gli utensili pesanti caricati in posizioni scomode affaticano (8.1.1).",
+   "considerazioni_limiti": "La zona pericolosa è la posizione di carico del magazzino e l'area del robot vicina. L'esposizione avviene in attrezzaggio.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio carica gli utensili. L'operatore di conduzione sostituisce gli utensili usurati durante il turno.",
+   "considerazioni_stima_iniziale": "Se 4: lo schiacciamento da robot può essere mortale. Fr 4: il caricamento è quotidiano o settimanale. Pr 3: entrando in cella il contatto con il robot è possibile. Av 3: il movimento inatteso è rapido. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: caricamento da sportello esterno separato dal robot e identificazione degli utensili. Protezioni: sportello interbloccato con arresto sicuro monitorato. Informazioni: procedura, masse e guanti.",
+   "considerazioni_stima_finale": "Se scende da 4 a 3: la parete separa dal robot e resta solo il magazzino lento. Pr e Av scendono a 1. Fr 4 resta reale. Cl 6: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "CVT",
+  "requisito": "1.3.7",
+  "zona_impianto": "Caricatore verticale",
+  "zona_pericolosa": "Tamburo rotante o elevatore a vaschette del caricatore",
+  "condizioni": [
+   "Normale",
+   "Sblocco anomalie",
+   "Manutenzione"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.2",
+   "1.2.5"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Ripari fissi su trasmissioni e fianchi; apertura di carico dimensionata secondo EN ISO 13857."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Sportelli per sblocco e manutenzione interbloccati: aprendoli tamburo ed elevatore si arrestano."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Sblocco anomalie con movimento ad azione mantenuta a velocità ridotta, da posizione esterna."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale descrive lo sblocco dei pezzi incastrati e vieta di intervenire dall'apertura di carico."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo nello sblocco a comando mantenuto. Non introdurre le mani dall'apertura di carico. Sbloccare solo dagli sportelli interbloccati.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il tamburo ruota e l'elevatore sale a scatti con le vaschette. La mano può essere schiacciata (1.2.1), cesoiata (1.2.2) o trascinata (1.2.5) tra vaschette e struttura.",
+   "considerazioni_limiti": "La zona pericolosa è il tamburo o l'elevatore in movimento. L'esposizione avviene in produzione, nello sblocco dei pezzi incastrati e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione rifornisce il caricatore e sblocca i pezzi. Il manutentore meccanico interviene sulle trasmissioni.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento della mano può causare la perdita di dita. Fr 5: il rifornimento avviene più volte all'ora. Pr 3: senza ripari il contatto è possibile. Av 3: il movimento a scatti è improvviso. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: sblocco ad azione mantenuta a velocità ridotta. Protezioni: ripari fissi, apertura di carico secondo EN ISO 13857, sportelli interbloccati. Informazioni: procedura di sblocco.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1: le parti in moto non sono raggiungibili. Se 3 resta, Fr 5 resta reale. Cl 7: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "CVT",
+  "requisito": "1.3.3",
+  "zona_impianto": "Caricatore verticale",
+  "zona_pericolosa": "Vaschette dell'elevatore e zona davanti al caricatore",
+  "condizioni": [
+   "Normale",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "1.1.3",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Vaschette con sponde e sagome di appoggio che trattengono i pezzi durante la salita e la rotazione."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Elevatore chiuso su tutti i lati da pannelli che trattengono i pezzi caduti."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica il numero massimo di pezzi per vaschetta e l'uso di calzature di sicurezza."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di caduta di pezzi nello sblocco anomalie. Rispettare il carico per vaschetta. Indossare calzature di sicurezza. Aprire gli sportelli con cautela.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Pezzi in ottone fino a 3 kg possono cadere da vaschette troppo piene o mal posizionate (1.1.3). Il pezzo che cade colpisce mani o piedi (1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è davanti all'apertura di carico e agli sportelli dell'elevatore. L'esposizione avviene in produzione e nello sblocco anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica i pezzi e apre gli sportelli per gli sblocchi.",
+   "considerazioni_stima_iniziale": "Se 2: un pezzo che cade sul piede dà lesioni reversibili con cure mediche. Fr 5: il rifornimento avviene più volte all'ora. Pr 3: con vaschette piene la caduta è possibile. Av 3: la caduta è improvvisa. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: vaschette con sponde e sagome, elevatore chiuso da pannelli. Informazioni: carico massimo per vaschetta e calzature di sicurezza.",
+   "considerazioni_stima_finale": "Pr scende a 1 per vaschette sagomate ed elevatore chiuso. Av resta 3. Se 2 resta, Fr 5 resta reale. Cl 9: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "CVT",
+  "requisito": "1.4.3",
+  "zona_impianto": "Caricatore verticale",
+  "zona_pericolosa": "Settore di carico del caricatore con la cella in produzione",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.2.1",
+   "1.2.2",
+   "1.2.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Settore di carico separato con parete fissa dal settore di prelievo del robot; il carico avviene solo dall'esterno."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Barriera fotoelettrica di tipo 4 sull'apertura di carico (EN ISO 13849-1, PL d) a distanza secondo EN ISO 13855."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "L'intervento della barriera arresta solo il caricatore nel settore di carico; il robot continua dietro la parete."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive la verifica giornaliera della barriera e vieta di sporgersi oltre l'apertura."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo nel rifornimento a macchina in moto. Verificare la barriera a ogni turno. Non sporgersi oltre l'apertura di carico e non scavalcarla.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il caricatore viene rifornito mentre la cella lavora. La mano nel settore di carico può essere schiacciata (1.2.1) o cesoiata (1.2.2) dal tamburo, o urtata dal robot (1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è il settore di carico del caricatore. L'esposizione avviene in produzione, a ogni rifornimento.",
+   "considerazioni_soggetti": "L'operatore di conduzione rifornisce il caricatore senza fermare la cella.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento della mano può causare la perdita di dita. Fr 5: il rifornimento avviene più volte all'ora. Pr 3: senza dispositivi il contatto è possibile. Av 3: il movimento è improvviso. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: settore di carico separato dal robot. Protezioni: barriera fotoelettrica di tipo 4 che arresta il caricatore nel settore di carico. Informazioni: verifica giornaliera e divieti.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 per separazione e barriera. Se 3 resta, Fr 5 resta reale. Cl 7: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "CVT",
+  "requisito": "1.1.6",
+  "zona_impianto": "Caricatore verticale",
+  "zona_pericolosa": "Postazione di carico manuale del caricatore",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "8.1.1",
+   "8.1.2"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 4,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 5,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Apertura di carico tra 900 e 1100 mm da terra, raggiungibile senza piegarsi né allungarsi."
+   },
+   {
+    "tipo": "PROG",
+    "testo": "Carico di cassette o vassoi completi al posto dei singoli pezzi, con piano di appoggio a fianco."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica le masse movimentate, la frequenza di carico e le pause."
+   }
+  ],
+  "testo_istruzioni": "Rischio residuo di sovraccarico da movimenti ripetitivi. Il datore di lavoro valuta la movimentazione con i dati del manuale. Alternare le mansioni.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il carico manuale richiede movimenti ripetuti di presa e posa dei pezzi (8.1.2). Altezze o distanze errate causano posture incongrue e sforzi (8.1.1).",
+   "considerazioni_limiti": "La zona interessata è la postazione di carico del caricatore. L'esposizione avviene nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica i pezzi più volte all'ora durante il turno.",
+   "considerazioni_stima_iniziale": "Se 2: i disturbi muscolo-scheletrici sono reversibili con cure mediche. Fr 5: il carico avviene più volte all'ora. Pr 4: con altezze errate il sovraccarico è probabile. Av 3: l'affaticamento si accumula, evitarlo è solo possibile. Cl 12: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: altezza di carico corretta e carico per vassoi con piano di appoggio. Informazioni: masse, frequenza e pause.",
+   "considerazioni_stima_finale": "Pr scende da 4 a 2 per altezza corretta e carico per vassoi. Av resta 3. Se 2 resta, Fr 5 resta reale. Cl 10: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ {
+  "modulo": "PUS",
+  "requisito": "1.3.8.2",
+  "zona_impianto": "Zona di pulitura",
+  "zona_pericolosa": "Dischi o spazzole in rotazione dell'unità di pulitura semplice (CPL, CPDO)",
+  "condizioni": [
+   "Normale",
+   "Regolazione / attrezzamento"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.5",
+   "1.2.8"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Unità disposte lontano dalla stazione di carico; aperture di passaggio pezzi dimensionate secondo EN ISO 13857."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Ripari perimetrali con porte interbloccate e bloccaggio fino all'arresto dei dischi (EN ISO 14119)."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Carter sul disco o sulla spazzola che lascia scoperta solo la zona di lavoro."
+   }
+  ],
+  "testo_istruzioni": "Non eludere gli interblocchi delle porte. Prima di accedere attendere l'arresto completo di dischi e spazzole. Non indossare indumenti larghi, catenine o capelli sciolti vicino all'unità.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Dischi e spazzole delle unità CPL e CPDO ruotano ad alta velocità. Indumenti o capelli possono impigliarsi (1.2.4), la mano essere trascinata tra disco e pezzo (1.2.5) o abrasa (1.2.8).",
+   "considerazioni_limiti": "La zona pericolosa sono i dischi e le spazzole in rotazione sulla tavola. L'esposizione avviene nel funzionamento normale, vicino alla stazione di carico, e in regolazione/attrezzamento.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica la tavola per tutto il turno a breve distanza dalle unità. L'operatore di attrezzaggio regola e sostituisce dischi e spazzole.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento sul disco può causare lesioni permanenti alla mano. Fr 5: l'operatore resta vicino alle unità per tutto il turno. Pr 3: senza ripari il contatto è possibile. Av 3: la rotazione è veloce, sottrarsi è solo possibile. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: unità lontane dalla stazione di carico e aperture dimensionate secondo EN ISO 13857. Protezioni: ripari perimetrali con porte interbloccate e bloccaggio fino a fermo, carter sul disco. Le informazioni coprono il rischio residuo.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 perché i ripari impediscono di raggiungere i dischi in moto. Se 3 e Fr 5 restano quelle reali. Cl 7: misure SUGGERITE, vedi rischio residuo su interblocchi e indumenti."
+  }
+ },
+ {
+  "modulo": "PUS",
+  "requisito": "1.3.8.1",
+  "zona_impianto": "Zona di pulitura",
+  "zona_pericolosa": "Motori, pulegge e cinghie dell'unità di pulitura semplice",
+  "condizioni": [
+   "Manutenzione"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.5"
+  ],
+  "soggetti": [
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 3,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 3,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Punti di tensionamento cinghie e di lubrificazione raggiungibili dall'esterno dei ripari."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Trasmissioni chiuse da ripari fissi rimovibili solo con attrezzo, con viti imperdibili (EN ISO 14120)."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive di isolare l'unità prima di rimuovere i ripari e di rimontarli prima del riavvio."
+   }
+  ],
+  "testo_istruzioni": "Rimuovere i ripari delle trasmissioni solo a unità isolata. Rimontarli prima di rimettere in servizio l'unità.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Motori, pulegge e cinghie dell'unità semplice hanno organi rotanti. Indumenti o dita possono impigliarsi (1.2.4) ed essere trascinati tra cinghia e puleggia (1.2.5).",
+   "considerazioni_limiti": "La zona pericolosa sono motori e trasmissioni dell'unità. L'esposizione avviene in manutenzione, quando si accede alle trasmissioni.",
+   "considerazioni_soggetti": "Il manutentore meccanico interviene su motori, cinghie e pulegge per controlli, tensionamento e sostituzioni.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento nella trasmissione può causare perdita di dita. Fr 3: la manutenzione delle trasmissioni è periodica. Pr 3: con trasmissioni scoperte il contatto è possibile. Av 3: la presa è rapida, sottrarsi è solo possibile. Cl 9: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: tensionamento e lubrificazione dall'esterno riducono la necessità di aprire i ripari. Protezioni: ripari fissi rimovibili solo con attrezzo. Informazioni: isolamento prima della rimozione e rimontaggio dei ripari.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie ai ripari fissi e ai punti di intervento esterni. Se 3 e Fr 3 restano quelle reali. Cl 5: misure SUGGERITE, vedi rischio residuo sul rimontaggio dei ripari."
+  }
+ },
+ {
+  "modulo": "PUS",
+  "requisito": "1.3.2",
+  "zona_impianto": "Zona di pulitura",
+  "zona_pericolosa": "Dischi e spazzole in rotazione e spazio circostante",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.1.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Terzi di passaggio"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Velocità periferica limitata a quella ammessa per dischi e spazzole; senso di rotazione che proietta verso l'interno della macchina."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Carter robusto che trattiene frammenti, fili e tele; ripari perimetrali interposti tra unità e postazione di carico."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica dischi e spazzole ammessi, velocità massima e controlli di usura."
+   }
+  ],
+  "testo_istruzioni": "Usare solo dischi e spazzole con velocità ammessa non inferiore a quella indicata. Controllare l'usura e sostituire quelli danneggiati. Indossare occhiali di protezione vicino all'unità.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Dischi e spazzole possono rompersi per sovravelocità o usura (1.1.6). Frammenti, fili metallici o tele vengono proiettati con energia cinetica (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa sono dischi, spazzole e lo spazio circostante fino alla postazione di carico. L'esposizione avviene nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora alla stazione di carico per tutto il turno. I terzi di passaggio possono transitare vicino alla tavola.",
+   "considerazioni_stima_iniziale": "Se 3: un frammento o un filo proiettato può causare lesioni permanenti agli occhi. Fr 5: la presenza vicino alle unità è continua nel turno. Pr 3: la rottura di un disco o la perdita di fili è possibile. Av 3: la proiezione è improvvisa. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: velocità periferica limitata e senso di rotazione verso l'interno. Protezioni: carter contenitivo e ripari perimetrali interposti tra unità e postazione. Informazioni: dischi ammessi, velocità massima e controlli di usura.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 per velocità limitata e carter contenitivo. Av scende da 3 a 1 perché i ripari intercettano le traiettorie verso la postazione. Se 3 e Fr 5 restano. Cl 7: misure SUGGERITE, vedi rischio residuo su usura e occhiali."
+  }
+ },
+ {
+  "modulo": "PUS",
+  "requisito": "1.6.4",
+  "zona_impianto": "Zona di pulitura",
+  "zona_pericolosa": "Mandrino dell'unità durante la sostituzione di dischi e spazzole",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.4"
+  ],
+  "soggetti": [
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Attacco rapido del disco senza attrezzi speciali, da posizione accessibile; motore frenato per ridurre il tempo di arresto per inerzia."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Sezionamento locale lucchettabile dell'unità; porta di accesso con bloccaggio fino all'arresto del disco."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale descrive la procedura di sostituzione a unità ferma e isolata."
+   }
+  ],
+  "testo_istruzioni": "Sostituire dischi e spazzole solo a unità ferma e isolata con il proprio lucchetto. Verificare l'arresto completo prima di toccare il mandrino.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Durante la sostituzione un riavvio inatteso o la rotazione per inerzia muovono dischi e spazzole (1.1.4). Mani o indumenti possono impigliarsi nel mandrino (1.2.4).",
+   "considerazioni_limiti": "La zona pericolosa è il mandrino dell'unità durante la sostituzione. L'esposizione avviene in regolazione/attrezzamento e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio sostituisce dischi e spazzole usurati. Il manutentore meccanico interviene sull'unità.",
+   "considerazioni_stima_iniziale": "Se 3: un riavvio con le mani sul disco può causare lesioni permanenti. Fr 4: i dischi di pulitura si consumano e si sostituiscono spesso, almeno settimanalmente. Pr 3: senza isolamento il riavvio è possibile. Av 3: l'avviamento è improvviso. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: attacco rapido da posizione accessibile e motore frenato. Protezioni: sezionamento locale lucchettabile e bloccaggio della porta fino a fermo. Informazioni: procedura di sostituzione a unità isolata.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 con sezionamento lucchettabile e bloccaggio fino a fermo. Se 3 e Fr 4 restano quelle reali. Cl 6: misure SUGGERITE, vedi rischio residuo sull'isolamento con lucchetto."
+  }
+ },
+ {
+  "modulo": "PUS",
+  "requisito": "1.5.5",
+  "zona_impianto": "Zona di pulitura",
+  "zona_pericolosa": "Dischi e pezzi caldi subito dopo la pulitura",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "3.1.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "INFO",
+    "testo": "Pittogramma di superficie calda (ISO 7010 W017) sull'unità e avvertenza nel manuale."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive guanti di protezione termica per sblocchi e sostituzioni."
+   }
+  ],
+  "testo_istruzioni": "Attendere il raffreddamento di dischi e pezzi o usare guanti di protezione termica prima di toccarli.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "L'attrito della pulitura scalda dischi e pezzi a temperature elevate. Toccarli a mani nude provoca ustioni (3.1.1).",
+   "considerazioni_limiti": "La zona pericolosa sono i dischi e i pezzi appena puliti nell'unità. L'esposizione avviene in sostituzione dischi, manutenzione e sblocco anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione rimuove pezzi bloccati. L'operatore di attrezzaggio e il manutentore toccano i dischi subito dopo l'arresto.",
+   "considerazioni_stima_iniziale": "Se 2: le ustioni da contatto sono reversibili con cure mediche. Fr 4: sostituzioni dischi e sblocchi sono almeno settimanali. Pr 3: toccare un disco o un pezzo caldo è possibile. Av 3: il calore non è riconoscibile a vista. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Informazioni: pittogramma di superficie calda e guanti di protezione termica indicati nel manuale. Misure di progettazione o protezione non sono applicabili, perché il calore è intrinseco al processo.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 2 grazie ad avvertenze e guanti. Se 2 e Fr 4 restano; Av 3 resta perché il calore non è visibile. Cl 9: misure SUGGERITE, vedi rischio residuo su raffreddamento e guanti."
+  }
+ },
+ {
+  "modulo": "PUS",
+  "requisito": "1.3.9",
+  "zona_impianto": "Zona di pulitura",
+  "zona_pericolosa": "Asse unico che avanza fino al contatto con il pezzo e mantiene la spinta",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Finecorsa meccanico regolabile che limita la corsa senza pezzo; forza di spinta limitata dal regolatore di pressione."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Valvola di blocco sull'attuatore, scarico dell'energia residua e avviamento progressivo al ripristino dell'aria; arresto dell'asse con porte aperte."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica come scaricare la pressione residua e verificare la posizione dell'asse prima dell'intervento."
+   }
+  ],
+  "testo_istruzioni": "Prima di intervenire scaricare la pressione residua e verificare che l'asse sia fermo a finecorsa. Non frapporre le mani tra unità e pezzo durante la regolazione della spinta.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "L'asse avanza finché il disco incontra il pezzo e mantiene la spinta. Senza pezzo, o al ripristino della pressione, può muoversi in modo inatteso (1.1.4) e schiacciare la mano contro pezzo o tavola (1.2.1).",
+   "considerazioni_limiti": "La zona pericolosa è la corsa dell'asse fra unità e pezzo. L'esposizione avviene in regolazione della posizione e della spinta, in manutenzione e nello sblocco di anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione libera pezzi bloccati. L'operatore di attrezzaggio regola corsa e spinta. Il manutentore interviene sull'attuatore.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento della mano contro il pezzo può causare lesioni permanenti. Fr 4: le regolazioni seguono i cambi lotto, almeno settimanali. Pr 3: un avanzamento inatteso è possibile. Av 3: il movimento è rapido. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: finecorsa meccanico e forza limitata dal regolatore. Protezioni: valvola di blocco, scarico dell'energia residua, avviamento progressivo e arresto dell'asse con porte aperte. Informazioni: procedura di scarico e verifica.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 per valvola di blocco, scarico e avviamento progressivo. Av scende da 3 a 1 per corsa e forza limitate. Se 3 e Fr 4 restano. Cl 6: misure SUGGERITE, vedi rischio residuo sullo scarico della pressione."
+  }
+ },
+ {
+  "modulo": "SMS",
+  "requisito": "1.3.8.2",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Nastro abrasivo e rulli di contatto dell'unità di smerigliatura semplice (CSL)",
+  "condizioni": [
+   "Normale",
+   "Regolazione / attrezzamento",
+   "Manutenzione"
+  ],
+  "pericoli": [
+   "1.2.5",
+   "1.2.8"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROT",
+    "testo": "Carter sul nastro che lascia scoperta solo la zona di contatto con il pezzo."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Ripari perimetrali con porte interbloccate e bloccaggio fino all'arresto del nastro (EN ISO 14119)."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive regolazioni e cambio nastro a nastro fermo e unità isolata."
+   }
+  ],
+  "testo_istruzioni": "Non eludere gli interblocchi delle porte. Regolare e cambiare il nastro solo a unità ferma e isolata.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il nastro abrasivo scorre veloce sui rulli di contatto. La mano può essere trascinata tra nastro e rullo (1.2.5) o subire abrasioni profonde (1.2.8).",
+   "considerazioni_limiti": "La zona pericolosa è il nastro con i rulli di contatto. L'esposizione avviene nel funzionamento normale vicino alla stazione di carico, in regolazione/attrezzamento e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica la tavola vicino all'unità. L'operatore di attrezzaggio regola e cambia i nastri. Il manutentore interviene su rulli e gruppo nastro.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento tra nastro e rullo può causare lesioni permanenti alla mano. Fr 5: l'operatore resta vicino all'unità per tutto il turno. Pr 3: senza ripari il contatto è possibile. Av 3: il nastro è veloce. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: carter sul nastro e ripari perimetrali con porte interbloccate e bloccaggio fino a fermo. Informazioni: regolazioni e cambio nastro a unità isolata. Il nastro deve restare scoperto nella zona di contatto per lavorare.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 perché i ripari impediscono di raggiungere il nastro in moto. Se 3 e Fr 5 restano quelle reali. Cl 7: misure SUGGERITE, vedi rischio residuo su interblocchi e unità isolata."
+  }
+ },
+ {
+  "modulo": "SMS",
+  "requisito": "1.3.8.1",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Pulegge, cinghie e motore della smerigliatrice",
+  "condizioni": [
+   "Manutenzione"
+  ],
+  "pericoli": [
+   "1.2.4",
+   "1.2.5"
+  ],
+  "soggetti": [
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 3,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 3,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Punti di tensionamento e lubrificazione raggiungibili dall'esterno dei ripari."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Trasmissioni chiuse da ripari fissi rimovibili solo con attrezzo, con viti imperdibili (EN ISO 14120)."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive di isolare la smerigliatrice prima di rimuovere i ripari e di rimontarli prima del riavvio."
+   }
+  ],
+  "testo_istruzioni": "Rimuovere i ripari delle trasmissioni solo a smerigliatrice isolata. Rimontarli prima di rimetterla in servizio.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Pulegge, cinghie e motore della smerigliatrice ruotano velocemente. Indumenti o dita possono impigliarsi (1.2.4) ed essere trascinati tra cinghia e puleggia (1.2.5).",
+   "considerazioni_limiti": "La zona pericolosa sono pulegge, cinghie e motore della smerigliatrice. L'esposizione avviene in manutenzione, quando si accede alle trasmissioni.",
+   "considerazioni_soggetti": "Il manutentore meccanico interviene su cinghie e pulegge per controlli, tensionamento e sostituzioni.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento in una trasmissione può causare perdita di dita. Fr 3: la manutenzione delle trasmissioni è periodica. Pr 3: con trasmissioni scoperte il contatto è possibile. Av 3: la presa è rapida. Cl 9: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: tensionamento e lubrificazione dall'esterno riducono le aperture dei ripari. Protezioni: ripari fissi rimovibili solo con attrezzo. Informazioni: isolamento prima della rimozione e rimontaggio dei ripari.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie ai ripari fissi. Se 3 e Fr 3 restano quelle reali. Cl 5: misure SUGGERITE, vedi rischio residuo sul rimontaggio dei ripari."
+  }
+ },
+ {
+  "modulo": "SMS",
+  "requisito": "1.3.2",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Nastro abrasivo e spazio circostante la smerigliatrice",
+  "condizioni": [
+   "Normale"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.1.6"
+  ],
+  "soggetti": [
+   "Operatore di conduzione"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 5,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Velocità del nastro non superiore a quella ammessa dal produttore dei nastri."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Carter che trattiene il nastro in caso di rottura; sensore di rottura o sbandamento che arresta il motore."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica i nastri ammessi (dimensioni, giunzione, velocità massima)."
+   }
+  ],
+  "testo_istruzioni": "Usare solo nastri con velocità massima ammessa non inferiore a quella indicata. Non escludere il sensore di rottura nastro.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Il nastro abrasivo ad alta velocità può rompersi alla giunzione o sbandare (1.1.6). I lembi vengono proiettati o sferzano con elevata energia cinetica (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa è il nastro e lo spazio circostante fino alla stazione di carico. L'esposizione avviene nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora alla stazione di carico della tavola, vicino alla smerigliatrice, per tutto il turno.",
+   "considerazioni_stima_iniziale": "Se 3: un lembo proiettato può causare lesioni permanenti, ad esempio agli occhi. Fr 5: la presenza vicino alla smerigliatrice è continua nel turno. Pr 3: la rottura di un nastro usurato è possibile. Av 3: l'evento è improvviso. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: velocità del nastro entro quella ammessa. Protezioni: carter che trattiene il nastro e sensore che arresta il motore. Informazioni: nastri ammessi e caratteristiche.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 per velocità limitata e sensore. Av scende da 3 a 1 perché il carter trattiene il nastro rotto. Se 3 e Fr 5 restano. Cl 7: misure SUGGERITE, vedi rischio residuo su nastri ammessi e sensore."
+  }
+ },
+ {
+  "modulo": "SMS",
+  "requisito": "1.6.4",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Gruppo nastro e tenditore durante cambio nastro e regolazioni",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.1"
+  ],
+  "soggetti": [
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Tensionamento e cambio nastro rapidi, senza attrezzi speciali, con rilascio comandato della tensione."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Sezionamento locale lucchettabile della smerigliatrice, con scarico dell'aria del tenditore."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale descrive la procedura di cambio nastro a unità isolata."
+   }
+  ],
+  "testo_istruzioni": "Isolare la smerigliatrice con il proprio lucchetto e scaricare il tenditore prima del cambio nastro.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Durante il cambio nastro un riavvio inatteso rimette in moto nastro e rulli (1.1.4). Il rullo tenditore, se rilascia energia, può schiacciare le dita contro la struttura (1.2.1).",
+   "considerazioni_limiti": "La zona pericolosa è il gruppo nastro con il tenditore. L'esposizione avviene in regolazione/attrezzamento e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio sostituisce e regola i nastri. Il manutentore meccanico interviene sulla smerigliatrice.",
+   "considerazioni_stima_iniziale": "Se 3: un riavvio o il rilascio del tenditore con le mani sul gruppo può causare lesioni permanenti. Fr 4: il cambio nastro è almeno settimanale. Pr 3: senza isolamento è possibile. Av 3: l'evento è improvviso. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: cambio rapido con rilascio comandato della tensione. Protezioni: sezionamento lucchettabile con scarico dell'aria del tenditore, che impedisce riavvio e movimenti residui. Informazioni: procedura di cambio nastro.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 con isolamento e scarico del tenditore. Se 3 e Fr 4 restano quelle reali. Cl 6: misure SUGGERITE, vedi rischio residuo su lucchetto e scarico del tenditore."
+  }
+ },
+ {
+  "modulo": "SMS",
+  "requisito": "1.5.5",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Rulli di contatto e pezzi appena smerigliati",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "3.1.1"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 2,
+   "Fr": 4,
+   "Pr": 2,
+   "Av": 3
+  },
+  "misure": [
+   {
+    "tipo": "INFO",
+    "testo": "Pittogramma di superficie calda (ISO 7010 W017) sulla smerigliatrice e avvertenza nel manuale."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale prescrive guanti di protezione termica per sblocchi e cambio nastro."
+   }
+  ],
+  "testo_istruzioni": "Attendere il raffreddamento o usare guanti di protezione termica prima di toccare rulli e pezzi.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "L'attrito della smerigliatura scalda rulli di contatto e pezzi a temperature elevate. Toccarli a mani nude provoca ustioni (3.1.1).",
+   "considerazioni_limiti": "La zona pericolosa sono i rulli di contatto e i pezzi appena smerigliati. L'esposizione avviene in cambio nastro, manutenzione e sblocco anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione rimuove pezzi bloccati. L'operatore di attrezzaggio e il manutentore toccano i rulli subito dopo l'arresto.",
+   "considerazioni_stima_iniziale": "Se 2: le ustioni da contatto sono reversibili con cure mediche. Fr 4: cambi nastro e sblocchi sono almeno settimanali. Pr 3: toccare un rullo o un pezzo caldo è possibile. Av 3: il calore non è riconoscibile a vista. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Informazioni: pittogramma di superficie calda e guanti di protezione termica indicati nel manuale. Misure di progettazione o protezione non sono applicabili, perché il calore è intrinseco al processo.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 2 grazie ad avvertenze e guanti. Se 2 e Fr 4 restano; Av 3 resta perché il calore non è visibile. Cl 9: misure SUGGERITE, vedi rischio residuo su raffreddamento e guanti."
+  }
+ },
+ {
+  "modulo": "SMC",
+  "requisito": "1.3.9",
+  "zona_impianto": "Zona di smerigliatura",
+  "zona_pericolosa": "Slitta lineare e rotazione 0-180° dell'unità di smerigliatura CNC",
+  "condizioni": [
+   "Regolazione / attrezzamento",
+   "Manutenzione",
+   "Sblocco anomalie"
+  ],
+  "pericoli": [
+   "1.1.4",
+   "1.2.1",
+   "1.2.2"
+  ],
+  "soggetti": [
+   "Operatore di conduzione",
+   "Operatore di attrezzaggio",
+   "Manutentore meccanico"
+  ],
+  "iniziale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 3,
+   "Av": 3
+  },
+  "finale": {
+   "Se": 3,
+   "Fr": 4,
+   "Pr": 1,
+   "Av": 1
+  },
+  "misure": [
+   {
+    "tipo": "PROG",
+    "testo": "Rotazione con riduttore irreversibile e motore autofrenante; slitta con freno di stazionamento."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Arresto sicuro degli assi con porte aperte, monitorato, PL secondo EN ISO 13849-1."
+   },
+   {
+    "tipo": "PROT",
+    "testo": "Movimenti con porte aperte solo a velocità ridotta e con comando ad azione mantenuta."
+   },
+   {
+    "tipo": "INFO",
+    "testo": "Il manuale indica il blocco meccanico della slitta prima di lavorarvi sotto."
+   }
+  ],
+  "testo_istruzioni": "Prima di lavorare vicino a slitta e rotazione verificarne l'arresto e il blocco meccanico. In regolazione restare fuori dalla corsa degli assi.",
+  "note": "Stima proposta, da validare.",
+  "considerazioni": {
+   "considerazioni_pericoli": "Slitta lineare e rotazione 0-180° possono muoversi in modo inatteso (1.1.4). Una persona tra unità e struttura può essere schiacciata (1.2.1) o cesoiata nella rotazione (1.2.2).",
+   "considerazioni_limiti": "La zona pericolosa è la corsa della slitta e il volume di rotazione dell'unità. L'esposizione avviene in regolazione, manutenzione e sblocco anomalie, con porte aperte.",
+   "considerazioni_soggetti": "L'operatore di conduzione libera pezzi bloccati. L'operatore di attrezzaggio regola posizioni e programmi. Il manutentore lavora vicino a slitta e rotazione.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento da slitta o rotazione può causare lesioni permanenti. Fr 4: regolazioni e sblocchi sono almeno settimanali. Pr 3: un movimento inatteso è possibile. Av 3: il movimento è rapido. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione: riduttore irreversibile, motore autofrenante e freno della slitta. Protezioni: arresto sicuro monitorato con porte aperte e movimenti solo a velocità ridotta ad azione mantenuta. Informazioni: blocco meccanico della slitta.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 per freni e arresto sicuro. Av scende da 3 a 1 perché con porte aperte i movimenti sono lenti e ad azione mantenuta. Se 3 e Fr 4 restano. Cl 6: misure SUGGERITE, vedi rischio residuo sul blocco meccanico."
+  }
+ }
+]
