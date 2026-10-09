@@ -1,0 +1,860 @@
+{
+ "CAB-01": {
+  "requisito": "1.3.7",
+  "campi": {
+   "considerazioni_pericoli": "All'interno della cella operano robot, smerigliatrici e unità di lucidatura con movimenti ampi e veloci. Il contatto con questi elementi mobili può causare schiacciamento contro parti fisse (1.2.1) e urto (1.2.6).",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella. Vi si accede in funzionamento normale, se non segregata, e in regolazione, attrezzamento e manutenzione, quando si deve operare sui componenti interni.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora a ridosso della cella. L'operatore di attrezzaggio e il manutentore meccanico devono entrare per regolazioni, cambi utensile e interventi sui componenti.",
+   "considerazioni_stima_iniziale": "Se 4: un urto o uno schiacciamento da robot può essere mortale o invalidante. Fr 4: senza segregazione l'esposizione è giornaliera o settimanale. Pr 3: con movimenti automatici e accesso libero il contatto è possibile. Av 3: i movimenti sono rapidi, ma in parte prevedibili. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: la cella è chiusa da ripari perimetrali e gli elementi mobili si raggiungono solo aprendo porte interbloccate. Altezza e distanza dei ripari impediscono di raggiungere le zone pericolose da fuori, secondo EN ISO 13857.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 2: con cella chiusa e porte interbloccate la presenza con elementi in moto è un evento eccezionale. Pr e Av scendono a 1 perché ripari e interblocchi impediscono il contatto. Se 4 resta, la gravità non cambia. Cl 4: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "CAB-03": {
+  "requisito": "1.4.2.1",
+  "campi": {
+   "considerazioni_pericoli": "I pannelli fissi della cabina separano l'esterno dagli elementi mobili interni. Se rimossi o non rimontati, rendono raggiungibili parti in moto, con pericolo di schiacciamento (1.2.1) e urto (1.2.6).",
+   "considerazioni_limiti": "La zona riguarda i pannelli fissi perimetrali della cabina. Si è esposti in funzionamento normale, se un pannello manca, e in manutenzione, quando i pannelli vengono smontati per accedere ai componenti.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino alla cabina e sarebbe esposto a un pannello mancante. Il manutentore meccanico smonta e rimonta i pannelli durante gli interventi.",
+   "considerazioni_stima_iniziale": "Se 4: il contatto con gli elementi mobili interni può essere mortale o invalidante. Fr 3: lo smontaggio dei pannelli è occasionale, tra due settimane e un anno. Pr 2: il riavvio con pannello mancante è raro. Av 3: il moto è visibile, ma rapido. Cl 8: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: i pannelli fissi si rimuovono solo con attrezzo, secondo EN ISO 14120. Le viti imperdibili restano sul pannello smontato, favorendone il corretto rimontaggio dopo la manutenzione.",
+   "considerazioni_stima_finale": "Fr scende da 3 a 2: con pannelli rimovibili solo con attrezzo l'esposizione diventa eccezionale. Pr e Av scendono a 1 perché le viti imperdibili riducono il rischio di riavvio senza pannello. Se 4 resta invariato. Cl 4: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "CAB-04": {
+  "requisito": "1.4.2.2",
+  "campi": {
+   "considerazioni_pericoli": "Le porte di accesso danno sulla cella dove robot e unità di lavorazione possiedono elevata energia cinetica (1.1.4). Aprendo con movimenti in corso si può subire schiacciamento (1.2.1) o urto (1.2.6).",
+   "considerazioni_limiti": "La zona è costituita dalle porte di accesso alla cella. Si apre in regolazione e attrezzamento, manutenzione e sblocco anomalie, quando si deve entrare o intervenire sui componenti interni.",
+   "considerazioni_soggetti": "L'operatore di conduzione apre le porte per sbloccare pezzi incastrati. L'operatore di attrezzaggio e il manutentore meccanico accedono per regolazioni, cambi utensile e riparazioni.",
+   "considerazioni_stima_iniziale": "Se 4: gli elementi mobili possono provocare lesioni mortali o invalidanti. Fr 4: aperture per sblocchi e regolazioni sono giornaliere o settimanali. Pr 3: senza interblocco l'apertura con macchina in moto è possibile. Av 3: l'arresto per inerzia non è immediato. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: porte con interblocco con bloccaggio secondo EN ISO 14119, apribili solo a movimenti fermi. La funzione di interblocco ha PL adeguato e i dispositivi sono difficili da eludere, con codifica alta o montaggio protetto.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 2: con il bloccaggio l'esposizione a movimenti attivi diventa eccezionale. Pr e Av scendono a 1 perché la porta si apre solo a macchina ferma e l'elusione è ostacolata. Se 4 resta. Cl 4: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "CAB-05": {
+  "requisito": "1.4.3",
+  "campi": {
+   "considerazioni_pericoli": "Dove la cella è protetta da dispositivi elettrosensibili, l'ingresso nella zona pericolosa non è impedito fisicamente. Se il dispositivo non arresta in tempo i movimenti, si ha schiacciamento (1.2.1) o urto (1.2.6).",
+   "considerazioni_limiti": "La zona riguarda barriere e dispositivi di protezione della cella. L'esposizione avviene in funzionamento normale, quando l'operatore si avvicina o attraversa il campo protetto.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora a ridosso dei varchi protetti, per carico, scarico e controllo dei pezzi, e può entrare nel campo dei dispositivi.",
+   "considerazioni_stima_iniziale": "Se 4: i movimenti interni possono causare lesioni mortali o invalidanti. Fr 4: l'avvicinamento ai varchi è giornaliero. Pr 3: con dispositivi inadeguati o mal posizionati il contatto è possibile. Av 3: i movimenti sono rapidi, ma in parte prevedibili. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: dispositivi elettrosensibili, barriere o scanner, del tipo adeguato e posizionati secondo il tempo di arresto della macchina. Il ripristino dopo l'intervento richiede un comando volontario dall'esterno, evitando riavvii con persone in zona.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 2: con dispositivi ben posizionati la presenza con movimenti attivi diventa eccezionale. Pr e Av scendono a 1 perché l'arresto avviene prima del raggiungimento e il riavvio non è automatico. Se 4 resta. Cl 4: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "CAB-06": {
+  "requisito": "1.3.3",
+  "campi": {
+   "considerazioni_pericoli": "Durante smerigliatura e lucidatura pezzi o frammenti di nastri e spazzole possono essere proiettati ad alta velocità (1.1.4). Pareti non sufficientemente resistenti potrebbero rompersi o cedere (1.1.6).",
+   "considerazioni_limiti": "La zona è costituita dalle pareti della cabina verso l'esterno. Si è esposti in funzionamento normale, stando vicino alla cabina mentre la lavorazione è in corso.",
+   "considerazioni_soggetti": "L'operatore di conduzione staziona vicino alla cabina durante il ciclo. I terzi di passaggio transitano lungo le pareti e potrebbero essere colpiti da oggetti proiettati.",
+   "considerazioni_stima_iniziale": "Se 3: un frammento proiettato può causare lesioni permanenti, ad esempio agli occhi. Fr 5: la presenza vicino alla cabina è continua durante il turno. Pr 2: la proiezione oltre le pareti è un evento raro. Av 3: la proiezione è improvvisa ma solo in parte non evitabile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: ripari e pannelli trasparenti scelti per trattenere pezzi o frammenti proiettati, con resistenza adeguata secondo EN ISO 14120.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché ripari e pannelli trattengono i frammenti, impedendo che raggiungano le persone. Se 3 resta, essendo invariata l'energia del frammento; Fr 5 è la presenza reale vicino alla cabina. Cl 7: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "CAB-07": {
+  "requisito": "1.5.14",
+  "campi": {
+   "considerazioni_pericoli": "Una persona entrata nella cella può restarvi chiusa all'interno. Se la macchina viene riavviata da fuori, gli elementi mobili (1.1.4) possono trascinarla o intrappolarla (1.2.5).",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella. Vi si entra in manutenzione e sblocco anomalie, con porte chiuse alle spalle e possibile scarsa visibilità dall'esterno.",
+   "considerazioni_soggetti": "L'operatore di conduzione entra per sbloccare pezzi incastrati. Il manutentore meccanico entra per interventi sui componenti e può restare all'interno a lungo.",
+   "considerazioni_stima_iniziale": "Se 4: il riavvio con persona all'interno può causare lesioni mortali. Fr 3: gli ingressi completi nella cella sono occasionali. Pr 2: il riavvio con persona dentro è un evento raro. Av 3: la persona può allontanarsi solo se percepisce il riavvio. Cl 8: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: porte apribili sempre dall'interno senza attrezzi, con sblocco di fuga sull'interblocco. Chi entra porta con sé chiave o lucchetto che impedisce il riavvio. Passo 3, informazioni: il manuale descrive la procedura di accesso alla cella.",
+   "considerazioni_stima_finale": "Fr scende da 3 a 2: con la procedura di accesso la permanenza in cella con macchina riavviabile diventa eccezionale. Pr e Av scendono a 1 grazie a chiave personale e sblocco di fuga. Se 4 resta. Cl 4: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "CMD-01": {
+  "requisito": "1.1.9",
+  "campi": {
+   "considerazioni_pericoli": "Un'alterazione volontaria o accidentale di programmi, parametri o collegamenti di rete può disattivare funzioni di sicurezza o comandare movimenti imprevisti di tavola, robot e unità di lucidatura (1.1.4). L'effetto si somma ad altri fattori presenti, come operatore in zona e organi in moto (10.1.1).",
+   "considerazioni_limiti": "La zona riguarda PLC, controllore robot, pannello operatore e collegamenti di rete. L'alterazione può avvenire in qualsiasi fase di vita, dalla programmazione e manutenzione alla teleassistenza, fino all'installazione e smantellamento.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino a tavola e robot e subirebbe un movimento non previsto. Il manutentore meccanico interviene nelle zone pericolose confidando nelle funzioni di sicurezza che l'alterazione potrebbe annullare.",
+   "considerazioni_stima_iniziale": "Se 4: un movimento imprevisto di robot o tavola rotante può causare lesioni mortali o amputazioni. Fr 3: gli accessi a programmi e parametri sono occasionali, legati a modifiche e assistenza. Pr 2: un'alterazione con effetti sulla sicurezza è rara. Av 3: l'evitamento è possibile solo se il movimento è percepito in tempo. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca le funzioni di sicurezza girano su PLC o relè di sicurezza separati dalla logica di processo e non modificabili da rete. Come protezioni complementari, password per livello, porte di rete inutilizzate disattivate, checksum o firma registrata al collaudo e modifiche tracciate. Le informazioni per l'uso regolano password, teleassistenza e aggiornamenti software.",
+   "considerazioni_stima_finale": "Se resta 4: le misure non limitano il danno di un eventuale movimento imprevisto. Fr scende a 2 perché gli accessi in grado di alterare la sicurezza sono limitati da password e separazione dalla rete. Pr 1 e Av 1 per la separazione delle funzioni di sicurezza e la verifica del checksum. Esito: misure SUGGERITE, vedi rischio residuo su reti aperte e custodia password."
+  }
+ },
+ "CMD-02": {
+  "requisito": "1.2.1",
+  "campi": {
+   "considerazioni_pericoli": "Un guasto o un errore di progettazione nei circuiti di sicurezza può far mancare un arresto o un interblocco, lasciando in moto organi con massa e velocità elevate (1.1.4). Il guasto non rilevato si combina con la presenza dell'operatore in zona (10.1.1).",
+   "considerazioni_limiti": "La zona comprende tutte le funzioni di sicurezza dell'impianto: interblocchi dei ripari, arresti di emergenza, sorveglianza dei modi. La loro affidabilità conta in ogni condizione, dall'esercizio normale alla manutenzione e all'emergenza.",
+   "considerazioni_soggetti": "L'operatore di conduzione e il manutentore meccanico si affidano alle funzioni di sicurezza quando aprono i ripari o accedono a tavole e isole robotizzate. Un loro guasto li esporrebbe direttamente agli organi in movimento.",
+   "considerazioni_stima_iniziale": "Se 4: il mancato arresto di robot o tavola può causare morte o perdita di un arto. Fr 3: gli accessi che si affidano alle funzioni di sicurezza sono periodici, non continui. Pr 3: senza progettazione secondo EN ISO 13849-1 un guasto pericoloso è possibile. Av 3: evitamento possibile solo se il movimento è percepito. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca ogni funzione di sicurezza è elencata con il PL richiesto, progettata e validata secondo EN ISO 13849-1, con validazione documentata. Come misura complementare, ogni intervento sul software di sicurezza è registrato con versione, data e autore.",
+   "considerazioni_stima_finale": "Se resta 4 perché la gravità del danno da organi in moto non cambia. Fr scende a 2: l'esposizione a un guasto non rilevato diventa un evento raro grazie a funzioni progettate con il PL richiesto. Pr 1 e Av 1 per la validazione documentata e la tracciabilità delle modifiche. Esito: misure SUGGERITE, vedi rischio residuo per guasti non rilevati e verifiche periodiche."
+  }
+ },
+ "CMD-03": {
+  "requisito": "1.2.2",
+  "campi": {
+   "considerazioni_pericoli": "Un pannello con comandi poco chiari, mal disposti o facili da azionare per errore genera affaticamento ed errori di manovra (8.2.2). L'errore può avviare un ciclo o un movimento mentre l'operatore non sorveglia la zona di lavoro.",
+   "considerazioni_limiti": "La zona sono le pulsantiere e il pannello operatore posti all'esterno delle cabine di protezione. L'esposizione si ha in funzionamento normale, durante la conduzione quotidiana dell'impianto.",
+   "considerazioni_soggetti": "L'operatore di conduzione usa il pannello più volte per turno per avviare, arrestare e controllare i cicli. È quindi il soggetto che può commettere un errore di manovra.",
+   "considerazioni_stima_iniziale": "Se 3: un azionamento errato può causare lesioni con esiti permanenti, ad esempio alle mani in zona di carico. Fr 5: il pannello si usa più volte all'ora. Pr 2: un errore con conseguenze dannose è raro. Av 3: l'operatore può evitare il danno se si accorge in tempo dell'errore. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca i comandi sono visibili, identificati da simboli o testi e disposti per evitare azionamenti involontari. I comandi di avvio ciclo sono posti dove si vede la zona di lavoro. Come informazione per l'uso, il manuale descrive ogni comando del pannello.",
+   "considerazioni_stima_finale": "Se 3 e Fr 5 restano: la gravità non cambia e l'uso del pannello resta continuo. Pr scende a 1 perché comandi chiari e protetti rendono trascurabile l'errore di manovra. Av scende a 1 perché l'avvio avviene con vista sulla zona di lavoro. Esito: misure SUGGERITE, vedi rischio residuo su uso dei comandi e formazione."
+  }
+ },
+ "CMD-04": {
+  "requisito": "1.2.3",
+  "campi": {
+   "considerazioni_pericoli": "Un avviamento non intenzionale, ad esempio alla chiusura di un riparo o al reset, mette in moto tavola, robot o spazzole mentre qualcuno è ancora in zona (1.1.4). L'evento pericoloso è il contatto con organi che acquistano velocità e massa in movimento.",
+   "considerazioni_limiti": "La zona è l'intero impianto, in particolare celle robotizzate, tavole rotanti e unità di lucidatura. L'esposizione si ha in funzionamento normale e durante regolazione e attrezzamento, quando il personale lavora vicino agli organi mobili.",
+   "considerazioni_soggetti": "L'operatore di conduzione avvia e riavvia i cicli e carica i pezzi. L'operatore di attrezzaggio regola utensili e posizioni e si trova in zona prima dell'avvio.",
+   "considerazioni_stima_iniziale": "Se 4: un avvio inatteso di robot o tavola può causare morte o perdita di un arto. Fr 4: avvii e riavvii avvengono ogni giorno. Pr 2: un avvio inatteso con persona in zona è raro. Av 3: evitamento possibile se l'avvio è percepito in tempo. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca l'avvio richiede un'azione volontaria su un comando previsto, e chiusura di un riparo o reset non avviano la macchina. Se dalla postazione non si vede tutta la zona, un segnale acustico e luminoso precede l'avvio.",
+   "considerazioni_stima_finale": "Se resta 4 perché il danno da organi in moto non cambia. Fr scende a 2: la presenza in zona al momento di un avvio diventa eccezionale, perché nessun evento automatico avvia la macchina. Pr 1 per l'avvio solo volontario, Av 1 per il segnale di preavviso. Esito: misure SUGGERITE, vedi rischio residuo sulla verifica delle zone prima dell'avvio."
+  }
+ },
+ "CMD-05": {
+  "requisito": "1.2.4.1",
+  "campi": {
+   "considerazioni_pericoli": "Un arresto normale incompleto o non prioritario lascia in moto tavola, nastri o spazzole quando l'operatore li crede fermi (1.1.4). L'evento pericoloso è l'avvicinamento a organi ancora in movimento o che ripartono.",
+   "considerazioni_limiti": "La zona è l'intero impianto, con tutte le zone di lavoro servite dal comando di arresto. L'esposizione si ha in funzionamento normale, a fine ciclo o fine turno.",
+   "considerazioni_soggetti": "L'operatore di conduzione usa l'arresto normale più volte al giorno per fermare le lavorazioni. È lui a trovarsi vicino agli organi al momento dell'arresto.",
+   "considerazioni_stima_iniziale": "Se 3: il contatto con nastri o spazzole in rallentamento può causare lesioni permanenti alle mani. Fr 4: l'arresto normale si usa ogni giorno. Pr 2: un arresto incompleto con conseguenze è raro. Av 3: evitamento possibile osservando gli organi. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca è previsto un comando di arresto completo di ogni zona, prioritario sui comandi di avvio. Non sono previste protezioni aggiuntive in questa scheda perché l'accesso è regolato da altre schede.",
+   "considerazioni_stima_finale": "Se 3 e Fr 4 restano: la gravità e l'uso quotidiano dell'arresto non cambiano. Pr scende a 1 e Av a 1 perché l'arresto è completo e nessun avvio può prevalere su di esso. Esito: misure SUGGERITE, vedi rischio residuo: l'arresto normale non è un comando di sicurezza."
+  }
+ },
+ "CMD-06": {
+  "requisito": "1.2.4.2",
+  "campi": {
+   "considerazioni_pericoli": "Durante gli arresti operativi gli organi sono fermi ma alimentati e possono ripartire per un comando o un guasto (1.1.4). L'evento pericoloso è il riavvio di tavola o robot con una persona in zona.",
+   "considerazioni_limiti": "La zona comprende le zone con arresto operativo controllato, come attesa pezzo e cambio pallet. L'esposizione si ha in funzionamento normale e in regolazione e attrezzamento.",
+   "considerazioni_soggetti": "L'operatore di conduzione e l'operatore di attrezzaggio possono scambiare l'arresto operativo per una condizione sicura. Sono loro a intervenire sui pezzi o sulle attrezzature durante le pause del ciclo.",
+   "considerazioni_stima_iniziale": "Se 4: un riavvio di robot o tavola con persona in zona può essere mortale. Fr 4: gli arresti operativi si ripetono ogni giorno. Pr 2: un riavvio durante l'intervento è raro. Av 3: evitamento possibile se il movimento è percepito. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca la condizione di arresto operativo è sorvegliata durante attesa pezzo e cambio pallet. Come protezione, l'accesso alla zona resta interbloccato: l'arresto operativo non sostituisce i ripari.",
+   "considerazioni_stima_finale": "Se resta 4 perché il danno da riavvio non cambia. Fr scende a 2: con l'accesso interbloccato la presenza in zona durante un arresto operativo diventa eccezionale. Pr 1 per la sorveglianza dell'arresto, Av 1 per l'interblocco. Esito: misure SUGGERITE, vedi rischio residuo: non entrare senza aprire le porte interbloccate."
+  }
+ },
+ "CMD-07": {
+  "requisito": "1.2.4.3",
+  "campi": {
+   "considerazioni_pericoli": "Se l'arresto di emergenza manca o è difficile da raggiungere, organi in moto continuano la corsa durante un'emergenza (1.1.4). Ne deriva il rischio di restare schiacciati tra robot, tavola e strutture fisse (1.2.1).",
+   "considerazioni_limiti": "La zona sono i pulsanti di emergenza sul pannello, presso le porte e nella zona di carico. Servono in tutte le condizioni operative, perché un'emergenza può presentarsi in qualsiasi fase.",
+   "considerazioni_soggetti": "L'operatore di conduzione e il manutentore meccanico sono i soggetti più vicini agli organi mobili. In caso di pericolo devono poter fermare subito l'impianto da dove si trovano.",
+   "considerazioni_stima_iniziale": "Se 4: uno schiacciamento da robot o tavola può essere mortale. Fr 4: le situazioni che richiedono l'emergenza ricorrono durante le attività quotidiane. Pr 3: senza comandi adeguati il mancato arresto è possibile. Av 3: evitamento possibile se ci si allontana in tempo. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca i pulsanti di emergenza sono sul pannello, presso ogni porta e nella zona di carico, con arresto di categoria 0 o 1. Il ripristino dell'emergenza non riavvia la macchina.",
+   "considerazioni_stima_finale": "Se resta 4 perché il danno potenziale non cambia. Fr scende a 2: l'esposizione a un'emergenza non controllata diventa rara grazie ai pulsanti vicino a ogni punto di accesso. Pr 1 e Av 1 per l'arresto rapido raggiungibile e l'assenza di riavvio al ripristino. Esito: misure SUGGERITE, vedi rischio residuo sul sezionamento e sulle verifiche periodiche."
+  }
+ },
+ "CMD-08": {
+  "requisito": "1.2.4.4",
+  "campi": {
+   "considerazioni_pericoli": "Quando l'impianto è collegato ad altre macchine o alla linea del cliente, arresti ed emergenze non coordinati lasciano attive macchine adiacenti. Più fattori si sommano: movimenti di macchine diverse, segnali incompleti, operatore in zona di confine (10.1.1).",
+   "considerazioni_limiti": "La zona è il punto di collegamento con macchine adiacenti o con la linea del cliente. L'esposizione si ha in funzionamento normale e durante l'installazione e la messa in servizio dell'insieme.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora tra impianto e macchine adiacenti. L'installatore o collaudatore realizza e prova i collegamenti, quando i segnali non sono ancora verificati.",
+   "considerazioni_stima_iniziale": "Se 4: una macchina adiacente che non si ferma può causare lesioni gravissime. Fr 3: gli interventi nelle zone di collegamento sono occasionali. Pr 2: un mancato coordinamento con danni è raro. Av 3: evitamento possibile se il movimento è visibile. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca emergenze e arresti sono collegati con le macchine adiacenti secondo lo schema concordato. Come informazione per l'uso, il manuale indica i segnali di interfaccia disponibili e i limiti del collegamento.",
+   "considerazioni_stima_finale": "Se resta 4 perché il danno potenziale non cambia. Fr scende a 2: con arresti ed emergenze coordinati l'esposizione a macchine adiacenti non fermate diventa rara. Pr 1 e Av 1 per lo schema concordato e i limiti indicati nel manuale. Esito: misure SUGGERITE, vedi rischio residuo sui collegamenti con altri fornitori."
+  }
+ },
+ "CMD-09": {
+  "requisito": "1.2.5",
+  "campi": {
+   "considerazioni_pericoli": "Nei modi diversi dal ciclo automatico si lavora con ripari aperti vicino a robot, tavola e unità CNC. Un movimento a velocità piena espone a energia cinetica (1.1.4) e a urti con bracci e attrezzature (1.2.6).",
+   "considerazioni_limiti": "La zona è il selettore dei modi di funzionamento e le zone che esso abilita. L'esposizione si ha in regolazione e attrezzamento, programmazione e manutenzione, con persona vicina agli organi mobili.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio regola utensili e posizioni, il programmatore insegna i punti al robot e il manutentore verifica i movimenti. Tutti lavorano in modo manuale vicino agli organi in moto.",
+   "considerazioni_stima_iniziale": "Se 4: un urto con il robot a piena velocità può essere mortale. Fr 3: i modi manuali si usano in modo occasionale, per regolazioni e programmazioni. Pr 3: senza limitazioni un movimento pericoloso è possibile. Av 3: evitamento possibile se il movimento è lento o visibile. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca i modi diversi dal ciclo automatico si selezionano con chiave o password. Come protezione, in manuale con porta aperta valgono velocità ridotta e comando ad azione mantenuta o dispositivo di abilitazione. Il manuale descrive ogni modo e chi può usarlo.",
+   "considerazioni_stima_finale": "Se scende a 3 perché la velocità ridotta limita l'energia d'urto. Fr resta 3: la frequenza reale dei modi manuali non cambia. Pr 1 per selettore a chiave e azione mantenuta, Av 1 perché il rilascio del comando arresta il movimento lento. Esito: misure SUGGERITE, vedi rischio residuo: modi manuali solo per personale addestrato."
+  }
+ },
+ "CMD-10": {
+  "requisito": "1.2.6",
+  "campi": {
+   "considerazioni_pericoli": "Una mancanza o un ritorno di energia, o la perdita della rete di comunicazione, può far cadere carichi o pezzi in pinza (1.1.3). Può inoltre provocare riavvii o movimenti non comandati di organi mobili (1.1.4).",
+   "considerazioni_limiti": "La zona è l'intero impianto, con pinze, bloccaggi e organi mobili. Una mancanza di energia può verificarsi in qualsiasi condizione operativa, dalla produzione alla manutenzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione e il manutentore meccanico sono vicini a pinze e organi mobili. Al ritorno dell'energia possono trovarsi in zona per verificare lo stato dell'impianto.",
+   "considerazioni_stima_iniziale": "Se 4: la caduta di un pezzo o un riavvio inatteso può causare lesioni gravissime. Fr 2: le mancanze di energia sono rare. Pr 3: senza misure il rilascio del pezzo o il riavvio è possibile. Av 3: evitamento possibile allontanandosi. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca l'impianto non riparte da solo al ritorno dell'energia. Pinze e bloccaggi mantengono il pezzo in mancanza di aria o tensione grazie a valvole bistabili o di ritegno.",
+   "considerazioni_stima_finale": "Se 4 e Fr 2 restano: gravità e frequenza reale delle mancanze di energia non cambiano. Pr scende a 1 perché il pezzo resta in pinza e non c'è riavvio automatico. Av scende a 1 perché gli organi restano fermi in posizione nota. Esito: misure SUGGERITE, vedi rischio residuo sulla verifica prima del riavvio."
+  }
+ },
+ "ELE-01": {
+  "requisito": "1.5.1",
+  "campi": {
+   "considerazioni_pericoli": "Nel quadro elettrico morsetti, sbarre e componenti sono normalmente in tensione. Il contatto diretto durante un intervento provoca elettrocuzione (2.1.1).",
+   "considerazioni_limiti": "La zona è l'interno del quadro elettrico con i componenti sotto tensione. L'esposizione si ha in manutenzione, quando si apre il quadro per controlli o sostituzioni.",
+   "considerazioni_soggetti": "Il manutentore elettrico è l'unico che apre il quadro per diagnosi, misure e sostituzione di componenti. È quindi l'unico esposto alle parti attive.",
+   "considerazioni_stima_iniziale": "Se 4: l'elettrocuzione può essere mortale. Fr 3: gli interventi nel quadro sono occasionali. Pr 3: senza protezioni il contatto con parti attive è possibile. Av 3: evitamento possibile con attenzione. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca le parti attive hanno almeno grado IP2X/IPXXB. Come protezione, la porta del quadro si apre solo con attrezzo o con sezionatore aperto. Le informazioni prevedono segnale di pericolo elettrico e interventi solo da personale PES/PAV.",
+   "considerazioni_stima_finale": "Se resta 4 perché il danno da elettrocuzione non cambia. Fr scende a 2: con la porta interbloccata l'esposizione a parti attive diventa rara. Pr 1 per il grado di protezione IPXXB, Av 1 per il segnale e il personale qualificato. Esito: misure SUGGERITE, vedi rischio residuo sugli interventi da personale qualificato."
+  }
+ },
+ "ELE-02": {
+  "requisito": "1.5.1",
+  "campi": {
+   "considerazioni_pericoli": "Un guasto d'isolamento può mettere in tensione strutture, carter e cabine metalliche. Chi le tocca subisce un contatto indiretto con elettrocuzione (2.1.2).",
+   "considerazioni_limiti": "La zona sono le masse metalliche dell'impianto: telai, cabine, tavole e quadri. Si toccano in tutte le condizioni operative, dalla conduzione alla pulizia e manutenzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione tocca le strutture durante il lavoro quotidiano. Il manutentore elettrico interviene su motori e quadri dove un guasto è più probabile.",
+   "considerazioni_stima_iniziale": "Se 4: l'elettrocuzione può essere mortale. Fr 3: il contatto con una massa in tensione richiede un guasto, quindi l'esposizione reale è occasionale. Pr 2: un guasto d'isolamento non rilevato è raro. Av 3: evitamento possibile solo in parte. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca è previsto il circuito di protezione equipotenziale con interruzione automatica dell'alimentazione. Come misura complementare si verificano continuità e isolamento al collaudo. Il manuale indica alimentazione e protezione a monte richieste.",
+   "considerazioni_stima_finale": "Se resta 4 perché il danno da elettrocuzione non cambia. Fr scende a 2: con l'interruzione automatica la presenza di masse in tensione diventa eccezionale. Pr 1 e Av 1 per il collegamento equipotenziale verificato al collaudo. Esito: misure SUGGERITE, vedi rischio residuo sulla verifica periodica della terra."
+  }
+ },
+ "ELE-03": {
+  "requisito": "1.6.3",
+  "campi": {
+   "considerazioni_pericoli": "Senza un sezionamento affidabile, durante gli interventi gli organi possono ripartire (1.1.4) o le parti restano in tensione (2.1.1). L'evento pericoloso è la rialimentazione da parte di un'altra persona o l'errore sul circuito.",
+   "considerazioni_limiti": "La zona è il sezionatore generale sul quadro e i circuiti che esso alimenta. L'esposizione si ha in manutenzione e pulizia, quando si lavora sull'impianto fermo.",
+   "considerazioni_soggetti": "Il manutentore elettrico interviene su circuiti e componenti. L'addetto alle pulizie lavora dentro le cabine vicino a nastri, spazzole e tavole, confidando che l'impianto sia sezionato.",
+   "considerazioni_stima_iniziale": "Se 4: una rialimentazione con persona in zona può essere mortale. Fr 3: manutenzioni e pulizie profonde sono occasionali. Pr 3: senza lucchettaggio la rialimentazione è possibile. Av 3: evitamento possibile solo se ci si accorge in tempo. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca il sezionatore generale è lucchettabile in posizione aperto e facilmente raggiungibile. Come informazione per l'uso, il manuale indica le parti che restano in tensione dopo il sezionamento.",
+   "considerazioni_stima_finale": "Se resta 4 perché il danno non cambia. Fr scende a 2: con il lucchetto personale l'esposizione a una rialimentazione diventa rara. Pr 1 per il sezionatore lucchettabile, Av 1 perché il manuale segnala le parti ancora in tensione. Esito: misure SUGGERITE, vedi rischio residuo sul lucchetto personale prima di ogni intervento."
+  }
+ },
+ "ELE-04": {
+  "requisito": "1.5.6",
+  "campi": {
+   "considerazioni_pericoli": "Sovraccarichi e cortocircuiti nel quadro o nei cavi generano archi, calore e proiezioni (2.2.2). Possono innescare l'incendio di isolanti, polveri o residui di pasta abrasiva (7.2.1).",
+   "considerazioni_limiti": "La zona è il quadro elettrico con i cavi di alimentazione. Un guasto può verificarsi in qualsiasi condizione operativa, anche a impianto fermo ma alimentato.",
+   "considerazioni_soggetti": "L'operatore di conduzione e i terzi di passaggio si trovano vicino al quadro durante il lavoro. Il manutentore elettrico interviene sui circuiti dove un cortocircuito può manifestarsi.",
+   "considerazioni_stima_iniziale": "Se 3: ustioni o inalazione di fumi possono lasciare esiti permanenti. Fr 2: gli eventi di cortocircuito sono rari. Pr 2: l'innesco di un incendio è raro. Av 3: l'allontanamento è possibile. Esito: misure SUGGERITE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca sono previste protezioni contro sovraccarico e cortocircuito. I cavi sono dimensionati per la corrente e non propagano la fiamma.",
+   "considerazioni_stima_finale": "Se 3 e Fr 2 restano: gravità e frequenza reale non cambiano. Pr scende a 1 perché le protezioni interrompono il guasto prima dell'innesco. Av scende a 1 perché i cavi non propaganti limitano l'estensione dell'incendio. Esito: OK."
+  }
+ },
+ "GEN-03": {
+  "requisito": "1.1.3",
+  "campi": {
+   "considerazioni_pericoli": "Le parti a contatto con operatori e pezzi possono rilasciare sostanze nocive se i materiali costruttivi le contengono o reagiscono con paste, oli e detergenti (7.1.1). L'esposizione avviene per contatto cutaneo o inalazione durante il lavoro.",
+   "considerazioni_limiti": "La zona comprende superfici, carter e attrezzature dell'impianto toccate dall'operatore o dai pezzi. L'esposizione si considera nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica e scarica i pezzi e tocca le parti dell'impianto durante il lavoro ordinario.",
+   "considerazioni_stima_iniziale": "Se 2: un'irritazione o intossicazione lieve è reversibile con cure mediche. Fr 3: il contatto con materiali critici è occasionale, non quotidiano. Pr 2: con materiali industriali comuni l'evento è raro. Av 3: l'operatore può accorgersi del fastidio e allontanarsi. Cl 8 con Se 2: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: i materiali sono scelti senza sostanze pericolose note e compatibili con paste, oli e detergenti previsti, eliminando la sorgente. Informazioni: il manuale elenca i prodotti ammessi e rimanda alle schede di sicurezza.",
+   "considerazioni_stima_finale": "Pr scende a 1 perché la scelta dei materiali e la loro compatibilità con i prodotti d'uso rendono l'evento trascurabile. Se 2, Fr 3 e Av 3 restano invariati: danno e frequenza reale non cambiano. Cl 7: esito OK."
+  }
+ },
+ "GEN-04": {
+  "requisito": "1.1.4",
+  "campi": {
+   "considerazioni_pericoli": "Un'illuminazione insufficiente nella cella impedisce di vedere bene organi mobili, utensili e pezzi (8.2.1). Ne derivano errori di manovra, urti e contatti involontari.",
+   "considerazioni_limiti": "La zona comprende le aree di lavoro, regolazione e manutenzione dentro e attorno alla cella. È rilevante nel funzionamento normale, in regolazione/attrezzamento e in manutenzione.",
+   "considerazioni_soggetti": "Operatore di conduzione, operatore di attrezzaggio e manutentore meccanico controllano, regolano e intervengono nella cella e hanno bisogno di vedere bene.",
+   "considerazioni_stima_iniziale": "Se 2: le lesioni da errore visivo sono reversibili con cure mediche. Fr 5: si lavora nelle zone più volte al giorno. Pr 2: l'errore dovuto alla sola luce è raro. Av 3: l'operatore può sospendere l'intervento se non vede. Cl 10 con Se 2: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: la cella ha illuminazione interna adeguata a controllo e manutenzione. Informazioni: il manuale indica l'illuminazione ambiente che il cliente deve garantire nel locale.",
+   "considerazioni_stima_finale": "Pr scende a 1 e Av a 1 perché l'illuminazione interna rende visibili organi e pezzi, così l'operatore riconosce subito le situazioni pericolose. Se 2 e Fr 5 restano: danno e frequenza reale invariati. Cl 7: esito OK."
+  }
+ },
+ "GEN-05": {
+  "requisito": "1.1.5",
+  "campi": {
+   "considerazioni_pericoli": "Durante sollevamento e trasporto i gruppi pesanti possono oscillare, ribaltarsi o cadere (1.1.3). Anche parti mobili non bloccate possono spostarsi e schiacciare mani o piedi (1.2.1).",
+   "considerazioni_limiti": "La zona è attorno ai gruppi sollevati o movimentati. L'esposizione si ha solo in installazione, trasporto e smantellamento.",
+   "considerazioni_soggetti": "L'installatore/collaudatore imbraca, solleva, posiziona e smonta i gruppi dell'impianto.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento sotto un gruppo pesante può causare lesioni permanenti. Fr 2: le movimentazioni avvengono meno di una volta all'anno. Pr 3: senza indicazioni l'imbracatura errata è possibile. Av 3: l'evento è lento ma si può evitare solo in parte. Cl 8 con Se 3: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: punti di sollevamento dimensionati e indicati, come golfari e passaggi forche. Protezione: parti mobili bloccate con fermi rimovibili segnalati. Informazioni: masse, baricentro e schema di sollevamento sui gruppi e nel manuale.",
+   "considerazioni_stima_finale": "Pr scende a 1 grazie a punti di sollevamento dedicati e fermi di trasporto. Av scende a 1 perché masse e baricentro noti permettono di pianificare il sollevamento. Se 3 e Fr 2 restano invariati. Cl 4: esito OK."
+  }
+ },
+ "GEN-06": {
+  "requisito": "1.1.6",
+  "campi": {
+   "considerazioni_pericoli": "Un pannello mal posizionato obbliga a posture scorrette e movimenti ripetuti (8.1.1, 8.1.2). Un'interfaccia poco chiara causa affaticamento ed errori di comando (8.2.2).",
+   "considerazioni_limiti": "La zona è il pannello operatore e le postazioni di comando. L'esposizione si ha nel funzionamento normale, per tutto il turno.",
+   "considerazioni_soggetti": "L'operatore di conduzione usa il pannello e lavora alle postazioni di comando durante la produzione.",
+   "considerazioni_stima_iniziale": "Se 2: i disturbi muscolo-scheletrici e da stress sono reversibili con cure. Fr 5: il pannello si usa più volte all'ora. Pr 2: il danno richiede esposizioni sfavorevoli prolungate, quindi è raro. Av 3: l'operatore può correggere in parte la postura. Cl 10 con Se 2: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: pannello ad altezza e orientamento ergonomici, schermate in lingua con messaggi chiari, ritmo determinato dall'operatore. Informazioni: il manuale descrive postazioni e operazioni.",
+   "considerazioni_stima_finale": "Pr scende a 1 perché la postazione ergonomica e il ritmo libero eliminano le cause di sovraccarico. Av scende a 1 perché l'operatore può fermarsi e regolare la postura. Se 2 e Fr 5 restano. Cl 7: esito OK."
+  }
+ },
+ "GEN-08": {
+  "requisito": "1.3.1",
+  "campi": {
+   "considerazioni_pericoli": "Una struttura non stabile o non ancorata può ribaltarsi per spinte, vibrazioni o sbilanciamento dei gruppi (1.1.3). La massa dei gruppi può colpire o schiacciare le persone vicine.",
+   "considerazioni_limiti": "La zona è l'intera struttura dell'impianto e l'area circostante. L'esposizione si considera nel funzionamento normale e in installazione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora accanto alla struttura. L'installatore/collaudatore la posiziona e la fissa al pavimento.",
+   "considerazioni_stima_iniziale": "Se 3: il ribaltamento di un gruppo può causare lesioni permanenti. Fr 2: le condizioni di instabilità sono molto rare, meno di una volta all'anno. Pr 3: senza ancoraggio il ribaltamento è possibile. Av 3: si può evitare solo in parte. Cl 8 con Se 3: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: struttura verificata per stabilità e gruppi ancorati al pavimento con tasselli. Informazioni: il manuale indica caratteristiche del pavimento e modalità di ancoraggio.",
+   "considerazioni_stima_finale": "Pr scende a 1 perché verifica di stabilità e ancoraggio rendono trascurabile il ribaltamento. Av scende a 1 perché l'installatore segue modalità di ancoraggio definite. Se 3 e Fr 2 restano. Cl 4: esito OK."
+  }
+ },
+ "GEN-09": {
+  "requisito": "1.3.4",
+  "campi": {
+   "considerazioni_pericoli": "Bordi di lamiera, profili tagliati e spigoli dei carter possono tagliare mani e avambracci per contatto o strisciamento (1.2.3).",
+   "considerazioni_limiti": "La zona comprende lamiere, profili e carter accessibili dell'impianto. L'esposizione si ha nel funzionamento normale e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino ai carter. Il manutentore meccanico smonta e maneggia lamiere e protezioni.",
+   "considerazioni_stima_iniziale": "Se 2: i tagli sono reversibili con cure mediche. Fr 4: il contatto con le lamiere avviene ogni giorno o quasi. Pr 2: il taglio da bordo è raro. Av 3: il contatto è spesso involontario ed evitabile solo in parte. Cl 9 con Se 2: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: bordi rifilati o ripiegati, spigoli accessibili arrotondati, profili chiusi con tappi. Il pericolo è eliminato alla fonte senza ricorrere a protezioni o informazioni.",
+   "considerazioni_stima_finale": "Pr scende a 1 e Av a 1 perché bordi trattati e spigoli arrotondati eliminano le parti taglienti accessibili. Se 2 e Fr 4 restano: danno e frequenza reale invariati. Cl 6: esito OK."
+  }
+ },
+ "GEN-10": {
+  "requisito": "1.3.5",
+  "campi": {
+   "considerazioni_pericoli": "In un impianto con più zone, l'operatore in una zona può essere raggiunto da movimenti di un'altra zona ancora attiva (1.1.4). Più fattori pericolosi possono sommarsi nello stesso intervento (10.1.1).",
+   "considerazioni_limiti": "La zona comprende le diverse aree di lavoro dello stesso impianto e i loro confini. L'esposizione si ha in funzionamento normale, manutenzione e sblocco anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione interviene per sblocchi e controlli. Il manutentore meccanico entra nelle zone mentre altre possono essere in funzione.",
+   "considerazioni_stima_iniziale": "Se 3: l'urto con un organo in moto può dare lesioni permanenti. Fr 3: gli interventi con altre zone attive sono periodici, non quotidiani. Pr 3: senza separazione delle zone l'evento è possibile. Av 3: l'operatore può evitarlo solo in parte. Cl 9 con Se 3: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: ogni zona si arresta e si mette in sicurezza separatamente. Protezione: l'accesso a una zona arresta i movimenti di quella zona e di quelle raggiungibili. Informazioni: il manuale descrive zone e movimenti arrestati.",
+   "considerazioni_stima_finale": "Fr scende a 2 perché, con arresto per zona, l'esposizione a movimenti di zone ancora attive diventa molto rara. Pr e Av scendono a 1 grazie all'arresto automatico all'accesso. Se 3 resta. Cl 4: esito OK."
+  }
+ },
+ "GEN-11": {
+  "requisito": "1.5.4",
+  "campi": {
+   "considerazioni_pericoli": "Un collegamento invertito tra i gruppi può causare movimenti imprevisti di organi mobili (1.1.4). Un errore di cablaggio o di messa a terra può mettere in tensione masse metalliche (2.1.2).",
+   "considerazioni_limiti": "La zona comprende i collegamenti elettrici e pneumatici tra i gruppi. L'esposizione si ha in installazione e in manutenzione, quando si scollegano e ricollegano.",
+   "considerazioni_soggetti": "Il manutentore elettrico e l'installatore/collaudatore eseguono i collegamenti tra i gruppi e ne verificano il funzionamento.",
+   "considerazioni_stima_iniziale": "Se 3: un movimento imprevisto o un contatto indiretto possono dare lesioni permanenti. Fr 2: montaggi e ricollegamenti sono meno di uno all'anno. Pr 3: senza codifica l'errore è possibile. Av 3: l'effetto si manifesta al riavvio, evitabile in parte. Cl 8 con Se 3: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: connettori codificati o non intercambiabili, tubi e cavi numerati come negli schemi. Informazioni: schemi e istruzioni di montaggio con le marcature dei collegamenti.",
+   "considerazioni_stima_finale": "Pr scende a 1 perché i connettori non intercambiabili rendono improbabile l'inversione. Av scende a 1 perché marcature e schemi permettono di verificare i collegamenti prima del riavvio. Se 3 e Fr 2 restano. Cl 4: esito OK."
+  }
+ },
+ "GEN-12": {
+  "requisito": "1.5.8",
+  "campi": {
+   "considerazioni_pericoli": "Motori, aspirazione e lavorazione abrasiva generano rumore che può causare ipoacusia per esposizione prolungata (4.1.1). Il rumore può anche coprire voce e segnali acustici di allarme (4.2.2).",
+   "considerazioni_limiti": "La zona è il posto dell'operatore e l'area attorno all'impianto. L'esposizione si ha nel funzionamento normale, durante tutto il ciclo produttivo.",
+   "considerazioni_soggetti": "L'operatore di conduzione resta al posto di lavoro per il turno. I terzi di passaggio transitano vicino all'impianto in funzione.",
+   "considerazioni_stima_iniziale": "Se 2: si considerano effetti reversibili e mascheramento dei segnali, con valori da misurare. Fr 5: l'esposizione è continua nel turno. Pr 3: senza riduzioni il superamento dei limiti è possibile. Av 3: ci si può allontanare solo in parte. Cl 11 con Se 2: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: motori e aspirazione a bassa rumorosità e silenziatori sugli scarichi riducono il rumore alla fonte. Protezione: cabina chiusa con pannelli fonoassorbenti. Informazioni: valori di emissione dichiarati nel manuale e indicazione sui DPI.",
+   "considerazioni_stima_finale": "Pr scende a 1 grazie a sorgenti silenziate e cabina fonoassorbente. Av scende a 1 perché i valori dichiarati consentono di adottare i DPI se necessario. Se 2 e Fr 5 restano: l'esposizione reale non cambia. Cl 7: esito OK."
+  }
+ },
+ "GEN-13": {
+  "requisito": "1.5.15",
+  "campi": {
+   "considerazioni_pericoli": "Cavi e tubi a pavimento, gocce di pasta, olio e polveri rendono il pavimento scivoloso o ingombro (9.2.2). Ne derivano scivolamenti, inciampi e cadute a terra.",
+   "considerazioni_limiti": "La zona è il pavimento attorno all'impianto e le zone di accesso. L'esposizione si ha in funzionamento normale, manutenzione e pulizia.",
+   "considerazioni_soggetti": "Operatore, manutentore e addetto alle pulizie camminano attorno all'impianto per il lavoro. I terzi di passaggio transitano nelle vie di accesso.",
+   "considerazioni_stima_iniziale": "Se 2: le lesioni da caduta a terra sono in genere reversibili con cure. Fr 4: il transito avviene ogni giorno. Pr 3: con gocciolamenti e cavi a terra la caduta è possibile. Av 3: si può evitare solo in parte. Cl 10 con Se 2: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: nessun cavo o tubo nelle vie di passaggio, con canaline aeree o carrabili, e vasche di raccolta sotto i punti di gocciolamento. Informazioni: il manuale chiede di tenere pulito il pavimento.",
+   "considerazioni_stima_finale": "Pr scende a 1 perché canaline e vasche eliminano ostacoli e sostanze scivolose. Av scende a 1 perché il pavimento sgombro e pulito permette di camminare in sicurezza. Se 2 e Fr 4 restano. Cl 6: esito OK."
+  }
+ },
+ "GEN-14": {
+  "requisito": "1.6.1",
+  "campi": {
+   "considerazioni_pericoli": "Nei punti di manutenzione l'operatore può essere colpito o trascinato da organi in movimento o da riavvii inattesi (1.1.4).",
+   "considerazioni_limiti": "La zona comprende i punti di regolazione, lubrificazione e manutenzione dell'impianto. L'esposizione si ha solo in manutenzione.",
+   "considerazioni_soggetti": "Il manutentore meccanico esegue regolazioni, lubrificazioni e sostituzioni dei componenti.",
+   "considerazioni_stima_iniziale": "Se 3: l'impatto con organi in moto può dare lesioni permanenti. Fr 3: gli interventi sono periodici, tra due settimane e un anno. Pr 3: senza accorgimenti il contatto è possibile. Av 3: si può evitare solo in parte. Cl 9 con Se 3: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: punti di manutenzione fuori dalle zone pericolose dove possibile. Protezione: interventi all'interno solo a macchina ferma e con energie isolate. Informazioni: piano di manutenzione con frequenze, qualifiche e procedure.",
+   "considerazioni_stima_finale": "Pr scende a 1 e Av a 1 perché punti esterni ed energie isolate rendono trascurabile il contatto con parti in moto. Se 3 e Fr 3 restano. Cl 5 con Se 3: misure SUGGERITE; si rimanda al rischio residuo sulla manutenzione a energie isolate."
+  }
+ },
+ "GEN-15": {
+  "requisito": "1.6.2",
+  "campi": {
+   "considerazioni_pericoli": "Per raggiungere motori di aspirazione e carter superiori il manutentore può salire su appoggi improvvisati. Ne deriva il rischio di caduta dall'alto (9.2.2).",
+   "considerazioni_limiti": "La zona comprende le parti alte dell'impianto, come motori di aspirazione e carter superiori. L'esposizione si ha solo in manutenzione.",
+   "considerazioni_soggetti": "Il manutentore meccanico deve raggiungere i componenti in quota per controlli e sostituzioni.",
+   "considerazioni_stima_iniziale": "Se 3: la caduta dall'alto può dare lesioni permanenti. Fr 3: gli interventi in quota sono periodici, non quotidiani. Pr 3: senza accessi idonei la caduta è possibile. Av 3: si può evitare solo in parte. Cl 9 con Se 3: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: componenti da manutenere spesso raggiungibili da terra. Protezione: piattaforma o scala fissa con parapetti dove serve l'accesso in quota. Informazioni: il manuale indica i mezzi per gli interventi occasionali.",
+   "considerazioni_stima_finale": "Pr scende a 1 perché gli interventi frequenti si fanno da terra e gli accessi in quota hanno parapetti. Av scende a 1 per accessi stabili e mezzi indicati. Se 3 e Fr 3 restano. Cl 5 con Se 3: misure SUGGERITE; si rimanda al rischio residuo sui mezzi per lavori in quota."
+  }
+ },
+ "INF-01": {
+  "requisito": "1.7.1.1",
+  "campi": {
+   "considerazioni_pericoli": "Messaggi di stato e allarme poco chiari o in lingua non compresa portano a interpretazioni errate (8.2.2). L'operatore può così compiere manovre sbagliate.",
+   "considerazioni_limiti": "La zona è il pannello operatore, consultato in tutte le condizioni operative indicate, dall'uso normale all'emergenza, dall'installazione allo smantellamento.",
+   "considerazioni_soggetti": "L'operatore di conduzione legge i messaggi durante la produzione. Il manutentore meccanico li usa per diagnosi e interventi.",
+   "considerazioni_stima_iniziale": "Se 2: le conseguenze di un errore da messaggio poco chiaro sono reversibili con cure. Fr 5: i messaggi si consultano più volte all'ora. Pr 2: l'errore da sola interpretazione è raro. Av 3: l'operatore può chiedere conferma prima di agire. Cl 10 con Se 2: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: messaggi di allarme e stato nella lingua del paese di utilizzo, comprensibili senza ambiguità. La misura agisce alla fonte, sull'interfaccia.",
+   "considerazioni_stima_finale": "Pr scende a 1 e Av a 1 perché messaggi chiari in lingua eliminano le interpretazioni errate e guidano la risposta corretta. Se 2 e Fr 5 restano. Cl 7: esito OK."
+  }
+ },
+ "INF-02": {
+  "requisito": "1.7.1.2",
+  "campi": {
+   "considerazioni_pericoli": "Se lo stato dell'impianto non è segnalato in modo chiaro, chi è vicino non si accorge di avvii o allarmi. Il rumore può coprire i segnali (4.2.2) e segnali confusi aumentano gli errori (8.2.2).",
+   "considerazioni_limiti": "La zona è la segnalazione di stato dell'impianto, visibile e udibile attorno alla macchina. È rilevante in tutte le condizioni operative indicate.",
+   "considerazioni_soggetti": "Operatore e manutentore devono riconoscere stato e allarmi prima di intervenire. I terzi di passaggio devono accorgersi di avvii e anomalie.",
+   "considerazioni_stima_iniziale": "Se 2: le conseguenze di un segnale non percepito sono reversibili con cure. Fr 5: lo stato si osserva più volte all'ora. Pr 2: il mancato riconoscimento è raro. Av 3: si può reagire solo in parte. Cl 10 con Se 2: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: colonna luminosa con colori secondo norma e segnale acustico per allarmi e avvio. La doppia segnalazione, visiva e sonora, agisce alla fonte.",
+   "considerazioni_stima_finale": "Pr scende a 1 e Av a 1 perché colori normalizzati e segnale acustico rendono riconoscibili stato, allarmi e avvio. Se 2 e Fr 5 restano. Cl 7: esito OK."
+  }
+ },
+ "LUC-01": {
+  "requisito": "1.3.8.2",
+  "campi": {
+   "considerazioni_pericoli": "Dischi e spazzole ruotano ad alta velocità. Indumenti o capelli possono impigliarsi (1.2.4), la mano essere trascinata tra disco e pezzo (1.2.5) o abrasa (1.2.8).",
+   "considerazioni_limiti": "La zona pericolosa sono i dischi e le spazzole in rotazione. L'esposizione avviene nel funzionamento normale e in regolazione/attrezzamento.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino alle porte della cella. L'operatore di attrezzaggio regola e sostituisce dischi e spazzole.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento sul disco può causare lesioni permanenti alle mani. Fr 4: accessi e regolazioni sono quotidiani o settimanali. Pr 3: senza ripari il contatto è possibile. Av 3: la rotazione veloce rende la fuga solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: unità dentro la cella chiusa e carter sul disco che lascia scoperta solo la zona di lavoro. Le porte sono interbloccate con bloccaggio fino all'arresto del disco. Non sono previste misure di progettazione intrinseca specifiche.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 3 perché l'interblocco con bloccaggio fino a fermo elimina l'esposizione in produzione. Pr e Av scendono a 1. Se 3 resta. Cl 5: misure SUGGERITE, vedi rischio residuo sugli interblocchi."
+  }
+ },
+ "LUC-02": {
+  "requisito": "1.3.8.1",
+  "campi": {
+   "considerazioni_pericoli": "Motori e trasmissioni dell'unità di lucidatura hanno organi rotanti. Indumenti o dita possono impigliarsi (1.2.4) ed essere trascinati (1.2.5).",
+   "considerazioni_limiti": "La zona pericolosa sono motori e trasmissioni dell'unità. L'esposizione avviene durante la manutenzione, quando si accede alle trasmissioni.",
+   "considerazioni_soggetti": "Il manutentore meccanico interviene su motori, cinghie e trasmissioni per controlli e sostituzioni.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento nella trasmissione può causare perdita di dita. Fr 3: la manutenzione è periodica. Pr 3: con trasmissioni scoperte il contatto è possibile. Av 3: la presa è rapida, sottrarsi è solo possibile. Cl 9: misure RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: le trasmissioni sono chiuse da ripari fissi, rimovibili solo con attrezzo. Gli organi in moto non sono raggiungibili durante il funzionamento.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie ai ripari fissi. Se 3 e Fr 3 restano quelle reali. Cl 5: misure SUGGERITE, vedi rischio residuo sul rimontaggio dei ripari."
+  }
+ },
+ "LUC-03": {
+  "requisito": "1.3.2",
+  "campi": {
+   "considerazioni_pericoli": "Dischi e spazzole ad alta velocità periferica possono rompersi per sovravelocità o usura (1.1.6). Frammenti, fili o tele vengono proiettati con energia cinetica (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa sono i dischi e le spazzole e lo spazio circostante. L'esposizione avviene nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione sorveglia la produzione e si trova vicino all'unità di lucidatura.",
+   "considerazioni_stima_iniziale": "Se 3: un frammento proiettato può causare lesioni permanenti, ad esempio agli occhi. Fr 4: la presenza vicino all'unità è quotidiana. Pr 3: la rottura di un disco usurato è possibile. Av 3: la proiezione è improvvisa. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: velocità periferica non superiore a quella ammessa per dischi e spazzole. Protezioni: carter che trattiene i frammenti. Informazioni: il manuale indica dischi e spazzole ammessi e la velocità massima.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 2 perché il carter elimina l'esposizione alla traiettoria dei frammenti. Pr e Av scendono a 1 per velocità limitata e carter. Se 3 resta. Cl 4: esito OK."
+  }
+ },
+ "LUC-04": {
+  "requisito": "1.3.9",
+  "campi": {
+   "considerazioni_pericoli": "Gli assi CNC possono muoversi in modo inatteso o scendere per gravità (1.1.4). Una persona tra asse e struttura può essere schiacciata (1.2.1).",
+   "considerazioni_limiti": "La zona pericolosa sono gli assi CNC dell'unità. L'esposizione avviene in manutenzione e nello sblocco di anomalie, con porte aperte.",
+   "considerazioni_soggetti": "L'operatore di conduzione accede all'unità per liberare pezzi bloccati. Il manutentore meccanico lavora sotto e vicino agli assi.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento da un asse può causare lesioni permanenti. Fr 3: manutenzioni e sblocchi sono occasionali. Pr 3: un movimento inatteso è possibile. Av 3: la discesa è rapida, sottrarsi è solo possibile. Cl 9: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: assi verticali con freno o motore autofrenante e trascinamenti irreversibili. Protezioni: arresto sicuro degli assi con porte aperte, che impedisce movimenti durante l'intervento.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie a freni, trascinamenti irreversibili e arresto sicuro. Se 3 e Fr 3 restano quelle reali. Cl 5: misure SUGGERITE, vedi rischio residuo sul blocco meccanico dell'asse."
+  }
+ },
+ "LUC-05": {
+  "requisito": "1.6.4",
+  "campi": {
+   "considerazioni_pericoli": "Durante la sostituzione un riavvio inatteso rimette in rotazione dischi e spazzole (1.1.4). Mani o indumenti possono impigliarsi nel mandrino (1.2.4).",
+   "considerazioni_limiti": "La zona pericolosa è il mandrino durante la sostituzione di dischi e spazzole. L'esposizione avviene in regolazione/attrezzamento e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio sostituisce dischi e spazzole usurati. Il manutentore meccanico interviene sull'unità.",
+   "considerazioni_stima_iniziale": "Se 3: un riavvio con le mani sul disco può causare lesioni permanenti. Fr 4: le sostituzioni sono almeno settimanali. Pr 3: senza isolamento il riavvio è possibile. Av 3: l'avviamento è improvviso. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: sostituzione rapida senza attrezzi speciali, da posizione accessibile, che riduce durata e disagio dell'intervento. Protezioni: sezionamento locale lucchettabile dell'unità, che impedisce il riavvio.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 3 perché la sostituzione rapida riduce la durata dell'esposizione. Pr e Av scendono a 1 con il sezionamento lucchettabile. Se 3 resta. Cl 5: misure SUGGERITE, vedi rischio residuo sulle sostituzioni a unità isolata."
+  }
+ },
+ "LUC-06": {
+  "requisito": "1.5.5",
+  "campi": {
+   "considerazioni_pericoli": "L'attrito della lucidatura scalda dischi e pezzi a temperature elevate. Toccarli a mani nude provoca ustioni (3.1.1).",
+   "considerazioni_limiti": "La zona pericolosa sono i dischi e i pezzi appena lucidati. L'esposizione avviene in manutenzione e nello sblocco di anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione rimuove pezzi bloccati appena lucidati. Il manutentore meccanico interviene sui dischi subito dopo l'arresto.",
+   "considerazioni_stima_iniziale": "Se 2: le ustioni da contatto sono reversibili con cure mediche. Fr 3: sblocchi e manutenzioni sono occasionali. Pr 3: toccare un pezzo caldo è possibile. Av 3: la superficie calda non è riconoscibile a vista. Cl 9: misure SUGGERITE.",
+   "considerazioni_riduzione": "Informazioni per l'uso: avvertenza sul pericolo di superfici calde presso l'unità e nel manuale. Non sono applicabili misure di progettazione o protezione, perché il calore è intrinseco al processo.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 2 grazie all'avvertenza. Se 2 e Fr 3 restano; Av 3 resta perché il calore non è visibile. Cl 8: misure SUGGERITE, vedi rischio residuo su raffreddamento e guanti."
+  }
+ },
+ "PAL-01": {
+  "requisito": "1.3.7",
+  "campi": {
+   "considerazioni_pericoli": "Durante lo scambio il pallet si sposta tra carico e lavoro passando accanto alla struttura fissa. Tra pallet in movimento e parti fisse si formano punti di schiacciamento (1.2.1) e cesoiamento (1.2.2).",
+   "considerazioni_limiti": "La zona è il percorso del pallet tra la stazione di carico e la zona di lavoro. Si è esposti in funzionamento normale, a ogni scambio pallet.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica e scarica i pezzi sul pallet in stazione e si trova vicino al pallet quando inizia lo scambio.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento può causare perdita di dita o lesioni permanenti. Fr 5: lo scambio si ripete più volte all'ora. Pr 3: con operatore vicino il contatto durante lo scambio è possibile. Av 3: il movimento è prevedibile ma rapido. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: spazi minimi tra pallet in movimento e struttura. Passo 2, protezioni: riparo fisso tra carico e lavoro con apertura per il solo pallet; scambio solo con zona di carico libera, sorvegliata da barriera.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché lo scambio avviene solo con zona libera e gli spazi minimi evitano lo schiacciamento. Se 3 resta; Fr 5 è la frequenza reale degli scambi. Cl 7: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "PAL-02": {
+  "requisito": "1.4.3",
+  "campi": {
+   "considerazioni_pericoli": "L'accesso alla stazione di carico è controllato da un dispositivo di protezione. Se lo scambio pallet parte con l'operatore in stazione, si ha schiacciamento (1.2.1).",
+   "considerazioni_limiti": "La zona è l'accesso alla stazione di carico del doppio pallet. L'esposizione avviene in funzionamento normale, a ogni ciclo di carico.",
+   "considerazioni_soggetti": "L'operatore di conduzione entra nella stazione di carico a ogni ciclo per caricare e scaricare i pezzi.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento può causare lesioni permanenti. Fr 5: l'accesso si ripete più volte all'ora. Pr 3: senza rilevamento della presenza l'avvio con operatore in zona è possibile. Av 3: il movimento è prevedibile ma rapido. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: barriera fotoelettrica o scanner con PL adeguato rileva la presenza nella stazione. Il ripristino è manuale e dall'esterno, così lo scambio non riparte da solo.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché la barriera impedisce lo scambio con l'operatore presente e il ripristino richiede un comando volontario. Se 3 resta; Fr 5 è la frequenza reale degli accessi. Cl 7: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "PAL-03": {
+  "requisito": "1.1.6",
+  "campi": {
+   "considerazioni_pericoli": "Il carico manuale dei pezzi sul pallet comporta posture incongrue e sforzi (8.1.1). La ripetizione dei gesti può sovraccaricare mano, polso e braccio (8.1.2).",
+   "considerazioni_limiti": "La zona è la postazione di carico pallet. L'esposizione avviene in funzionamento normale, per tutta la durata del turno.",
+   "considerazioni_soggetti": "L'operatore di conduzione dispone e preleva manualmente e ripetutamente i pezzi sul pallet.",
+   "considerazioni_stima_iniziale": "Se 2: disturbi muscoloscheletrici reversibili con cure mediche. Fr 5: il gesto si ripete più volte all'ora. Pr 3: con altezze o distanze inadeguate il sovraccarico è possibile. Av 3: l'operatore può correggere la postura solo in parte. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: altezza del pallet ergonomica e posizioni dei pezzi raggiungibili senza sporgersi.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché altezza ergonomica e raggiungibilità delle posizioni eliminano posture forzate. Se 2 resta; Fr 5 è la frequenza reale del carico. Cl 7: esito OK."
+  }
+ },
+ "PAL-04": {
+  "requisito": "1.3.3",
+  "campi": {
+   "considerazioni_pericoli": "Durante lo scambio pallet accelerazioni e arresti possono spostare i pezzi. Un pezzo non trattenuto può cadere per gravità (1.1.3) e colpire l'operatore.",
+   "considerazioni_limiti": "La zona riguarda i pezzi sul pallet durante lo scambio. Si è esposti in funzionamento normale, in prossimità della stazione di carico.",
+   "considerazioni_soggetti": "L'operatore di conduzione è vicino al pallet durante e subito dopo lo scambio, per caricare i pezzi successivi.",
+   "considerazioni_stima_iniziale": "Se 2: contusioni da caduta del pezzo, reversibili con cure mediche. Fr 5: lo scambio si ripete più volte all'ora. Pr 2: la caduta di un pezzo è rara. Av 3: la caduta è improvvisa ma talvolta evitabile. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: supporti con riferimenti che impediscono la caduta dei pezzi durante lo scambio. Passo 2, misura complementare: controllo presenza pezzo prima dello scambio.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché i riferimenti trattengono i pezzi e il controllo di presenza verifica il corretto posizionamento. Se 2 resta; Fr 5 è la frequenza reale degli scambi. Cl 7: esito OK."
+  }
+ },
+ "PAS-01": {
+  "requisito": "1.5.13",
+  "campi": {
+   "considerazioni_pericoli": "La pasta abrasiva nebulizzata dagli ugelli genera aerosol e residui sulle superfici (7.1.1). L'esposizione avviene per inalazione della nebbia o per contatto cutaneo con la pasta durante il rabbocco.",
+   "considerazioni_limiti": "La zona comprende serbatoio, ugelli e area di spruzzatura nella zona di pulitura. Si è esposti in funzionamento normale, per la nebbia dispersa, e in manutenzione, durante rabbocco e interventi sul circuito.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino alla cella e rabbocca il serbatoio. Il manutentore interviene sul circuito della pasta. I terzi di passaggio possono respirare la nebbia dispersa nell'ambiente.",
+   "considerazioni_stima_iniziale": "Se 2: irritazioni cutanee o respiratorie, reversibili con cure mediche. Fr 4: rabbocchi e presenza vicino alla cella si ripetono più volte a settimana. Pr 3: senza confinamento la dispersione della nebbia è possibile. Av 3: ci si può allontanare, ma l'aerosol non è sempre percepibile. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: la spruzzatura avviene dentro la cella aspirata, che confina e capta la nebbia alla fonte. Passo 3, informazioni per l'uso: il manuale rimanda alla scheda di sicurezza della pasta e indica i DPI per il rabbocco.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 perché la spruzzatura in cella aspirata impedisce la dispersione della nebbia. Se 2 resta perché la sostanza non cambia; Fr 4 è la frequenza reale dei rabbocchi. Av 3 resta: al rabbocco il contatto si evita solo con i DPI. Cl 8: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "PAS-02": {
+  "requisito": "1.5.3",
+  "campi": {
+   "considerazioni_pericoli": "La pompa mette in pressione la pasta nelle tubazioni. La rottura di un tubo o l'apertura di un raccordo in pressione può causare eiezione di fluido (1.2.9) e contatto con la pasta (7.1.1).",
+   "considerazioni_limiti": "La zona è costituita da pompa e tubazioni della pasta nella zona di pulitura. Si è esposti in funzionamento normale, per un eventuale cedimento, e in manutenzione, quando si aprono tubi o ugelli.",
+   "considerazioni_soggetti": "L'operatore di conduzione si trova vicino al circuito durante il lavoro. Il manutentore meccanico interviene direttamente su tubi, raccordi e ugelli, anche smontandoli.",
+   "considerazioni_stima_iniziale": "Se 2: getto di pasta su occhi o pelle, lesione reversibile con cure mediche. Fr 3: gli interventi sul circuito sono periodici, meno di una volta ogni due settimane. Pr 2: il cedimento o l'apertura in pressione è un evento raro. Av 3: il getto è improvviso, ma talvolta prevedibile. Cl 8: misure SUGGERITE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: tubazioni adatte alla pressione della pompa e valvola di sicurezza contro le sovrapressioni. Passo 2, misura complementare: scarico della pressione prima di aprire tubi o ugelli, così il circuito si apre senza energia residua.",
+   "considerazioni_stima_finale": "Pr scende da 2 a 1 grazie a tubazioni adeguate e valvola di sicurezza. Av passa da 3 a 1 perché, scaricata la pressione, l'apertura del circuito non produce getti. Se 2 e Fr 3 restano invariati, essendo legati alla sostanza e alla frequenza reale degli interventi. Cl 5: esito OK."
+  }
+ },
+ "PAS-03": {
+  "requisito": "1.6.1",
+  "campi": {
+   "considerazioni_pericoli": "La pulizia di ugelli e filtri comporta il contatto diretto con residui di pasta abrasiva e con i prodotti detergenti (7.1.1). Sono possibili contatto cutaneo, schizzi agli occhi e inalazione di vapori.",
+   "considerazioni_limiti": "La zona riguarda ugelli e filtri dell'impianto pasta nella zona di pulitura. L'esposizione avviene in manutenzione e pulizia, quando questi componenti vengono smontati e lavati.",
+   "considerazioni_soggetti": "Il manutentore meccanico smonta e pulisce ugelli e filtri. L'addetto alle pulizie rimuove i residui di pasta dall'impianto e dalle superfici vicine.",
+   "considerazioni_stima_iniziale": "Se 2: dermatiti o irritazioni oculari, reversibili con cure mediche. Fr 4: la pulizia di ugelli e filtri è settimanale o più frequente. Pr 3: maneggiando residui e detergenti il contatto è possibile. Av 3: il contatto è evitabile con attenzione, ma non sempre. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: ugelli e filtri sono raggiungibili dall'esterno della cella, senza entrare nella zona contaminata. Passo 3, informazioni per l'uso: il manuale descrive la procedura di pulizia e i prodotti da usare.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1: l'accesso dall'esterno e la procedura del manuale limitano il contatto con i residui. Se 2 resta per la natura dei prodotti; Fr 4 è la frequenza reale della pulizia. Av 3 resta, perché il contatto si evita solo con guanti e occhiali. Cl 8: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "PAS-04": {
+  "requisito": "1.5.15",
+  "campi": {
+   "considerazioni_pericoli": "Perdite o gocciolamenti di pasta da serbatoio e pompa rendono il pavimento scivoloso. Ne deriva rischio di scivolamento e caduta a causa della condizione del piano di calpestio (9.2.2).",
+   "considerazioni_limiti": "La zona è il pavimento attorno al serbatoio della pasta, nella zona di pulitura. Si è esposti in funzionamento normale, transitando nell'area, e in manutenzione, lavorando vicino a serbatoio e pompa.",
+   "considerazioni_soggetti": "L'operatore di conduzione passa vicino al serbatoio e lo rabbocca. Il manutentore lavora su serbatoio e pompa. I terzi di passaggio transitano nell'area senza conoscerne le condizioni.",
+   "considerazioni_stima_iniziale": "Se 2: contusioni o distorsioni da caduta, reversibili con cure mediche. Fr 4: il transito presso il serbatoio è giornaliero o settimanale. Pr 3: senza raccolta delle perdite il pavimento sporco è possibile. Av 3: la superficie scivolosa è visibile, ma non sempre. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: una vasca di raccolta sotto serbatoio e pompa trattiene perdite e gocciolamenti, evitando che la pasta raggiunga il pavimento.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 perché la vasca di raccolta mantiene asciutto il pavimento. Av passa da 3 a 1: in assenza di pasta sul piano non vi sono superfici scivolose nascoste. Se 2 e Fr 4 restano, legati alla caduta e al transito reale. Cl 6: esito OK."
+  }
+ },
+ "PNE-01": {
+  "requisito": "1.5.3",
+  "campi": {
+   "considerazioni_pericoli": "Un tubo o un raccordo che si stacca sotto pressione scarica un getto d'aria e può muoversi a colpo di frusta (1.2.9). Il getto può proiettare polveri o colpire occhi e pelle.",
+   "considerazioni_limiti": "La zona sono tubazioni e attuatori pneumatici lungo l'impianto. L'esposizione si ha in funzionamento normale e durante la manutenzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino alle tubazioni durante la produzione. Il manutentore meccanico interviene su raccordi e attuatori.",
+   "considerazioni_stima_iniziale": "Se 2: un getto d'aria o un colpo di tubo causa lesioni guaribili con cure mediche. Fr 4: la presenza vicino alle tubazioni è quotidiana. Pr 2: un distacco è raro. Av 3: evitamento possibile. Esito: misure SUGGERITE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca tubi e raccordi sono adatti alla pressione massima e fissati per evitare colpi di frusta. Il gruppo trattamento aria ha regolatore e valvola di sicurezza.",
+   "considerazioni_stima_finale": "Se 2 e Fr 4 restano: gravità e presenza quotidiana non cambiano. Pr scende a 1 per componenti dimensionati e pressione limitata dalla valvola di sicurezza. Av scende a 1 perché i tubi fissati non possono muoversi a frusta. Esito: OK."
+  }
+ },
+ "PNE-02": {
+  "requisito": "1.6.3",
+  "campi": {
+   "considerazioni_pericoli": "Senza un sezionamento pneumatico, gli attuatori possono muoversi durante l'intervento per aria residua (1.1.4). Lo smontaggio di componenti in pressione provoca getti d'aria (1.2.9).",
+   "considerazioni_limiti": "La zona è il gruppo trattamento aria con la valvola di sezionamento e i circuiti a valle. L'esposizione si ha in manutenzione, quando si lavora su attuatori e valvole.",
+   "considerazioni_soggetti": "Il manutentore meccanico interviene su cilindri, pinze e valvole. È lui a trovarsi vicino agli attuatori quando potrebbero muoversi.",
+   "considerazioni_stima_iniziale": "Se 3: il movimento di un cilindro o di una pinza può schiacciare le dita con esiti permanenti. Fr 3: gli interventi sugli attuatori sono occasionali. Pr 3: senza scarico l'aria residua è possibile. Av 3: evitamento possibile. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca è prevista una valvola di sezionamento lucchettabile con scarico della pressione residua. Come informazione per l'uso, il manuale indica i circuiti che restano in pressione per accumuli e ritegni e come scaricarli.",
+   "considerazioni_stima_finale": "Se 3 e Fr 3 restano: gravità e frequenza reale degli interventi non cambiano. Pr scende a 1 per la valvola lucchettabile con scarico. Av scende a 1 perché il manuale segnala i circuiti ancora in pressione. Esito: misure SUGGERITE, vedi rischio residuo su sezionamento e scarico prima di intervenire."
+  }
+ },
+ "PNE-03": {
+  "requisito": "1.2.6",
+  "campi": {
+   "considerazioni_pericoli": "Un calo di pressione può far cadere pinze, slitte o organi verticali (1.1.3). Può anche causare movimenti incontrollati degli attuatori al ritorno dell'aria (1.1.4).",
+   "considerazioni_limiti": "La zona sono gli attuatori pneumatici dell'impianto. Un calo di pressione può verificarsi in qualsiasi condizione operativa.",
+   "considerazioni_soggetti": "L'operatore di conduzione e il manutentore meccanico lavorano vicino agli attuatori. Al calo di pressione possono trovarsi nella loro corsa.",
+   "considerazioni_stima_iniziale": "Se 3: la caduta di un organo può causare lesioni permanenti. Fr 2: i cali di pressione sono rari. Pr 3: senza misure il movimento incontrollato è possibile. Av 3: evitamento possibile. Esito: misure RICHIESTE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca gli attuatori restano in posizione sicura al calo di pressione. Un pressostato rileva il calo e arresta l'impianto.",
+   "considerazioni_stima_finale": "Se 3 e Fr 2 restano: gravità e frequenza reale dei cali non cambiano. Pr scende a 1 perché gli attuatori restano in posizione sicura. Av scende a 1 perché il pressostato arresta l'impianto prima di movimenti incontrollati. Esito: OK."
+  }
+ },
+ "PNE-04": {
+  "requisito": "1.5.8",
+  "campi": {
+   "considerazioni_pericoli": "Gli scarichi delle valvole pneumatiche liberano aria con picchi di rumore a ogni commutazione. L'esposizione prolungata contribuisce alla perdita dell'udito (4.1.1).",
+   "considerazioni_limiti": "La zona sono gli scarichi delle elettrovalvole sull'impianto. L'esposizione si ha in funzionamento normale, durante tutto il ciclo produttivo.",
+   "considerazioni_soggetti": "L'operatore di conduzione resta vicino all'impianto per tutto il turno. I terzi di passaggio sono esposti al rumore mentre transitano nell'area.",
+   "considerazioni_stima_iniziale": "Se 1: il contributo degli scarichi al rumore causa disturbi reversibili. Fr 5: gli scarichi commutano più volte all'ora. Pr 3: senza silenziatori il disturbo è possibile. Av 3: allontanarsi è possibile. Esito: misure SUGGERITE.",
+   "considerazioni_riduzione": "Per progettazione intrinseca tutti gli scarichi sono dotati di silenziatori. La misura riduce il rumore alla sorgente.",
+   "considerazioni_stima_finale": "Se 1 e Fr 5 restano: gravità e frequenza delle commutazioni non cambiano. Pr scende a 2 perché i silenziatori riducono i picchi di rumore. Av scende a 1 perché la riduzione alla sorgente non richiede azioni dell'operatore. Esito: OK."
+  }
+ },
+ "ROB-01": {
+  "requisito": "1.3.8.2",
+  "campi": {
+   "considerazioni_pericoli": "Il robot si muove velocemente con il pezzo nella pinza verso le smerigliatrici. Una persona nell'area di lavoro può essere urtata (1.2.6) o schiacciata contro strutture fisse (1.2.1).",
+   "considerazioni_limiti": "La zona pericolosa è l'area di lavoro del robot dentro la cella. L'esposizione avviene nel funzionamento normale, in regolazione/attrezzamento e in programmazione.",
+   "considerazioni_soggetti": "L'operatore di conduzione può avvicinarsi alla cella in produzione. L'operatore di attrezzaggio e il programmatore lavorano dentro l'area del robot.",
+   "considerazioni_stima_iniziale": "Se 4: lo schiacciamento da robot industriale può essere mortale. Fr 4: attrezzaggi e accessi alla cella sono quotidiani o settimanali. Pr 3: senza protezioni il contatto con il robot è possibile. Av 3: i movimenti sono rapidi, evitarli è solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: robot all'interno della cella chiusa, con area di lavoro limitata da limiti software sicuri. Accesso alla cella interbloccato; in programmazione velocità ridotta e dispositivo di abilitazione. Non sono previste misure di progettazione intrinseca specifiche.",
+   "considerazioni_stima_finale": "Se scende da 4 a 3 perché la velocità ridotta in programmazione limita l'energia dell'impatto. Fr scende da 4 a 3 perché in produzione l'accesso interbloccato elimina l'esposizione. Pr e Av scendono a 1. Cl 5: misure SUGGERITE, vedi rischio residuo sulla formazione del programmatore."
+  }
+ },
+ "ROB-02": {
+  "requisito": "1.3.8.1",
+  "campi": {
+   "considerazioni_pericoli": "Pulegge, cinghie e motori delle smerigliatrici ruotano velocemente. Indumenti o dita possono impigliarsi (1.2.4) ed essere trascinati tra cinghia e puleggia (1.2.5).",
+   "considerazioni_limiti": "La zona pericolosa sono pulegge, cinghie e motori delle smerigliatrici. L'esposizione avviene durante la manutenzione, quando si accede alle trasmissioni.",
+   "considerazioni_soggetti": "Il manutentore meccanico interviene su cinghie e pulegge per controlli, tensionamento e sostituzioni.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento in una trasmissione può causare perdita di dita. Fr 3: la manutenzione delle trasmissioni è periodica. Pr 3: con trasmissioni scoperte il contatto è possibile. Av 3: la presa è rapida, sottrarsi è solo possibile. Cl 9: misure RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: le trasmissioni sono chiuse da ripari fissi, rimovibili solo con attrezzo. L'accesso agli organi in moto è così impedito durante il funzionamento.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie ai ripari fissi sulle trasmissioni. Se 3 e Fr 3 restano quelle reali. Cl 5: misure SUGGERITE, vedi rischio residuo sul rimontaggio dei ripari."
+  }
+ },
+ "ROB-03": {
+  "requisito": "1.3.8.2",
+  "campi": {
+   "considerazioni_pericoli": "Il nastro abrasivo scorre veloce sui rulli di contatto. La mano può essere trascinata tra nastro e rullo (1.2.5) o subire abrasioni profonde (1.2.8).",
+   "considerazioni_limiti": "La zona pericolosa è il nastro abrasivo con i rulli di contatto. L'esposizione avviene in regolazione/attrezzamento e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio regola e cambia i nastri. Il manutentore meccanico interviene su rulli e gruppo nastro.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento tra nastro e rullo può causare lesioni permanenti alla mano. Fr 4: cambi nastro e regolazioni sono frequenti, almeno settimanali. Pr 3: lavorando vicino al nastro il contatto è possibile. Av 3: il nastro è veloce, evitarlo è solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Protezioni: carter sul nastro che lascia scoperta solo la zona di contatto con il pezzo; cambio nastro e regolazioni a nastro fermo e motore isolato. Informazioni: il manuale descrive la procedura di cambio nastro.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 3 perché con nastro fermo e isolato l'esposizione all'organo in moto diventa occasionale. Pr e Av scendono a 1 per carter e procedura. Se 3 resta. Cl 5: misure SUGGERITE, vedi rischio residuo sul cambio nastro a macchina isolata."
+  }
+ },
+ "ROB-04": {
+  "requisito": "1.3.2",
+  "campi": {
+   "considerazioni_pericoli": "Il nastro abrasivo ad alta velocità può rompersi o sbandare (1.1.6). I lembi e i frammenti vengono proiettati con elevata energia cinetica (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa è il nastro abrasivo e lo spazio circostante. L'esposizione avviene nel funzionamento normale, durante la smerigliatura.",
+   "considerazioni_soggetti": "L'operatore di conduzione sorveglia l'impianto in produzione e può trovarsi vicino alla smerigliatrice.",
+   "considerazioni_stima_iniziale": "Se 3: un lembo proiettato può causare lesioni permanenti, ad esempio agli occhi. Fr 4: la presenza vicino alle smerigliatrici è quotidiana. Pr 3: la rottura di un nastro usurato è possibile. Av 3: la proiezione è improvvisa, evitarla è solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: velocità del nastro non superiore a quella ammessa dal produttore. Protezioni: carter che trattiene il nastro in caso di rottura e sensore di rottura/sbandamento. Informazioni: il manuale indica i nastri ammessi.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 2 perché il carter elimina l'esposizione alla traiettoria del nastro. Pr e Av scendono a 1 per velocità limitata, carter e sensore. Se 3 resta. Cl 4: esito OK."
+  }
+ },
+ "ROB-05": {
+  "requisito": "1.3.9",
+  "campi": {
+   "considerazioni_pericoli": "Gli assi del robot possono cadere per gravità o muoversi in modo inatteso senza energia (1.1.3). La massa del braccio in moto può urtare o bloccare una persona (1.1.4).",
+   "considerazioni_limiti": "La zona pericolosa sono gli assi del robot. L'esposizione avviene in manutenzione e durante lo sblocco di anomalie, con persona dentro la cella.",
+   "considerazioni_soggetti": "L'operatore di conduzione entra nella cella per liberare pezzi bloccati. Il manutentore meccanico lavora vicino agli assi del robot.",
+   "considerazioni_stima_iniziale": "Se 4: la caduta del braccio può causare lesioni mortali. Fr 3: manutenzioni e sblocchi in cella sono occasionali. Pr 2: il movimento incontrollato è raro. Av 3: la caduta è rapida, sottrarsi è solo possibile. Cl 8: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: freni sugli assi del robot che mantengono la posizione anche senza energia. Informazioni: il manuale indica come liberare una persona bloccata dal robot con lo sblocco freni. Non sono previste protezioni aggiuntive.",
+   "considerazioni_stima_finale": "Fr scende da 3 a 2 perché con i freni l'esposizione a movimenti incontrollati diventa rarissima. Pr e Av scendono a 1 per i freni e la procedura di sblocco. Se 4 resta. Cl 4: misure SUGGERITE per Se 4, vedi rischio residuo sulla procedura di sblocco freni."
+  }
+ },
+ "ROB-06": {
+  "requisito": "1.3.6",
+  "campi": {
+   "considerazioni_pericoli": "Un pezzo mal preso o un programma errato possono far espellere il pezzo dalla pinza (1.1.4). Anche il cedimento della presa o del pezzo genera proiezioni (1.1.6).",
+   "considerazioni_limiti": "La zona pericolosa è il pezzo nella pinza del robot. L'esposizione avviene nel funzionamento normale, durante la smerigliatura robotizzata.",
+   "considerazioni_soggetti": "L'operatore di conduzione sorveglia la cella in produzione e si trova vicino alle sue pareti.",
+   "considerazioni_stima_iniziale": "Se 3: un pezzo in ottone proiettato può causare lesioni permanenti. Fr 4: la presenza vicino alla cella è quotidiana. Pr 3: con parametri modificabili l'espulsione è possibile. Av 3: la proiezione è improvvisa, evitarla è solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: programmi per articolo con parametri bloccati e scelta dell'articolo verificata dal sistema. Protezioni: controllo di presenza e posizione del pezzo nella pinza prima della smerigliatura.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie a parametri bloccati e controllo del pezzo in pinza. Se 3 resta; Fr 4 resta quella reale. Cl 6: misure SUGGERITE, vedi rischio residuo sui programmi per articolo."
+  }
+ },
+ "ROB-07": {
+  "requisito": "1.5.5",
+  "campi": {
+   "considerazioni_pericoli": "L'attrito della smerigliatura scalda rulli di contatto e pezzi a temperature elevate. Toccarli a mani nude provoca ustioni (3.1.1).",
+   "considerazioni_limiti": "La zona pericolosa sono i rulli di contatto e i pezzi appena smerigliati. L'esposizione avviene in manutenzione e nello sblocco di anomalie.",
+   "considerazioni_soggetti": "L'operatore di conduzione rimuove pezzi bloccati appena lavorati. Il manutentore meccanico interviene sui rulli subito dopo l'arresto.",
+   "considerazioni_stima_iniziale": "Se 2: le ustioni da contatto sono reversibili con cure mediche. Fr 3: sblocchi e manutenzioni sono occasionali. Pr 3: toccare un pezzo caldo è possibile. Av 3: la superficie calda non è riconoscibile a vista. Cl 9: misure SUGGERITE.",
+   "considerazioni_riduzione": "Informazioni per l'uso: avvertenza sul pericolo di superfici calde presso le smerigliatrici e nel manuale. Non sono applicabili misure di progettazione o protezione, perché il calore è intrinseco al processo.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 2 grazie all'avvertenza. Se 2 e Fr 3 restano; Av 3 resta perché il calore resta non visibile. Cl 8: misure SUGGERITE, vedi rischio residuo su raffreddamento e guanti."
+  }
+ },
+ "ROB-08": {
+  "requisito": "1.6.4",
+  "campi": {
+   "considerazioni_pericoli": "Durante il cambio nastro un riavvio inatteso rimette in moto nastro e rulli (1.1.4). Anche la molla di tensionamento può rilasciare energia sulle mani.",
+   "considerazioni_limiti": "La zona pericolosa è il gruppo nastro durante cambio e regolazioni. L'esposizione avviene in regolazione/attrezzamento e in manutenzione.",
+   "considerazioni_soggetti": "L'operatore di attrezzaggio sostituisce e regola i nastri. Il manutentore meccanico interviene sulle smerigliatrici.",
+   "considerazioni_stima_iniziale": "Se 3: un riavvio del nastro con le mani sul gruppo può causare lesioni permanenti. Fr 4: il cambio nastro è almeno settimanale. Pr 3: senza isolamento locale il riavvio è possibile. Av 3: l'avviamento è improvviso, sottrarsi è solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: tensionamento e cambio nastro rapido senza attrezzi speciali, che riduce il tempo di intervento. Protezioni: sezionamento locale lucchettabile della singola smerigliatrice, che impedisce il riavvio.",
+   "considerazioni_stima_finale": "Fr scende da 4 a 3 perché il cambio rapido riduce la durata dell'esposizione. Pr e Av scendono a 1 con il sezionamento lucchettabile. Se 3 resta. Cl 5: misure SUGGERITE, vedi rischio residuo sull'uso del proprio lucchetto."
+  }
+ },
+ "TAV-01": {
+  "requisito": "1.3.8.2",
+  "campi": {
+   "considerazioni_pericoli": "Durante la rotazione la tavola si muove rispetto alla struttura fissa e alle pinze porta-pezzo. Tra parti mobili e fisse si formano punti di schiacciamento (1.2.1) e cesoiamento (1.2.2).",
+   "considerazioni_limiti": "La zona è tra la tavola rotante e la struttura fissa, lato postazione di carico. Si è esposti in funzionamento normale, a ogni ciclo di carico e scarico dei pezzi.",
+   "considerazioni_soggetti": "L'operatore di conduzione carica e scarica manualmente i pezzi sulla tavola a ogni ciclo, con le mani vicine ai punti di schiacciamento e cesoiamento.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento può causare perdita di dita o lesioni permanenti. Fr 5: il carico si ripete più volte all'ora. Pr 3: con mani vicine alla tavola il contatto durante la rotazione è possibile. Av 3: la rotazione è prevedibile, ma il tempo di reazione è ridotto. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: spazi tra parti mobili e struttura fissa non inferiori ai minimi per evitare lo schiacciamento. Passo 2, protezioni: divisorio sulla tavola tra carico e zona di lavoro; rotazione solo con zona di carico libera, sorvegliata da barriera o pedana.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1: la tavola ruota solo con zona libera e gli spazi minimi evitano lo schiacciamento. Se 3 resta per la natura del pericolo; Fr 5 è la frequenza reale del carico. Cl 7: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "TAV-02": {
+  "requisito": "1.4.3",
+  "campi": {
+   "considerazioni_pericoli": "Dalla postazione di carico l'operatore può raggiungere la tavola. Se la rotazione parte con l'operatore nella zona, si ha schiacciamento (1.2.1) o urto (1.2.6) con la tavola e le pinze.",
+   "considerazioni_limiti": "La zona è l'accesso alla tavola dalla postazione di carico. L'esposizione avviene in funzionamento normale, a ogni ciclo di carico e scarico.",
+   "considerazioni_soggetti": "L'operatore di conduzione accede alla tavola a ogni ciclo per caricare e scaricare i pezzi, e si trova quindi nella zona durante le fasi di avvio della rotazione.",
+   "considerazioni_stima_iniziale": "Se 3: lo schiacciamento può causare lesioni permanenti alle mani. Fr 5: l'accesso si ripete più volte all'ora. Pr 3: senza rilevamento della presenza la rotazione con operatore in zona è possibile. Av 3: la partenza è rapida ma in parte prevedibile. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: dispositivo elettrosensibile o pedana sensibile che impedisce la rotazione con l'operatore nella zona. La posizione del dispositivo è calcolata con il tempo di arresto della tavola.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché il dispositivo impedisce la rotazione con l'operatore presente e arresta in tempo la tavola. Se 3 resta invariato; Fr 5 è la frequenza reale dell'accesso. Cl 7: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "TAV-03": {
+  "requisito": "1.1.6",
+  "campi": {
+   "considerazioni_pericoli": "Il carico e lo scarico manuale ripetuti a ogni ciclo comportano posture incongrue e sforzi (8.1.1). I gesti ripetitivi possono sovraccaricare mano, polso e braccio (8.1.2).",
+   "considerazioni_limiti": "La zona è la postazione di carico e scarico manuale della tavola rotante. L'esposizione avviene in funzionamento normale, per tutta la durata del turno.",
+   "considerazioni_soggetti": "L'operatore di conduzione esegue manualmente e in modo ripetitivo il carico e lo scarico dei pezzi sulla tavola.",
+   "considerazioni_stima_iniziale": "Se 2: disturbi muscoloscheletrici reversibili con cure mediche. Fr 5: il gesto si ripete più volte all'ora. Pr 3: con altezze e distanze non adeguate il sovraccarico è possibile. Av 3: l'operatore può correggere la postura solo in parte. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: altezza di carico tra 900 e 1100 mm circa e pinze raggiungibili senza sporgersi. Passo 3, informazioni per l'uso: il manuale indica i pesi massimi dei pezzi da movimentare a mano.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché altezza ergonomica, raggiungibilità delle pinze e limiti di peso eliminano posture e sforzi eccessivi. Se 2 resta; Fr 5 è la frequenza reale del carico. Cl 7: esito OK."
+  }
+ },
+ "TAV-04": {
+  "requisito": "1.3.9",
+  "campi": {
+   "considerazioni_pericoli": "Le pinze trattengono il pezzo contro la gravità (1.1.3). Una perdita di aria o un'apertura intempestiva può far cadere il pezzo o chiudere la pinza sulle dita, con schiacciamento (1.2.1).",
+   "considerazioni_limiti": "La zona sono le pinze porta-pezzo della tavola, lato carico. Si è esposti in funzionamento normale, durante il carico e lo scarico, e in caso di mancanza di alimentazione pneumatica.",
+   "considerazioni_soggetti": "L'operatore di conduzione inserisce e preleva i pezzi dalle pinze a ogni ciclo, con le mani vicine alle ganasce.",
+   "considerazioni_stima_iniziale": "Se 2: schiacciamento delle dita o caduta del pezzo, lesioni reversibili con cure mediche. Fr 5: l'interazione con le pinze si ripete più volte all'ora. Pr 2: il movimento incontrollato è raro. Av 3: l'operatore può ritrarre la mano, ma con poco tempo. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: le pinze mantengono il pezzo anche senza aria, grazie a molla o valvola di ritegno. Le pinze si aprono solo con comando dell'operatore a tavola ferma.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché il pezzo resta trattenuto senza aria e l'apertura avviene solo su comando a tavola ferma. Se 2 resta; Fr 5 è la frequenza reale del carico. Cl 7: esito OK."
+  }
+ },
+ "TAV-05": {
+  "requisito": "1.5.5",
+  "campi": {
+   "considerazioni_pericoli": "La smerigliatura e la lucidatura riscaldano il pezzo per attrito. Al momento dello scarico il contatto con le superfici calde può causare ustioni (3.1.1).",
+   "considerazioni_limiti": "La zona è quella dei pezzi lavorati in uscita, sulla postazione di scarico della tavola. Si è esposti in funzionamento normale, a ogni scarico manuale.",
+   "considerazioni_soggetti": "L'operatore di conduzione preleva a mano i pezzi appena lavorati dalla tavola, entrando in contatto diretto con le superfici riscaldate.",
+   "considerazioni_stima_iniziale": "Se 2: ustioni lievi, reversibili con cure mediche. Fr 5: lo scarico si ripete più volte all'ora. Pr 3: senza tempo di raffreddamento il contatto con pezzi caldi è possibile. Av 3: il calore si percepisce, ma la presa è già avvenuta. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: tempo tra fine lavorazione e scarico sufficiente a ridurre la temperatura del pezzo. Passo 3, informazioni per l'uso: il manuale indica i guanti da usare per lo scarico.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 perché il tempo di raffreddamento abbassa la temperatura allo scarico. Se 2 e Fr 5 restano, legati al tipo di lesione e alla frequenza reale. Av 3 resta: la protezione dipende dall'uso dei guanti. Cl 9: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "TRA-01": {
+  "requisito": "1.3.8.1",
+  "campi": {
+   "considerazioni_pericoli": "Motoriduttore, pulegge e catene del trasportatore sono organi rotanti di trasmissione. Indumenti o mani possono essere impigliati (1.2.4) e trascinati (1.2.5) negli ingranamenti.",
+   "considerazioni_limiti": "La zona comprende motoriduttore e trasmissioni del nastro, in zona di scarico. L'esposizione avviene in manutenzione, quando si interviene vicino alle trasmissioni.",
+   "considerazioni_soggetti": "Il manutentore meccanico interviene su motoriduttore, tensionamento e trasmissioni del nastro, operando a contatto con gli organi rotanti.",
+   "considerazioni_stima_iniziale": "Se 3: l'impigliamento può causare lesioni permanenti a mani e braccia. Fr 3: gli interventi sulle trasmissioni sono periodici. Pr 3: con trasmissioni scoperte il contatto è possibile. Av 3: la velocità è contenuta, ma la presa è rapida. Cl 9: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 2, protezioni: le trasmissioni sono chiuse da ripari fissi, rimovibili solo per la manutenzione.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché i ripari fissi impediscono di raggiungere gli organi rotanti. Se 3 resta; Fr 3 è la frequenza reale degli interventi. Cl 5: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "TRA-02": {
+  "requisito": "1.3.7",
+  "campi": {
+   "considerazioni_pericoli": "Nei punti in cui il tappeto si avvolge sui rulli si formano zone di ingresso convergenti. Dita o indumenti possono essere trascinati e intrappolati (1.2.5).",
+   "considerazioni_limiti": "La zona sono i punti di ingresso tra tappeto e rulli, in zona di scarico. L'esposizione avviene in funzionamento normale, prelevando pezzi o liberando pezzi incastrati.",
+   "considerazioni_soggetti": "L'operatore di conduzione preleva i pezzi dal nastro e può avvicinare le mani ai rulli per rimuovere pezzi incastrati.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento può causare lesioni permanenti alle dita. Fr 5: l'operatore lavora sul nastro più volte all'ora. Pr 2: il contatto con i punti di ingresso è raro. Av 3: la bassa velocità aiuta, ma la presa è rapida. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: velocità del nastro bassa, che limita la presa. Passo 2, protezioni: ripari sui punti di ingresso dei rulli e distanze di sicurezza rispettate secondo EN ISO 13857.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché ripari e distanze di sicurezza impediscono di raggiungere i punti di ingresso. Se 3 resta; Fr 5 è la frequenza reale. Cl 7: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "TRA-03": {
+  "requisito": "1.2.4.3",
+  "campi": {
+   "considerazioni_pericoli": "Lungo il trasportatore l'operatore può essere trascinato da nastro e rulli (1.2.5). Senza un comando di arresto vicino, l'intrappolamento si prolunga e aggrava la lesione.",
+   "considerazioni_limiti": "La zona si estende lungo il trasportatore di scarico. L'esposizione avviene in funzionamento normale, nella postazione di prelievo dei pezzi.",
+   "considerazioni_soggetti": "L'operatore di conduzione preleva i pezzi lungo il nastro e deve poter arrestare rapidamente il trasportatore in caso di trascinamento.",
+   "considerazioni_stima_iniziale": "Se 3: il trascinamento prolungato può causare lesioni permanenti. Fr 5: il prelievo si ripete più volte all'ora. Pr 2: il trascinamento è raro. Av 3: senza arresto vicino la liberazione è difficile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: pulsante di arresto di emergenza presso il punto di prelievo dei pezzi, raggiungibile dall'operatore anche se trattenuto.",
+   "considerazioni_stima_finale": "Pr e Av scendono a 1 perché l'arresto immediato dal punto di prelievo limita la durata del trascinamento. Se 3 resta; Fr 5 è la frequenza reale del prelievo. Cl 7: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "TRA-04": {
+  "requisito": "1.5.5",
+  "campi": {
+   "considerazioni_pericoli": "I pezzi escono dalla lavorazione ancora caldi per l'attrito di smerigliatura e lucidatura. Il prelievo dal nastro può causare ustioni da contatto (3.1.1).",
+   "considerazioni_limiti": "La zona riguarda i pezzi sul nastro di uscita, in zona di scarico. Si è esposti in funzionamento normale, a ogni prelievo manuale.",
+   "considerazioni_soggetti": "L'operatore di conduzione preleva a mano i pezzi dal nastro di uscita, toccandone direttamente le superfici.",
+   "considerazioni_stima_iniziale": "Se 2: ustioni lievi, reversibili con cure mediche. Fr 5: il prelievo si ripete più volte all'ora. Pr 3: se il pezzo non si raffredda il contatto caldo è possibile. Av 3: il calore si percepisce, ma la presa è già avvenuta. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Passo 1, progettazione intrinseca: lunghezza del nastro tale da permettere il raffreddamento dei pezzi prima del prelievo. Passo 3, informazioni per l'uso: il manuale indica i guanti da usare per il prelievo.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 perché il percorso sul nastro raffredda i pezzi. Se 2 e Fr 5 restano, legati al tipo di lesione e alla frequenza reale. Av 3 resta: la protezione dipende dall'uso dei guanti. Cl 9: misure SUGGERITE, vedere rischio residuo."
+  }
+ },
+ "ZPU-01": {
+  "requisito": "1.5.13",
+  "campi": {
+   "considerazioni_pericoli": "La lucidatura con dischi in tessuto e pasta abrasiva libera fibre, residui di pasta e polvere metallica (7.1.1). Se non captati si disperdono e vengono inalati.",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella e il locale di installazione. L'esposizione avviene nel funzionamento normale, per tutta la produzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino alla cella per tutto il turno. I terzi di passaggio attraversano il locale dove fibre e polveri possono diffondersi.",
+   "considerazioni_stima_iniziale": "Se 3: l'inalazione ripetuta di fibre e polveri può causare patologie respiratorie permanenti. Fr 5: l'esposizione è continua in produzione. Pr 3: senza captazione la dispersione è possibile. Av 3: polveri fini e fibre sono difficili da evitare. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: cella chiusa in depressione che trattiene fibre e polveri. Protezioni: aspirazione presso ogni unità di lucidatura, dimensionata per fibre e residui di pasta. Informazioni: il manuale indica portata e depressione richieste all'aspirazione del cliente.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie a cella in depressione e captazione su ogni unità. Se 3 resta; Fr 5 resta quella reale. Cl 7: misure SUGGERITE, vedi rischio residuo sull'aspirazione attiva."
+  }
+ },
+ "ZPU-02": {
+  "requisito": "1.5.6",
+  "campi": {
+   "considerazioni_pericoli": "Fibre di cotone impregnate di pasta abrasiva sono combustibili e si accumulano in cella, condotti e filtri. Il calore di attrito o una scintilla possono innescare un incendio (7.2.1).",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella, i condotti e i filtri. Il pericolo è presente nel funzionamento normale, durante la lucidatura.",
+   "considerazioni_soggetti": "L'operatore di conduzione presidia la macchina e può essere coinvolto da fiamme o fumi. I terzi di passaggio si trovano nel locale vicino all'impianto.",
+   "considerazioni_stima_iniziale": "Se 3: un incendio può causare ustioni permanenti. Fr 4: la presenza vicino all'impianto è quotidiana. Pr 4: con residui di cotone e pasta l'innesco è probabile. Av 3: un incendio nei condotti si rileva tardi, la fuga è solo possibile. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: residui considerati combustibili, superfici interne lisce senza punti di accumulo. Protezioni: valutazione di rivelazione e spegnimento automatico in cella o condotti. Informazioni: il manuale indica frequenza di pulizia e mezzi di estinzione adatti.",
+   "considerazioni_stima_finale": "Pr scende da 4 a 2 per l'assenza di accumuli e la pulizia periodica; resta 2 perché i residui combustibili sono intrinseci. Av scende a 1 con rivelazione e mezzi di estinzione. Se 3 e Fr 4 restano. Cl 7: misure SUGGERITE, vedi rischio residuo."
+  }
+ },
+ "ZPU-03": {
+  "requisito": "1.5.7",
+  "campi": {
+   "considerazioni_pericoli": "Fibre tessili, pasta e polvere metallica si accumulano in condotti e filtri e possono formare nubi combustibili (7.2.2). Un innesco può provocare un'esplosione.",
+   "considerazioni_limiti": "La zona pericolosa sono i condotti e i filtri di aspirazione. Il pericolo è presente nel funzionamento normale, con aspirazione in marcia.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino all'impianto e ai filtri. I terzi di passaggio possono trovarsi nel raggio di effetti di un'esplosione.",
+   "considerazioni_stima_iniziale": "Se 4: un'esplosione può causare lesioni mortali. Fr 3: l'atmosfera esplosiva si forma solo occasionalmente. Pr 2: la coincidenza di concentrazione e innesco è rara. Av 3: l'esplosione è improvvisa, allontanarsi è solo possibile. Cl 8: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: valutazione delle polveri (fibre tessili, pasta, metallo) e della possibile atmosfera esplosiva. Informazioni: il manuale riporta le prescrizioni per l'impianto di aspirazione del cliente. Non sono previste protezioni a bordo macchina.",
+   "considerazioni_stima_finale": "Fr scende da 3 a 2 perché la valutazione delle polveri rende meno frequente l'atmosfera esplosiva. Pr e Av scendono a 1 con l'impianto realizzato secondo le prescrizioni. Se 4 resta. Cl 4: misure SUGGERITE per Se 4, vedi rischio residuo."
+  }
+ },
+ "ZPU-04": {
+  "requisito": "1.6.5",
+  "campi": {
+   "considerazioni_pericoli": "Rimuovendo i depositi di fibre, pasta e polvere metallica l'addetto li inala o li tocca (7.1.1). La pasta abrasiva può irritare la pelle.",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella di pulitura. L'esposizione avviene nella condizione di pulizia, con accesso all'interno.",
+   "considerazioni_soggetti": "L'addetto alle pulizie entra nella cella e rimuove residui di pasta e fibre dalle superfici interne.",
+   "considerazioni_stima_iniziale": "Se 2: irritazioni respiratorie o cutanee sono reversibili con cure mediche. Fr 4: la pulizia interna è frequente per i residui di pasta. Pr 3: senza DPI il contatto è possibile. Av 3: polveri e residui sono difficili da evitare. Cl 10: misure SUGGERITE.",
+   "considerazioni_riduzione": "Protezioni: pulizia solo a macchina ferma con energie isolate, senza dispersione da organi in moto. Informazioni: il manuale indica frequenza della pulizia e DPI, cioè guanti e maschera.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie alla pulizia a macchina isolata e all'uso di guanti e maschera. Se 2 e Fr 4 restano invariate. Cl 6 con Se 2: esito OK."
+  }
+ },
+ "ZSM-01": {
+  "requisito": "1.5.13",
+  "campi": {
+   "considerazioni_pericoli": "La smerigliatura di ottone, inox e alluminio genera polveri metalliche fini miste ad abrasivo (7.1.1). Se non captate, si disperdono nella cella e nel locale e vengono inalate.",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella e il locale di installazione. L'esposizione avviene nel funzionamento normale, per tutta la durata della produzione.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino alla cella durante tutto il turno. I terzi di passaggio attraversano il locale dove la polvere può diffondersi.",
+   "considerazioni_stima_iniziale": "Se 3: l'inalazione ripetuta di polveri metalliche può causare patologie respiratorie con esiti permanenti. Fr 5: l'esposizione è continua durante la produzione. Pr 3: senza captazione la dispersione è possibile. Av 3: la polvere fine è poco visibile, evitarla è solo possibile. Cl 11: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: la cella chiusa in depressione impedisce alla polvere di uscire verso il locale. Protezioni: bocchette di aspirazione su ogni punto di smerigliatura e consenso alla marcia dall'aspirazione, se fornito o collegato. Informazioni: il manuale indica portata e depressione richieste all'impianto del cliente.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie a cella in depressione, captazione localizzata e consenso dall'aspirazione. Se 3 resta perché il danno potenziale non cambia; Fr 5 resta quella reale. Cl 7: misure SUGGERITE, vedi rischio residuo sull'aspirazione a cura del cliente."
+  }
+ },
+ "ZSM-02": {
+  "requisito": "1.5.6",
+  "campi": {
+   "considerazioni_pericoli": "Scintille e particelle calde della smerigliatura possono innescare polveri e depositi nella cella o nei condotti (7.2.1). Ne deriva un incendio che può propagarsi all'impianto di aspirazione.",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella e i condotti di aspirazione. Il pericolo è presente nel funzionamento normale, mentre si smeriglia.",
+   "considerazioni_soggetti": "L'operatore di conduzione presidia la macchina e può essere coinvolto da fiamme o fumi. I terzi di passaggio si trovano nel locale vicino all'impianto.",
+   "considerazioni_stima_iniziale": "Se 3: un incendio può provocare ustioni con esiti permanenti. Fr 4: la presenza vicino all'impianto in funzione è quotidiana. Pr 3: con depositi di polvere e scintille l'innesco è possibile. Av 3: un principio d'incendio nei condotti si nota con ritardo, la fuga è solo possibile. Cl 10: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: materiali della cella non combustibili e assenza di accumuli di polvere su superfici orizzontali. Protezioni: parascintille o separatore prima dei filtri, che ferma le particelle incandescenti. Informazioni: il manuale indica pulizie periodiche e mezzi di estinzione adatti.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 per l'assenza di accumuli e il parascintille; Av scende da 3 a 1 perché un incendio resta confinato e controllabile con i mezzi indicati. Se 3 e Fr 4 restano invariate. Cl 6: misure SUGGERITE, vedi rischio residuo su pulizie ed estintori."
+  }
+ },
+ "ZSM-03": {
+  "requisito": "1.5.7",
+  "campi": {
+   "considerazioni_pericoli": "Polveri di ottone e abrasivo si accumulano in condotti e filtri e possono formare nubi combustibili (7.2.2). Un innesco, come una scintilla aspirata, può causare un'esplosione.",
+   "considerazioni_limiti": "La zona pericolosa sono i condotti e i filtri di aspirazione. Il pericolo è presente nel funzionamento normale, con aspirazione in marcia.",
+   "considerazioni_soggetti": "L'operatore di conduzione lavora vicino all'impianto e ai filtri. I terzi di passaggio possono trovarsi nel raggio di effetti di un'esplosione.",
+   "considerazioni_stima_iniziale": "Se 4: un'esplosione può causare lesioni mortali o gravissime. Fr 3: le condizioni di atmosfera esplosiva sono occasionali. Pr 2: la coincidenza di concentrazione e innesco è rara. Av 3: l'esplosione è improvvisa, allontanarsi è solo possibile. Cl 8: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: valutazione della polvere prodotta, metallo e abrasivo, e della possibile atmosfera esplosiva. Informazioni: il manuale fornisce i dati della polvere e le prescrizioni per l'impianto di aspirazione del cliente. Non sono previste misure di protezione a bordo macchina.",
+   "considerazioni_stima_finale": "Fr scende da 3 a 2 perché la valutazione delle polveri rende meno frequente la formazione di atmosfere esplosive. Pr e Av scendono a 1 con l'impianto progettato secondo le prescrizioni. Se 4 resta. Cl 4: misure SUGGERITE per Se 4, vedi rischio residuo sull'impianto del cliente."
+  }
+ },
+ "ZSM-04": {
+  "requisito": "1.6.5",
+  "campi": {
+   "considerazioni_pericoli": "Nella pulizia interna l'addetto opera vicino a nastri e robot che, se riavviati, possono colpirlo (1.1.4). Rimuovendo i depositi inala o tocca polveri metalliche e abrasive (7.1.1).",
+   "considerazioni_limiti": "La zona pericolosa è l'interno della cella e le tramogge di raccolta. L'esposizione avviene nella condizione di pulizia, con accesso all'interno.",
+   "considerazioni_soggetti": "L'addetto alle pulizie entra nella cella e rimuove i depositi di polvere dalle superfici e dalle tramogge.",
+   "considerazioni_stima_iniziale": "Se 3: urti da organi in moto o inalazione di polveri possono dare esiti permanenti. Fr 3: la pulizia interna è periodica, non quotidiana. Pr 3: senza isolamento e DPI l'evento è possibile. Av 3: polvere e riavvii inattesi sono evitabili solo in parte. Cl 9: misure RICHIESTE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: superfici interne lisce e inclinate convogliano la polvere ai punti di raccolta, riducendo i tempi di pulizia. Protezioni: pulizia solo a macchina ferma con energie isolate. Informazioni: il manuale indica frequenza della pulizia e maschera FFP3.",
+   "considerazioni_stima_finale": "Pr scende da 3 a 1 e Av da 3 a 1 grazie a isolamento delle energie, superfici autopulenti e uso della FFP3. Se 3 e Fr 3 restano quelle reali. Cl 5: misure SUGGERITE, vedi rischio residuo su FFP3 e aspiratore invece dell'aria compressa."
+  }
+ },
+ "ZSM-05": {
+  "requisito": "1.5.2",
+  "campi": {
+   "considerazioni_pericoli": "Lo scorrimento dei nastri abrasivi e il flusso di polvere nei condotti accumulano cariche elettrostatiche (2.2.1). La scarica può dare scosse o innescare polveri e depositi (7.2.1).",
+   "considerazioni_limiti": "La zona pericolosa sono i nastri abrasivi e i condotti di aspirazione. L'esposizione avviene nel funzionamento normale.",
+   "considerazioni_soggetti": "L'operatore di conduzione tocca carter e parti dell'impianto durante la sorveglianza. I terzi di passaggio possono toccare condotti e strutture.",
+   "considerazioni_stima_iniziale": "Se 2: la scossa elettrostatica o un piccolo innesco richiedono cure mediche reversibili. Fr 4: il contatto con le parti dell'impianto è quotidiano. Pr 2: con parti metalliche l'accumulo pericoloso è raro. Av 3: la scarica è improvvisa, evitarla è solo possibile. Cl 9: misure SUGGERITE.",
+   "considerazioni_riduzione": "Progettazione intrinseca: tutte le parti metalliche, i carter e i condotti sono collegati a terra. Le cariche vengono così disperse prima di raggiungere livelli pericolosi.",
+   "considerazioni_stima_finale": "Pr scende da 2 a 1 e Av da 3 a 1 grazie al collegamento a terra di parti, carter e condotti. Se 2 e Fr 4 restano invariate. Cl 6 con Se 2: esito OK."
+  }
+ }
+}
