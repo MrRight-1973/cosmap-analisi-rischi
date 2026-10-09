@@ -21,12 +21,12 @@ def _valore_libero(modello, campo, valore):
 
 
 def _copia_figli(originale, nuovo):
-    """Righe che fanno parte della voce: misure della scheda modello, fasce, celle e scale del metodo."""
+    """Righe che fanno parte della voce: misure e allegati della scheda modello, fasce, celle e scale del metodo."""
     if isinstance(originale, m.SchedaModello):
-        for misura in originale.misure.all():
-            misura.pk = None
-            misura.scheda = nuovo
-            misura.save()
+        for riga in [*originale.misure.all(), *originale.allegati.all()]:
+            riga.pk = None
+            riga.scheda = nuovo
+            riga.save()
     elif isinstance(originale, m.MetodoStima):
         fasce = {}
         for fascia in originale.fasce.all():

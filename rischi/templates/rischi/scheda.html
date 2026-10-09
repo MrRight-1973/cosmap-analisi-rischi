@@ -62,12 +62,33 @@
 </fieldset>
 {% if modificabile %}<button class="primario">Salva scheda</button>{% endif %}
 </form>
+{% if scheda.pk %}
+<div class="modulo sezione-allegati">
+<fieldset id="allegati"><legend>9. IMMAGINI ALLEGATE</legend>
+  <p class="sotto">Immagini (JPG, PNG, GIF, BMP) e PDF. Nella valutazione dei rischi le immagini si stampano nella scheda, i PDF in appendice al documento.</p>
+  {% for a in scheda.allegati.all %}
+  <div class="allegato">
+    <a href="{{ a.file.url }}" target="_blank">{% if a.e_immagine %}<img src="{{ a.file.url }}" class="anteprima-allegato" alt="">{% else %}PDF: {{ a.nome_file }}{% endif %}</a>
+    <span>{{ a.didascalia|default:a.nome_file }}</span>
+    {% if modificabile %}<form method="post" action="{% url 'elimina_allegato' a.pk %}" onsubmit="return confirm('Togliere questo allegato dalla scheda?');">{% csrf_token %}<button>Togli</button></form>{% endif %}
+  </div>
+  {% empty %}<p class="sotto">Nessun allegato.</p>{% endfor %}
+  {% if modificabile %}
+  <form method="post" action="{% url 'aggiungi_allegato' scheda.pk %}" enctype="multipart/form-data" class="carica-allegato">{% csrf_token %}
+    {% include "rischi/_campo.html" with f=form_allegato.file %}
+    {% include "rischi/_campo.html" with f=form_allegato.didascalia %}
+    <button>Carica allegato</button>
+  </form>
+  {% endif %}
+</fieldset>
+</div>
+{% endif %}
 {% if scheda.pk and scheda.origine and modificabile %}
 <form method="post" action="{% url 'aggiorna_da_modello' scheda.pk %}" class="modulo"
       onsubmit="return confirm('Sostituire il contenuto di questa scheda con quello della scheda modello {{ scheda.origine.codice }}? Le modifiche fatte in questa scheda andranno perse.');">
 {% csrf_token %}
 <fieldset><legend>LIBRERIA</legend>
-  <p class="sotto">Questa scheda viene dalla scheda modello <a href="{% url 'admin:rischi_schedamodello_change' scheda.origine.pk %}">{{ scheda.origine.codice }}</a>. Se la scheda modello è stata aggiornata in libreria, puoi ricaricarne il contenuto: zone, condizioni, pericoli, soggetti, stime, misure, norme, note e considerazioni sostituiscono quelli di questa scheda. Modulo, requisito, codice e decisione restano invariati.</p>
+  <p class="sotto">Questa scheda viene dalla scheda modello <a href="{% url 'admin:rischi_schedamodello_change' scheda.origine.pk %}">{{ scheda.origine.codice }}</a>. Se la scheda modello è stata aggiornata in libreria, puoi ricaricarne il contenuto: zone, condizioni, pericoli, soggetti, stime, misure, immagini allegate, norme, note e considerazioni sostituiscono quelli di questa scheda. Modulo, requisito, codice e decisione restano invariati.</p>
   <p><button>Aggiorna dalla scheda modello {{ scheda.origine.codice }}</button></p>
 </fieldset>
 </form>

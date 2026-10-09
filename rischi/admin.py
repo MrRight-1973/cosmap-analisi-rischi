@@ -46,7 +46,29 @@ class MisuraModelloInline(SoloVistaCollegati, admin.StackedInline):
     # per misura. Niente ordine: le misure si numerano da sole (Misura 1, 2, 3…) nell'ordine in cui compaiono.
     fields = ("soluzione", "tipo", "testo")
     template = "admin/rischi/schedamodello/misure_stacked.html"
+    sezione = 6
     verbose_name_plural = "Misure di protezione"
+
+
+class AllegatoModelloInline(admin.TabularInline):
+    """Sezione 9: immagini e PDF allegati alla scheda modello, nell'ordine in cui compaiono."""
+
+    model = m.AllegatoModello
+    extra = 1
+    fields = ("anteprima", "file", "didascalia")
+    readonly_fields = ("anteprima",)
+    verbose_name = "allegato"
+    verbose_name_plural = "Immagini allegate"
+    sezione = 9
+
+    @admin.display(description="anteprima")
+    def anteprima(self, obj):
+        if not (obj and obj.pk and obj.file):
+            return "–"
+        if obj.e_immagine:
+            return format_html('<a href="{0}" target="_blank"><img src="{0}" class="anteprima-allegato" alt=""></a>',
+                               obj.file.url)
+        return format_html('<a href="{}" target="_blank">PDF: {}</a>', obj.file.url, obj.nome_file)
 
 
 class SchedaModelloForm(NormeSchedaMixin, forms.ModelForm):
@@ -91,7 +113,7 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     search_fields = ("codice", "requisito__codice", "requisito__titolo", "testo_istruzioni")
     filter_horizontal = ("pericoli",)
     readonly_fields = ("codice", "note_requisito", "calcolo_iniziale", "calcolo_finale")
-    inlines = [MisuraModelloInline]
+    inlines = [MisuraModelloInline, AllegatoModelloInline]
 
     class Media:
         css = {"all": ("rischi/admin_scheda.css",)}
@@ -126,6 +148,12 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
         }),
         ("8. VALUTAZIONE DEL RISCHIO RESIDUO", {
             "fields": ("testo_istruzioni",),
+        }),
+        # Solo titolo: gli allegati sono la riga AllegatoModelloInline (vedi sezione.html)
+        ("9. IMMAGINI ALLEGATE", {
+            "fields": (),
+            "description": "Immagini (JPG, PNG, GIF, BMP) e PDF. Nella valutazione dei rischi le immagini si "
+            "stampano nella scheda, i PDF in appendice al documento. Passano alle schede delle commesse.",
         }),
     )
 
@@ -177,7 +205,7 @@ class SchedaModelloAdmin(SoloVistaCollegati, admin.ModelAdmin):
     def save_formset(self, request, form, formset, change):
         """Le misure prendono il numero progressivo (1, 2, 3…) nell'ordine in cui compaiono nella pagina."""
         super().save_formset(request, form, formset, change)
-        if formset.model is not m.MisuraModello:
+        if formset.model not in (m.MisuraModello, m.AllegatoModello):
             return
         restanti = [f.instance for f in formset.forms if f.instance.pk and f not in formset.deleted_forms]
         for numero, misura in enumerate(restanti, start=1):

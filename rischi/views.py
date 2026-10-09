@@ -4,15 +4,18 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Max
 from django.core.files.base import ContentFile
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from . import servizi
 from . import documenti
 from .forms import (
+    AllegatoForm,
     ApplicabilitaFormSet,
     MacchinaForm,
     MisureFormSet,
@@ -21,6 +24,7 @@ from .forms import (
     SchedaForm,
 )
 from .models import (
+    AllegatoAnalisi,
     Analisi,
     Cliente,
     Commessa,
@@ -238,6 +242,7 @@ def _salva_scheda(request, scheda, revisione, nuova):
         "rischi/scheda.html",
         {
             "form": form, "misure": misure, "scheda": scheda, "revisione": revisione, "modificabile": modificabile,
+            "form_allegato": AllegatoForm(),
         },
     )
 
@@ -278,6 +283,41 @@ def aggiorna_da_modello(request, pk):
     else:
         messages.success(request, f"Scheda aggiornata con il contenuto della scheda modello {modello.codice}.")
     return redirect("scheda", pk=scheda.pk)
+
+
+def _scheda_modificabile(request, scheda):
+    if not (scheda.revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)):
+        raise PermissionDenied("Scheda non modificabile.")
+
+
+@login_required
+@require_POST
+def aggiungi_allegato(request, pk):
+    """Sezione 9 della scheda della commessa: carica un'immagine o un PDF."""
+    scheda = get_object_or_404(SchedaAnalisi.objects.select_related("revisione"), pk=pk)
+    _scheda_modificabile(request, scheda)
+    form = AllegatoForm(request.POST, request.FILES)
+    if form.is_valid():
+        allegato = form.save(commit=False)
+        allegato.scheda = scheda
+        allegato.ordine = (scheda.allegati.aggregate(m=Max("ordine"))["m"] or 0) + 1
+        allegato.save()
+        messages.success(request, f"Allegato caricato: {allegato.nome_file}.")
+    else:
+        messages.error(request, " ".join(e for errori in form.errors.values() for e in errori))
+    return redirect(f"{reverse('scheda', args=[scheda.pk])}#allegati")
+
+
+@login_required
+@require_POST
+def elimina_allegato(request, pk):
+    allegato = get_object_or_404(AllegatoAnalisi.objects.select_related("scheda__revisione"), pk=pk)
+    scheda = allegato.scheda
+    _scheda_modificabile(request, scheda)
+    # Si toglie solo il collegamento: il file può servire alla scheda modello o ad altre commesse.
+    allegato.delete()
+    messages.success(request, "Allegato tolto dalla scheda.")
+    return redirect(f"{reverse('scheda', args=[scheda.pk])}#allegati")
 
 
 def _url_analisi(scheda):

@@ -7,7 +7,7 @@ scheda nuova o con errori. La sezione 6 (riduzione del rischio) contiene anche l
   <button type="button" class="button" data-sezioni="chiudi">Chiudi tutte</button>
 </div>
 {% for fieldset in adminform %}
-  {% include "admin/rischi/schedamodello/sezione.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 aperte=add con_misure=forloop.counter|divisibleby:6 %}
+  {% include "admin/rischi/schedamodello/sezione.html" with heading_level=2 prefix="fieldset" id_prefix=0 id_suffix=forloop.counter0 aperte=add numero=forloop.counter %}
 {% endfor %}
 {% endblock %}
 {% block inline_field_sets %}{% endblock %}
