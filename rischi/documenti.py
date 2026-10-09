@@ -40,7 +40,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .models import Esito, Fabbricante, Norma, Revisione, SchedaAnalisi, SoluzioneProtezione
+from .models import CapitoloValutazione, Esito, Fabbricante, Norma, Revisione, SchedaAnalisi, SoluzioneProtezione
 from .testo import e_formattato, in_reportlab
 
 REGOLAMENTO = "Regolamento (UE) 2023/1230"
@@ -746,13 +746,12 @@ def valutazione(revisione):
     _intestazione(doc, revisione)
     doc.nuova_pagina()
 
-    doc.titoletto("Definizioni (RESS 1.1.1)")
-    doc.p(
-        "Le schede usano le definizioni del punto 1.1.1 dell'Allegato III del Regolamento: "
-        "a) pericolo; b) zona pericolosa; c) persona esposta; d) operatore; e) rischio; f) riparo; "
-        "g) dispositivo di protezione; h) uso previsto; i) uso scorretto ragionevolmente prevedibile. "
-        "Il riferimento alla lettera è indicato nel titolo di ogni sezione delle schede."
-    )
+    # Capitoli di testo modificabili da Libreria e utenti (Definizioni, Principi generali…)
+    for capitolo in CapitoloValutazione.objects.filter(attivo=True):
+        doc.titoletto(capitolo.titolo)
+        for paragrafo in _pulito(capitolo.testo).split("<br/><br/>"):
+            if paragrafo.strip():
+                doc.p_html(paragrafo)
 
     doc.titoletto("Soggetti")
     doc.p(
