@@ -185,3 +185,4 @@ small.errore { color: var(--error-fg); }
 .carica-allegato { margin-top: 10px; }
 .sezione-allegati { margin-top: 20px; }
 .carica-allegato > button { margin: 8px 0; }
+.pulsanti-scheda { display: flex; gap: 10px; flex-wrap: wrap; }

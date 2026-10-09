@@ -17,7 +17,7 @@ from xml.sax.saxutils import escape
 
 from django.utils import timezone
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
@@ -701,21 +701,50 @@ def _immagine(allegato, larghezza=LARGHEZZA, altezza=12 * cm):
     return Image(percorso, width=w * scala, height=h * scala)
 
 
+ALLINEAMENTI = {"SX": ("LEFT", TA_LEFT), "CENTRO": ("CENTER", TA_CENTER), "DX": ("RIGHT", TA_RIGHT)}
+
+
+def _immagine_con_testo(doc, allegato):
+    """Immagine nella posizione scelta (sinistra, centro, destra) con il suo testo sopra, sotto o di fianco."""
+    di_fianco = allegato.testo and allegato.posizione_testo in ("SX", "DX")
+    # Al massimo 2/3 della larghezza utile, così la posizione a sinistra, al centro o a destra si vede.
+    immagine = _immagine(allegato, larghezza=LARGHEZZA * (0.55 if di_fianco else 2 / 3), altezza=9 * cm)
+    if immagine is None:
+        return [Paragraph(_pulito(f"Immagine non disponibile: {allegato.nome_file}"), doc.stili["base"])]
+    allinea, allinea_testo = ALLINEAMENTI.get(allegato.allineamento, ALLINEAMENTI["CENTRO"])
+    if not allegato.testo:
+        immagine.hAlign = allinea
+        return [immagine]
+    if di_fianco:
+        # Immagine e testo affiancati su tutta la larghezza: il testo occupa lo spazio che resta.
+        testo = Paragraph(_pulito(allegato.testo), doc.stili["cella"])
+        larghezza_immagine = immagine.drawWidth + 8
+        celle = [immagine, testo] if allegato.posizione_testo == "DX" else [testo, immagine]
+        colonne = [larghezza_immagine, LARGHEZZA - larghezza_immagine]
+        if allegato.posizione_testo == "SX":
+            colonne.reverse()
+        tabella = Table([celle], colWidths=colonne)
+        tabella.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        return [tabella]
+    immagine.hAlign = allinea
+    stile = ParagraphStyle(f"testo_allegato_{allinea}", parent=doc.stili["base"], alignment=allinea_testo)
+    testo = Paragraph(_pulito(allegato.testo), stile)
+    return [testo, Spacer(1, 1.5 * mm), immagine] if allegato.posizione_testo == "SOPRA" else [immagine, Spacer(1, 1.5 * mm), testo]
+
+
 def _allegati(doc, allegati):
-    """Sezione 9: immagini stampate nella scheda con la didascalia; i PDF sono in appendice al documento."""
+    """Sezione 9: immagini stampate nella scheda con il loro testo; i PDF sono in appendice al documento."""
     for allegato in allegati:
         if allegato.e_immagine:
-            immagine = _immagine(allegato)
-            if immagine is None:
-                doc.p(f"Immagine non disponibile: {allegato.nome_file}")
-                continue
-            blocco = [immagine]
-            if allegato.didascalia:
-                blocco.append(Paragraph(_pulito(allegato.didascalia), doc.stili["centro"]))
-            doc.storia.append(KeepTogether(blocco))
+            doc.storia.append(KeepTogether(_immagine_con_testo(doc, allegato)))
             doc.spazio(4)
         else:
-            doc.p(f"PDF allegato in appendice: {allegato.didascalia or allegato.nome_file}")
+            nome = _pulito(allegato.nome_file)
+            testo = f" – {_pulito(allegato.testo)}" if allegato.testo else ""
+            doc.p_html(f"PDF allegato in appendice: {nome}{testo}")
 
 
 def _con_pdf_allegati(contenuto, schede):

@@ -434,8 +434,11 @@ MisureFormSet = inlineformset_factory(
 class AllegatoForm(forms.ModelForm):
     class Meta:
         model = AllegatoAnalisi
-        fields = ["file", "didascalia"]
-        widgets = {"file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf"})}
+        fields = ["file", "allineamento", "posizione_testo", "testo"]
+        widgets = {
+            "file": forms.ClearableFileInput(attrs={"accept": "image/*,.pdf"}),
+            "testo": forms.Textarea(attrs={"rows": 3}),
+        }
 
 
 ApplicabilitaFormSet = modelformset_factory(

@@ -6,7 +6,7 @@
 <p><a href="{% url 'analisi' revisione.analisi_id %}">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
 <h1>Scheda {{ scheda.codice|default:"nuova" }}{% if scheda.pk %} · {{ scheda.requisito.codice }} {{ scheda.requisito.titolo }}{% endif %}</h1>
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
-<form method="post" class="modulo">{% csrf_token %}
+<form method="post" class="modulo" id="form-scheda">{% csrf_token %}
 {{ form.non_field_errors }}
 <fieldset><legend>1. IDENTIFICAZIONE SCHEDA</legend>
   {% include "rischi/_campo.html" with f=form.modulo %}
@@ -60,7 +60,8 @@
   {% include "rischi/_campo.html" with f=form.motivazione %}
   {% if scheda.decisa_da %}<p class="sotto">Ultima decisione: {{ scheda.decisa_da.get_full_name|default:scheda.decisa_da.username }}, {{ scheda.decisa_il|date:"d/m/Y H:i" }}</p>{% endif %}
 </fieldset>
-{% if modificabile %}<button class="primario">Salva scheda</button>{% endif %}
+{# Con la scheda modello di origine il pulsante sta in fondo, accanto ad "Aggiorna dalla scheda modello" #}
+{% if modificabile %}{% if not scheda.pk or not scheda.origine %}<button class="primario">Salva scheda</button>{% endif %}{% endif %}
 </form>
 {% if scheda.pk %}
 <div class="modulo sezione-allegati">
@@ -69,14 +70,16 @@
   {% for a in scheda.allegati.all %}
   <div class="allegato">
     <a href="{{ a.file.url }}" target="_blank">{% if a.e_immagine %}<img src="{{ a.file.url }}" class="anteprima-allegato" alt="">{% else %}PDF: {{ a.nome_file }}{% endif %}</a>
-    <span>{{ a.didascalia|default:a.nome_file }}</span>
+    <span>{{ a.testo|semplice|default:a.nome_file }}<br><small class="sotto">Immagine {{ a.get_allineamento_display }}, testo {{ a.get_posizione_testo_display }}</small></span>
     {% if modificabile %}<form method="post" action="{% url 'elimina_allegato' a.pk %}" onsubmit="return confirm('Togliere questo allegato dalla scheda?');">{% csrf_token %}<button>Togli</button></form>{% endif %}
   </div>
   {% empty %}<p class="sotto">Nessun allegato.</p>{% endfor %}
   {% if modificabile %}
   <form method="post" action="{% url 'aggiungi_allegato' scheda.pk %}" enctype="multipart/form-data" class="carica-allegato">{% csrf_token %}
     {% include "rischi/_campo.html" with f=form_allegato.file %}
-    {% include "rischi/_campo.html" with f=form_allegato.didascalia %}
+    {% include "rischi/_campo.html" with f=form_allegato.allineamento %}
+    {% include "rischi/_campo.html" with f=form_allegato.posizione_testo %}
+    {% include "rischi/_campo.html" with f=form_allegato.testo %}
     <button>Carica allegato</button>
   </form>
   {% endif %}
@@ -89,7 +92,8 @@
 {% csrf_token %}
 <fieldset><legend>LIBRERIA</legend>
   <p class="sotto">Questa scheda viene dalla scheda modello <a href="{% url 'admin:rischi_schedamodello_change' scheda.origine.pk %}">{{ scheda.origine.codice }}</a>. Se la scheda modello è stata aggiornata in libreria, puoi ricaricarne il contenuto: zone, condizioni, pericoli, soggetti, stime, misure, immagini allegate, norme, note e considerazioni sostituiscono quelli di questa scheda. Modulo, requisito, codice e decisione restano invariati.</p>
-  <p><button>Aggiorna dalla scheda modello {{ scheda.origine.codice }}</button></p>
+  <p class="pulsanti-scheda"><button class="primario" type="submit" form="form-scheda">Salva scheda</button>
+     <button>Aggiorna dalla scheda modello {{ scheda.origine.codice }}</button></p>
 </fieldset>
 </form>
 {% endif %}

@@ -101,7 +101,8 @@ def _copia_scheda(sorgente, revisione, **extra):
     nuova.soggetti.set(sorgente.soggetti.all())
     for allegato in sorgente.allegati.all():
         AllegatoAnalisi.objects.create(
-            scheda=nuova, file=allegato.file.name, didascalia=allegato.didascalia, ordine=allegato.ordine
+            scheda=nuova, file=allegato.file.name, testo=allegato.testo, allineamento=allegato.allineamento,
+            posizione_testo=allegato.posizione_testo, ordine=allegato.ordine
         )
     for misura in sorgente.misure.all():
         MisuraAnalisi.objects.create(
@@ -136,7 +137,8 @@ def aggiorna_da_modello(scheda, utente):
     scheda.allegati.all().delete()
     for allegato in modello.allegati.all():
         AllegatoAnalisi.objects.create(
-            scheda=scheda, file=allegato.file.name, didascalia=allegato.didascalia, ordine=allegato.ordine
+            scheda=scheda, file=allegato.file.name, testo=allegato.testo, allineamento=allegato.allineamento,
+            posizione_testo=allegato.posizione_testo, ordine=allegato.ordine
         )
     for misura in modello.misure.all():
         MisuraAnalisi.objects.create(

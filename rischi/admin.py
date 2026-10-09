@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib.auth import admin as _admin_utenti  # noqa: F401 (registra Gruppi prima di aggiungere Duplica)
 from django.contrib.auth.models import Group
+from django.db import models
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
@@ -50,13 +51,15 @@ class MisuraModelloInline(SoloVistaCollegati, admin.StackedInline):
     verbose_name_plural = "Misure di protezione"
 
 
-class AllegatoModelloInline(admin.TabularInline):
-    """Sezione 9: immagini e PDF allegati alla scheda modello, nell'ordine in cui compaiono."""
+class AllegatoModelloInline(admin.StackedInline):
+    """Sezione 9: immagini e PDF allegati alla scheda modello, nell'ordine in cui compaiono, con la posizione
+    dell'immagine nella pagina e il testo collegato (sopra, sotto o di fianco)."""
 
     model = m.AllegatoModello
     extra = 1
-    fields = ("anteprima", "file", "didascalia")
+    fields = (("anteprima", "file"), ("allineamento", "posizione_testo"), "testo")
     readonly_fields = ("anteprima",)
+    formfield_overrides = {models.TextField: {"widget": forms.Textarea(attrs={"rows": 3})}}
     verbose_name = "allegato"
     verbose_name_plural = "Immagini allegate"
     sezione = 9
@@ -443,3 +446,14 @@ class MacchinaAdmin(admin.ModelAdmin):
 for _modello, _admin in admin.site._registry.items():
     if (_modello._meta.app_label == "rischi" and _modello is not m.RegistroModifica) or _modello is Group:
         _admin.actions = [*(_admin.actions or ()), duplica]
+
+
+# "Libreria" resta in cima all'elenco, prima di "Autenticazione e autorizzazione" (l'admin ordina per nome).
+_elenco_app = admin.site.get_app_list
+
+
+def _libreria_prima(request, app_label=None):
+    return sorted(_elenco_app(request, app_label), key=lambda app: app["app_label"] != "rischi")
+
+
+admin.site.get_app_list = _libreria_prima
