@@ -512,6 +512,24 @@ class MisuraModello(models.Model):
 # ---------------------------------------------------------------------------
 
 
+class CapitoloValutazione(models.Model):
+    """Capitolo di testo della valutazione dei rischi (es. Definizioni, Principi generali), stampato dopo la
+    copertina nell'ordine indicato."""
+
+    titolo = models.CharField(max_length=150)
+    testo = models.TextField(blank=True)
+    ordine = models.PositiveSmallIntegerField(default=0)
+    attivo = models.BooleanField("stampa nel PDF", default=True)
+
+    class Meta:
+        verbose_name = "capitolo della valutazione"
+        verbose_name_plural = "capitoli della valutazione"
+        ordering = ["ordine", "pk"]
+
+    def __str__(self):
+        return self.titolo
+
+
 class Fabbricante(models.Model):
     """Dati fissi per la dichiarazione UE (una sola riga)."""
 

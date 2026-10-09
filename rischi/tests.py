@@ -362,7 +362,7 @@ class DocumentiTest(BaseConLibreria):
         self.assertIn("VALUTAZIONE DEI RISCHI", prima.extract_text())
         self.assertNotIn("Definizioni", prima.extract_text())
         self.assertTrue(prima.images, "il logo deve essere nella prima pagina")
-        self.assertIn("Definizioni (RESS 1.1.1)", pagine[1].extract_text())
+        self.assertIn("Definizioni", pagine[1].extract_text())
 
     @staticmethod
     def leggi(contenuto):
@@ -1341,3 +1341,28 @@ class SintesiNormeTest(BaseConLibreria):
 
         for norma in Norma.objects.filter(codice__in=SINTESI):
             self.assertTrue(norma.nota.startswith(SINTESI[norma.codice]), (norma.codice, norma.nota[:200]))
+
+
+class CapitoliValutazioneTest(BaseConLibreria):
+    def test_capitoli_modificabili_nella_valutazione(self):
+        from . import documenti
+        from .models import CapitoloValutazione
+
+        self.assertEqual(
+            list(CapitoloValutazione.objects.values_list("titolo", flat=True)), ["Definizioni", "Principi generali"]
+        )
+        analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        testo = DocumentiTest.leggi(documenti.valutazione(analisi.revisione_corrente))
+        self.assertIn("zona pericolosa", testo)
+        self.assertIn("Principi generali", testo)
+        principi = CapitoloValutazione.objects.get(titolo="Principi generali")
+        principi.testo = "<b>Testo</b> scritto dal tecnico."
+        principi.save()
+        CapitoloValutazione.objects.filter(titolo="Definizioni").update(attivo=False)
+        testo = DocumentiTest.leggi(documenti.valutazione(analisi.revisione_corrente))
+        self.assertIn("Testo scritto dal tecnico.", testo)
+        self.assertNotIn("persona esposta»", testo)
+
+        utente = User.objects.create_superuser("capo", "capo@example.com", "x")
+        self.client.force_login(utente)
+        self.assertContains(self.client.get(reverse("admin:rischi_capitolovalutazione_changelist")), "Principi generali")

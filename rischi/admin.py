@@ -367,6 +367,25 @@ class SoluzioneProtezioneAdmin(admin.ModelAdmin):
         return ", ".join(n.codice for n in obj.norme.all()) or "–"
 
 
+@admin.register(m.CapitoloValutazione)
+class CapitoloValutazioneAdmin(admin.ModelAdmin):
+    """Capitoli di testo stampati nella valutazione dei rischi dopo la copertina, nell'ordine indicato."""
+
+    list_display = ("titolo", "ordine", "attivo")
+    list_editable = ("ordine", "attivo")
+    fields = ("titolo", "testo", "ordine", "attivo")
+
+    class Media:
+        css = {"all": ("rischi/admin_scheda.css",)}
+        js = ("rischi/scheda.js",)
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        campo = super().formfield_for_dbfield(db_field, request, **kwargs)
+        if db_field.name == "testo":
+            campo.widget.attrs["rows"] = 25
+        return campo
+
+
 @admin.register(m.Figura)
 class FiguraAdmin(admin.ModelAdmin):
     list_display = ("nome", "tipo", "ordine")
