@@ -1485,3 +1485,37 @@ class ConsiderazioniPrecompilateTest(BaseConLibreria):
         self.assertEqual(scritta.considerazioni_pericoli, "Scritto dal tecnico.")
         self.assertEqual(scritta.considerazioni_stima_iniziale, voce["campi"]["considerazioni_stima_iniziale"])
         self.assertEqual(diversa.considerazioni_stima_iniziale, "")
+
+
+class NuoviModuliTest(BaseConLibreria):
+    def test_moduli_rinominati_schede_spostate_e_nuove_in_bozza(self):
+        import importlib
+
+        from django.apps import apps
+
+        from .models import RequisitoRESS
+
+        applica = importlib.import_module("rischi.migrations.0034_nuovi_moduli").applica
+        luc = Modulo.objects.create(nome="Unità di lucidatura CNC (prova)", sigla="LUC", ordine=50)
+        rob = Modulo.objects.create(nome="Gruppo robot (prova)", sigla="ROB", ordine=51)
+        requisito = RequisitoRESS.objects.get(riferimento=self.riferimento, codice="1.3.8.1")
+        lucidatura = SchedaModello.objects.create(codice="LUC-01", modulo=luc, requisito=requisito)
+        nastro = SchedaModello.objects.create(codice="ROB-02", modulo=rob, requisito=requisito)
+        macchina = self.nuova_macchina()
+        macchina.moduli.add(rob)
+
+        applica(apps, None)
+
+        lucidatura.refresh_from_db()
+        nastro.refresh_from_db()
+        self.assertEqual((lucidatura.codice, lucidatura.modulo.sigla), ("PUC-01", "PUC"))
+        self.assertEqual((nastro.codice, nastro.modulo.sigla), ("SMC-01", "SMC"))
+        self.assertIn("SMC", set(macchina.moduli.values_list("sigla", flat=True)))
+        nuove = SchedaModello.objects.filter(modulo__sigla="MAN")
+        self.assertEqual(nuove.count(), 8)
+        self.assertTrue(all(s.stato == "BOZZA" and s.misure.exists() and s.considerazioni_stima_iniziale for s in nuove))
+        # Il codice lasciato libero dalla scheda spostata non si riusa
+        self.assertFalse(SchedaModello.objects.filter(codice="ROB-02").exists())
+        # Una seconda esecuzione non duplica le schede nuove
+        applica(apps, None)
+        self.assertEqual(SchedaModello.objects.filter(modulo__sigla="MAN").count(), 8)
