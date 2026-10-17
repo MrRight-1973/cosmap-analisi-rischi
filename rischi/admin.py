@@ -388,6 +388,22 @@ class NormaAdmin(admin.ModelAdmin):
     search_fields = ("codice", "titolo")
 
 
+@admin.register(m.ArticoloSicurezza)
+class ArticoloSicurezzaAdmin(admin.ModelAdmin):
+    list_display = ("codice", "produttore", "tipo", "pfh", "b10d", "mttfd", "verificato", "utilizzato")
+    list_filter = ("produttore", "tipo", "verificato", ("utilizzato", admin.EmptyFieldListFilter), "libreria")
+    search_fields = ("codice", "descrizione", "produttore", "gruppo")
+    readonly_fields = ("chiave",)
+    fieldsets = (
+        (None, {"fields": ("chiave", "codice", "descrizione", "produttore", "tipo", "libreria", "gruppo")}),
+        ("Valori", {"fields": ("pfh", "b10d", "mttfd", "pl_max", "fonte", "data_fonte", "verificato")}),
+        (None, {"fields": ("utilizzato", "note")}),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        return self.readonly_fields if obj else ()
+
+
 class ScalaInline(admin.TabularInline):
     model = m.ScalaFattore
     extra = 0

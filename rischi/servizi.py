@@ -16,6 +16,7 @@ from .models import (
     Esito,
     Figura,
     FiguraMacchina,
+    FunzioneSicurezza,
     MetodoStima,
     MisuraAnalisi,
     Modulo,
@@ -23,6 +24,7 @@ from .models import (
     Revisione,
     SchedaAnalisi,
     SchedaModello,
+    ValutazioneFunzione,
     prossimo_codice,
 )
 
@@ -83,8 +85,10 @@ _CAMPI_STIMA = (
 )
 
 
-def _copia_scheda(sorgente, revisione, **extra):
-    """Copia una scheda (modello o di un'altra analisi) dentro la revisione."""
+def _copia_scheda(sorgente, revisione, mappa_misure=None, **extra):
+    """Copia una scheda (modello o di un'altra analisi) dentro la revisione.
+
+    In mappa_misure, se data, scrive misura originale -> misura copiata (per ricollegare le funzioni di sicurezza)."""
     valori = {campo: getattr(sorgente, campo) for campo in _CAMPI_STIMA}
     valori.update(
         revisione=revisione,
@@ -105,11 +109,35 @@ def _copia_scheda(sorgente, revisione, **extra):
             posizione_testo=allegato.posizione_testo, ordine=allegato.ordine
         )
     for misura in sorgente.misure.all():
-        MisuraAnalisi.objects.create(
+        copia = MisuraAnalisi.objects.create(
             scheda=nuova, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma,
             soluzione=misura.soluzione
         )
+        if mappa_misure is not None:
+            mappa_misure[misura.pk] = copia
     return nuova
+
+
+def _copia_funzioni(sorgente, revisione, mappa_misure, stessa_macchina):
+    """Copia funzioni di sicurezza e valutazioni nella revisione, collegate alle misure copiate.
+
+    Su un'altra macchina le prove di validazione non valgono: la valutazione si copia senza esiti delle prove."""
+    for funzione in sorgente.funzioni.all():
+        nuova = FunzioneSicurezza.objects.create(
+            revisione=revisione, ordine=funzione.ordine, nome=funzione.nome, descrizione=funzione.descrizione,
+            s=funzione.s, f=funzione.f, p=funzione.p,
+        )
+        nuova.misure.set([mappa_misure[mi.pk] for mi in funzione.misure.all() if mi.pk in mappa_misure])
+        valutazione = getattr(funzione, "valutazione", None)
+        if valutazione is None:
+            continue
+        dettaglio = dict(valutazione.dettaglio)
+        if not stessa_macchina:
+            dettaglio.pop("validazione", None)
+        ValutazioneFunzione.objects.create(
+            funzione=nuova, dettaglio=dettaglio, pl=valutazione.pl, pfh=valutazione.pfh, esito=valutazione.esito,
+            validata=valutazione.validata and stessa_macchina, calcolata_il=valutazione.calcolata_il,
+        )
 
 
 @transaction.atomic
@@ -132,6 +160,9 @@ def aggiorna_da_modello(scheda, utente):
     scheda.norme.set(modello.norme.all())
     scheda.norme_escluse.set(modello.norme_escluse.all())
     scheda.soggetti.set(modello.soggetti.all())
+    # Le funzioni di sicurezza collegate alle misure sostituite passano alla nuova misura con lo stesso testo,
+    # altrimenti a quella nella stessa posizione
+    collegate = [(mi.testo, mi.ordine, list(mi.funzioni.all())) for mi in scheda.misure.all()]
     scheda.misure.all().delete()
     # Il file resta: può essere lo stesso della scheda modello o di altre schede
     scheda.allegati.all().delete()
@@ -145,6 +176,13 @@ def aggiorna_da_modello(scheda, utente):
             scheda=scheda, ordine=misura.ordine, tipo=misura.tipo, testo=misura.testo, norma=misura.norma,
             soluzione=misura.soluzione
         )
+    nuove = list(scheda.misure.all())
+    for testo, ordine, funzioni in collegate:
+        misura = next((mi for mi in nuove if mi.testo == testo), None) or next(
+            (mi for mi in nuove if mi.ordine == ordine), None
+        )
+        if misura:
+            misura.funzioni.add(*funzioni)
     allinea_figure(scheda.revisione.analisi.macchina, scheda.revisione)
     return modello
 
@@ -232,8 +270,12 @@ def crea_analisi_da_copia(macchina, revisione_sorgente, utente):
         metodo=_metodo_corrente(),
         compilata_da=utente,
     )
+    mappa_misure = {}
     for scheda in revisione_sorgente.schede.filter(decisione__in=_DECISIONI_ATTIVE):
-        _copia_scheda(scheda, revisione, origine=scheda.origine, decisione=SchedaAnalisi.Decisione.PROPOSTA)
+        _copia_scheda(
+            scheda, revisione, mappa_misure, origine=scheda.origine, decisione=SchedaAnalisi.Decisione.PROPOSTA
+        )
+    _copia_funzioni(revisione_sorgente, revisione, mappa_misure, stessa_macchina=False)
     macchina.moduli.set(revisione_sorgente.analisi.macchina.moduli.all())
     macchina.schede_escluse.set(revisione_sorgente.analisi.macchina.schede_escluse.all())
     macchina.norme_tipo_c.set(revisione_sorgente.analisi.macchina.norme_tipo_c.all())
@@ -347,16 +389,19 @@ def nuova_revisione(analisi, utente, motivo):
         metodo=_metodo_corrente(),
         compilata_da=utente,
     )
+    mappa_misure = {}
     for scheda in corrente.schede.all():
         _copia_scheda(
             scheda,
             revisione,
+            mappa_misure,
             origine=scheda.origine,
             decisione=scheda.decisione,
             motivazione=scheda.motivazione,
             decisa_da=scheda.decisa_da,
             decisa_il=scheda.decisa_il,
         )
+    _copia_funzioni(corrente, revisione, mappa_misure, stessa_macchina=True)
     _crea_applicabilita(revisione, precedente=corrente)
     return revisione
 
@@ -454,6 +499,8 @@ def elimina_commessa(commessa, utente):
             documento.file.delete(save=False)
             documento.delete()
         with senza_registro_contenuti():
+            ValutazioneFunzione.objects.filter(funzione__revisione=revisione).delete()
+            revisione.funzioni.all().delete()
             MisuraAnalisi.objects.filter(scheda__revisione=revisione).delete()
             revisione.schede.all().delete()
             revisione.applicabilita.all().delete()

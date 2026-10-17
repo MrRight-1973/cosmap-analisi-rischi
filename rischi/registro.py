@@ -4,6 +4,8 @@ Ogni salvataggio o eliminazione dei modelli elencati in MODELLI_REGISTRATI
 scrive una riga in RegistroModifica con l'utente della richiesta corrente.
 """
 
+import hashlib
+import json
 import threading
 
 from django.db.models.signals import m2m_changed, post_delete, post_save, pre_save
@@ -23,6 +25,9 @@ MODELLI_REGISTRATI = (
     m.SchedaAnalisi,
     m.MisuraAnalisi,
     m.ApplicabilitaRequisito,
+    m.FunzioneSicurezza,
+    m.ValutazioneFunzione,
+    m.ArticoloSicurezza,
     m.Modulo,
     m.Figura,
     m.SchedaModello,
@@ -36,7 +41,7 @@ MODELLI_REGISTRATI = (
 )
 
 
-_CONTENUTI = (m.SchedaAnalisi, m.MisuraAnalisi, m.ApplicabilitaRequisito)
+_CONTENUTI = (m.SchedaAnalisi, m.MisuraAnalisi, m.ApplicabilitaRequisito, m.FunzioneSicurezza, m.ValutazioneFunzione)
 
 
 class senza_registro_contenuti:
@@ -79,7 +84,13 @@ class UtenteCorrenteMiddleware:
 
 def _valori(istanza):
     dati = model_to_dict(istanza)
-    return {k: v for k, v in dati.items() if not isinstance(v, list)}
+    return {k: _impronta(v) if isinstance(v, dict) else v for k, v in dati.items() if not isinstance(v, list)}
+
+
+def _impronta(dati):
+    """Un campo JSON (es. il dettaglio della valutazione) si registra con un'impronta, non per intero."""
+    testo = json.dumps(dati, sort_keys=True, ensure_ascii=False)
+    return f"JSON {len(testo)} caratteri, sha1 {hashlib.sha1(testo.encode()).hexdigest()[:10]}"
 
 
 def _serializza(valore):
@@ -140,7 +151,7 @@ def _registra_eliminazione(sender, instance, **kwargs):
 
 @receiver(m2m_changed)
 def _blocca_e_registra_m2m(sender, instance, action, model, pk_set, **kwargs):
-    if not isinstance(instance, m.SchedaAnalisi) or action not in ("pre_add", "pre_remove", "pre_clear", "post_add", "post_remove"):
+    if not isinstance(instance, (m.SchedaAnalisi, m.FunzioneSicurezza)) or action not in ("pre_add", "pre_remove", "pre_clear", "post_add", "post_remove"):
         return
     if action.startswith("pre_"):
         instance.revisione.verifica_modificabile()
@@ -150,7 +161,7 @@ def _blocca_e_registra_m2m(sender, instance, action, model, pk_set, **kwargs):
     m.RegistroModifica.objects.create(
         utente=utente_corrente(),
         azione=m.RegistroModifica.Azione.MODIFICA,
-        tabella=m.SchedaAnalisi._meta.verbose_name,
+        tabella=type(instance)._meta.verbose_name,
         oggetto_id=str(instance.pk),
         descrizione=str(instance)[:300],
         modifiche={campo: ["aggiunti" if action == "post_add" else "tolti", elementi]},

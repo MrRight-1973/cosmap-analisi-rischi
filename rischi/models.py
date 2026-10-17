@@ -935,6 +935,131 @@ class ApplicabilitaRequisito(ContenutoRevisione):
         return f"{self.requisito.codice}: {'applicabile' if self.applicabile else 'non applicabile'}"
 
 
+# ---------------------------------------------------------------------------
+# Funzioni di sicurezza (EN ISO 13849-1/-2)
+# ---------------------------------------------------------------------------
+
+
+class ArticoloSicurezza(models.Model):
+    """Articolo dell'archivio della safety evaluation: libreria comune a tutte le commesse.
+
+    Solo valori con fonte: un campo senza fonte resta vuoto. Gli articoli importati entrano "da verificare" e
+    tornano da verificare se un valore cambia."""
+
+    class Tipo(models.TextChoices):
+        SENSORE = "sensore", "Sensore"
+        LOGICA = "logica", "Logica"
+        ATTUATORE = "attuatore", "Attuatore"
+        COMUNICAZIONE = "comunicazione", "Comunicazione"
+
+    chiave = models.CharField(
+        max_length=200, unique=True, help_text="Identificativo dell'archivio (stesso id = stesso articolo)."
+    )
+    codice = models.CharField(max_length=200)
+    descrizione = models.TextField(blank=True)
+    produttore = models.CharField(max_length=200, blank=True)
+    tipo = models.CharField(max_length=15, choices=Tipo.choices, blank=True)
+    pfh = models.FloatField("PFH (10⁻⁹/h)", null=True, blank=True)
+    b10d = models.FloatField("B10d (cicli)", null=True, blank=True)
+    mttfd = models.FloatField("MTTFd (anni)", null=True, blank=True)
+    pl_max = models.CharField("PL massimo", max_length=1, blank=True)
+    fonte = models.TextField(blank=True)
+    data_fonte = models.CharField("data della fonte", max_length=20, blank=True)
+    libreria = models.CharField("libreria di origine", max_length=200, blank=True)
+    gruppo = models.CharField(max_length=200, blank=True)
+    verificato = models.BooleanField(default=False, help_text="Valori confrontati con il documento originale.")
+    utilizzato = models.DateField("ultimo utilizzo", null=True, blank=True)
+    note = models.TextField(blank=True)
+
+    VALORI = ("pfh", "b10d", "mttfd")
+
+    class Meta:
+        verbose_name = "articolo di sicurezza"
+        verbose_name_plural = "articoli di sicurezza"
+        ordering = ["produttore", "codice"]
+
+    def __str__(self):
+        return f"{self.produttore} {self.codice}".strip()
+
+
+class Gravita(models.TextChoices):
+    """Parametri del grafo del rischio, EN ISO 13849-1 allegato A."""
+
+    S1 = "S1", "S1 – lesione lieve, reversibile"
+    S2 = "S2", "S2 – lesione grave, irreversibile o morte"
+
+
+class Frequenza(models.TextChoices):
+    F1 = "F1", "F1 – esposizione da rara a frequente o breve"
+    F2 = "F2", "F2 – esposizione da frequente a continua o lunga"
+
+
+class Evitabilita(models.TextChoices):
+    P1 = "P1", "P1 – possibile in certe condizioni"
+    P2 = "P2", "P2 – difficilmente possibile"
+
+
+def plr(s, f, p):
+    """PLr dal grafo del rischio (EN ISO 13849-1, allegato A, fig. A.1); stessa tabella di engine.js."""
+    if not (s and f and p):
+        return ""
+    i = (4 if s == "S2" else 0) + (2 if f == "F2" else 0) + (1 if p == "P2" else 0)
+    return ["a", "b", "b", "c", "c", "d", "d", "e"][i]
+
+
+class FunzioneSicurezza(ContenutoRevisione):
+    """Funzione di sicurezza della revisione: nasce da una o più misure di protezione delle schede, oppure a mano
+    quando non viene da una scheda (es. arresto di emergenza generale)."""
+
+    revisione = models.ForeignKey(Revisione, on_delete=models.CASCADE, related_name="funzioni")
+    ordine = models.PositiveSmallIntegerField(default=0)
+    nome = models.CharField(max_length=200)
+    descrizione = models.TextField(blank=True, help_text="Evento che la attiva, reazione, stato sicuro.")
+    misure = models.ManyToManyField(
+        MisuraAnalisi, blank=True, related_name="funzioni", verbose_name="misure di protezione"
+    )
+    s = models.CharField("S", max_length=2, blank=True, choices=Gravita.choices)
+    f = models.CharField("F", max_length=2, blank=True, choices=Frequenza.choices)
+    p = models.CharField("P", max_length=2, blank=True, choices=Evitabilita.choices)
+    plr = models.CharField("PLr", max_length=1, blank=True, editable=False)
+
+    class Meta:
+        verbose_name = "funzione di sicurezza"
+        verbose_name_plural = "funzioni di sicurezza"
+        ordering = ["ordine", "pk"]
+
+    def __str__(self):
+        return self.nome
+
+    def save(self, *args, **kwargs):
+        self.plr = plr(self.s, self.f, self.p)
+        super().save(*args, **kwargs)
+
+
+class ValutazioneFunzione(ContenutoRevisione):
+    """Calcolo del PL di una funzione. Il dettaglio (schema a blocchi, sottosistemi, componenti, prove) resta nel
+    JSON della safety evaluation, così il motore lo legge senza conversioni; i risultati stanno in campi propri
+    per ricerche e controlli."""
+
+    funzione = models.OneToOneField(FunzioneSicurezza, on_delete=models.CASCADE, related_name="valutazione")
+    dettaglio = models.JSONField(default=dict, blank=True)
+    pl = models.CharField("PL raggiunto", max_length=1, blank=True)
+    pfh = models.FloatField("PFH (10⁻⁹/h)", null=True, blank=True)
+    esito = models.BooleanField("PL ≥ PLr", null=True, blank=True)
+    validata = models.BooleanField(default=False, help_text="Tutte le prove di validazione applicabili sono OK.")
+    calcolata_il = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "valutazione della funzione"
+        verbose_name_plural = "valutazioni delle funzioni"
+
+    def __str__(self):
+        return f"Valutazione {self.funzione}"
+
+    def _revisione(self):
+        return self.funzione.revisione
+
+
 class DocumentoGenerato(models.Model):
     class Tipo(models.TextChoices):
         VALUTAZIONE = "VALUTAZIONE", "Valutazione dei rischi"
