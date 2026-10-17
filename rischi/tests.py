@@ -1810,3 +1810,96 @@ class PagineFunzioniTest(BaseConLibreria):
         self.client.force_login(self.compilatore)
         self.client.post(reverse("elimina_funzione", args=[funzione.pk]))
         self.assertFalse(FunzioneSicurezza.objects.exists())
+
+
+class CalcoloPLTest(BaseConLibreria):
+    """Fase 3: calcolo del PL nella pagina della funzione, ricalcolato dal server con engine.js."""
+
+    def setUp(self):
+        from .models import ArticoloSicurezza, FunzioneSicurezza
+
+        self.analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+        self.funzione = FunzioneSicurezza.objects.create(revisione=self.rev, nome="Porta", s="S2", f="F1", p="P2")
+        for chiave, tipo in (("fdi", "sensore"), ("fcpu", "logica"), ("sto", "attuatore")):
+            ArticoloSicurezza.objects.create(chiave=chiave, codice=chiave.upper(), tipo=tipo, pfh=10, fonte="Certificato")
+        blocco = lambda ruolo, chiave: {
+            "id": chiave, "nome": chiave, "ruolo": ruolo, "percorso": "", "metodo": "pfh", "categoria": None,
+            "componenti": [{"articoloId": chiave, "qty": 1}], "ccf": {}, "pfhK1": None,
+        }
+        self.dettaglio = {"sottosistemi": [
+            blocco("rilevamento", "fdi"), blocco("logica", "fcpu"), blocco("attuazione", "sto"),
+        ]}
+        self.url = reverse("valutazione_funzione", args=[self.funzione.pk])
+
+    def salva(self, dettaglio, risultato=None, utente=None):
+        import json
+
+        self.client.force_login(utente or self.compilatore)
+        return self.client.post(
+            self.url, json.dumps({"dettaglio": dettaglio, "risultato": risultato or {}}), content_type="application/json"
+        )
+
+    def test_pagina_e_articoli(self):
+        self.client.force_login(self.compilatore)
+        pagina = self.client.get(self.url)
+        self.assertContains(pagina, 'id="dati-valutazione"')
+        self.assertContains(pagina, "rischi/safety/engine.js")
+        articoli = self.client.get(reverse("articoli_sicurezza")).json()["articoli"]
+        self.assertEqual({a["id"] for a in articoli}, {"fdi", "fcpu", "sto"})
+        self.assertEqual(articoli[0]["pfh"], 10)
+
+    def test_salva_e_ricalcola_sul_server(self):
+        import datetime
+
+        from .models import ArticoloSicurezza
+
+        # Il risultato inviato dalla pagina non conta: il server ricalcola con engine.js
+        risposta = self.salva(self.dettaglio, {"pl": "a", "pfh": 1, "ok": False})
+        self.assertEqual(risposta.status_code, 200, risposta.content)
+        self.assertIn("ricalcolata dal server", risposta.json()["messaggio"])
+        valutazione = self.funzione.valutazione
+        self.assertEqual((valutazione.pl, valutazione.pfh, valutazione.esito), ("e", 30, True))
+        self.assertEqual(ArticoloSicurezza.objects.get(chiave="sto").utilizzato, datetime.date.today())
+        # Le parti del dettaglio che la pagina non gestisce restano
+        valutazione.dettaglio["validazione"] = {"esiti": {"funz:": "OK"}}
+        valutazione.save()
+        self.salva(self.dettaglio)
+        valutazione.refresh_from_db()
+        self.assertEqual(valutazione.dettaglio["validazione"], {"esiti": {"funz:": "OK"}})
+
+    def test_incompleta_non_soddisfa(self):
+        self.salva({"sottosistemi": self.dettaglio["sottosistemi"][:2]})
+        self.assertFalse(self.funzione.valutazione.esito)
+
+    def test_senza_node_vale_la_pagina(self):
+        from unittest import mock
+
+        with mock.patch("rischi.calcolo.shutil.which", return_value=None):
+            risposta = self.salva(self.dettaglio, {"pl": "e", "pfh": 30, "ok": True})
+        self.assertIn("calcolo della pagina", risposta.json()["messaggio"])
+        self.assertEqual(self.funzione.valutazione.pl, "e")
+
+    def test_plr_cambiato_rifa_il_confronto(self):
+        self.salva(self.dettaglio)
+        # 3 × 1500·10⁻⁹/h = 4,5·10⁻⁶/h → PL b: con S2 F1 P2 (PLr d) il requisito non è soddisfatto
+        from .models import ArticoloSicurezza
+
+        ArticoloSicurezza.objects.update(pfh=1500)
+        self.salva(self.dettaglio)
+        self.funzione.refresh_from_db()
+        self.assertEqual((self.funzione.valutazione.pl, self.funzione.valutazione.esito), ("b", False))
+        self.client.post(reverse("funzione", args=[self.funzione.pk]), {"nome": "Porta", "s": "S1", "f": "F1", "p": "P1"})
+        self.funzione.refresh_from_db()
+        self.assertEqual((self.funzione.plr, self.funzione.valutazione.esito), ("a", True))
+        # PFH oltre il campo della PL a: nessun PL, il campo resta vuoto
+        ArticoloSicurezza.objects.update(pfh=1e6)
+        self.salva(self.dettaglio)
+        self.funzione.refresh_from_db()
+        self.assertEqual((self.funzione.valutazione.pl, self.funzione.valutazione.esito), ("", False))
+
+    def test_sola_lettura(self):
+        self.assertEqual(self.salva(self.dettaglio, utente=self.verificatore).status_code, 403)
+        self.assertEqual(self.salva({"sottosistemi": "rotto"}).status_code, 400)
+        self.client.force_login(self.verificatore)
+        self.assertContains(self.client.get(self.url), "Sola lettura")
