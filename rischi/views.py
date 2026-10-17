@@ -1,3 +1,4 @@
+import json
 from itertools import groupby
 
 from django.contrib import messages
@@ -6,14 +7,15 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Max
 from django.core.files.base import ContentFile
-from django.http import FileResponse
+from django.http import FileResponse, JsonResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from . import servizi
-from . import documenti
+from . import calcolo, documenti
 from .forms import (
     AllegatoForm,
     FunzioneForm,
@@ -27,6 +29,7 @@ from .forms import (
 from .models import (
     AllegatoAnalisi,
     Analisi,
+    ArticoloSicurezza,
     Cliente,
     Commessa,
     DocumentoGenerato,
@@ -37,6 +40,7 @@ from .models import (
     RequisitoRESS,
     Revisione,
     SchedaAnalisi,
+    ValutazioneFunzione,
 )
 
 
@@ -377,6 +381,8 @@ def _salva_funzione(request, funzione, revisione):
                     funzione.ordine = (revisione.funzioni.aggregate(m=Max("ordine"))["m"] or 0) + 10
                 funzione.save()
                 form.save_m2m()
+                if hasattr(funzione, "valutazione") and {"s", "f", "p"} & set(form.changed_data):
+                    servizi.salva_valutazione(funzione, {}, {}, request.user)  # il PLr è cambiato: nuovo confronto
             messages.success(request, f"Funzione «{funzione.nome}» salvata" + (f", PLr {funzione.plr}." if funzione.plr else "."))
             return redirect(f"{reverse('analisi', args=[revisione.analisi_id])}#funzioni")
     schede = {m.scheda for m in funzione.misure.select_related("scheda__revisione__metodo")} if funzione.pk else set()
@@ -415,6 +421,48 @@ def elimina_funzione(request, pk):
         funzione.delete()
     messages.success(request, f"Funzione «{funzione.nome}» eliminata.")
     return redirect(f"{reverse('analisi', args=[revisione.analisi_id])}#funzioni")
+
+
+@login_required
+def valutazione_funzione(request, pk):
+    """Calcolo del PL della funzione: la pagina usa engine.js nel browser; al salvataggio il server ricalcola."""
+    funzione = get_object_or_404(FunzioneSicurezza.objects.select_related("revisione__analisi__macchina__commessa"), pk=pk)
+    revisione = funzione.revisione
+    modificabile = revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
+    valutazione = getattr(funzione, "valutazione", None)
+    if request.method == "POST":
+        if not modificabile:
+            return JsonResponse({"errore": "La revisione non è in bozza o non hai il ruolo di compilatore."}, status=403)
+        try:
+            dati = json.loads(request.body)
+            dettaglio = dati["dettaglio"]
+            if not isinstance(dettaglio, dict) or not isinstance(dettaglio.get("sottosistemi", []), list):
+                raise ValueError
+        except (ValueError, KeyError, TypeError):
+            return JsonResponse({"errore": "Dati della valutazione non validi."}, status=400)
+        try:
+            risultato = servizi.salva_valutazione(funzione, dettaglio, dati.get("risultato") or {}, request.user)
+        except (PermissionDenied, ValidationError) as e:
+            return JsonResponse({"errore": "; ".join(getattr(e, "messages", [str(e)]))}, status=400)
+        return JsonResponse(risultato)
+    contesto = {
+        "funzione": funzione, "revisione": revisione, "modificabile": modificabile, "valutazione": valutazione,
+        "dati": {
+            "dettaglio": valutazione.dettaglio if valutazione else {},
+            "nome": funzione.nome, "S": funzione.s or None, "F": funzione.f or None, "P": funzione.p or None,
+            "modificabile": modificabile,
+            "salva_url": reverse("valutazione_funzione", args=[funzione.pk]),
+            "articoli_url": reverse("articoli_sicurezza"),
+            "csrf": get_token(request),
+        },
+    }
+    return render(request, "rischi/valutazione.html", contesto)
+
+
+@login_required
+def articoli_sicurezza(request):
+    """Articoli di sicurezza della libreria nella forma di engine.js, per la pagina del calcolo PL."""
+    return JsonResponse({"articoli": [calcolo.articolo_js(a) for a in ArticoloSicurezza.objects.all()]})
 
 
 @login_required

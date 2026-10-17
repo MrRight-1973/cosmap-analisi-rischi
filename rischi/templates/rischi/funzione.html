@@ -29,6 +29,14 @@
 </fieldset>
 {% if modificabile %}<button class="primario">Salva funzione</button>{% endif %}
 </form>
+{% if funzione.pk %}
+<div class="modulo">
+<fieldset><legend>4. CALCOLO DEL PL (EN ISO 13849-1)</legend>
+  <p class="sotto">{% if funzione.valutazione %}{% if funzione.valutazione.pl %}PL {{ funzione.valutazione.pl }}{% else %}PL non ancora calcolabile{% endif %}{% if funzione.valutazione.esito %} ≥ PLr {{ funzione.plr }}: requisito soddisfatto{% elif funzione.valutazione.esito is None %}: confronto con il PLr da rifare{% else %}: requisito non dimostrato{% endif %}.{% else %}Schema a blocchi, componenti e calcolo non ancora compilati.{% endif %}</p>
+  <p><a class="bottone" href="{% url 'valutazione_funzione' funzione.pk %}">{% if modificabile %}Apri il calcolo del PL{% else %}Vedi il calcolo del PL{% endif %}</a></p>
+</fieldset>
+</div>
+{% endif %}
 {% if funzione.pk and modificabile %}
 <form method="post" action="{% url 'elimina_funzione' funzione.pk %}" class="modulo"
       onsubmit="return confirm('Eliminare la funzione «{{ funzione.nome|escapejs }}» e la sua valutazione?');">{% csrf_token %}

@@ -8,10 +8,12 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .registro import senza_registro_contenuti
+from . import calcolo
 
 from .models import (
     Analisi,
     AllegatoAnalisi,
+    ArticoloSicurezza,
     ApplicabilitaRequisito,
     Esito,
     Figura,
@@ -419,6 +421,51 @@ def decidi_scheda(scheda, utente, decisione, motivazione=""):
     scheda.decisa_il = timezone.now()
     scheda.full_clean(exclude=["condizioni", "pericoli", "norme", "soggetti"])
     scheda.save()
+
+
+# ---------------------------------------------------------------------------
+# Calcolo del PL delle funzioni di sicurezza
+# ---------------------------------------------------------------------------
+
+
+@transaction.atomic
+def salva_valutazione(funzione, dettaglio, risultato_pagina, utente):
+    """Salva il dettaglio del calcolo e i risultati. I risultati vengono dal ricalcolo del server con engine.js;
+    senza Node sul server restano quelli della pagina, e il messaggio lo dice."""
+    richiedi_ruolo(utente, COMPILATORE)
+    funzione.revisione.verifica_modificabile()
+    valutazione = getattr(funzione, "valutazione", None) or ValutazioneFunzione(funzione=funzione)
+    precedente = valutazione.dettaglio if valutazione.pk else {}
+    # Le parti del dettaglio che la pagina non gestisce (es. le prove di validazione) restano
+    valutazione.dettaglio = {**precedente, **dettaglio}
+    try:
+        r = calcolo.calcola(funzione, valutazione.dettaglio)
+        pl, pfh, esito = r["pl"], r["pfh"], r["ok"]
+        messaggio = "Valutazione salvata e ricalcolata dal server"
+    except calcolo.CalcoloNonRiuscito as errore:
+        if risultato_pagina:
+            pl, pfh, esito = risultato_pagina.get("pl"), risultato_pagina.get("pfh"), risultato_pagina.get("ok")
+        else:  # S, F o P cambiati nella pagina della funzione: il confronto va rifatto aprendo il calcolo
+            pl, pfh, esito = valutazione.pl, valutazione.pfh, None
+        messaggio = f"Valutazione salvata con il calcolo della pagina ({errore})"
+    valutazione.pl = pl if pl in ("a", "b", "c", "d", "e") else ""  # engine.js dà "nessuno" oltre la PL a
+    valutazione.pfh = pfh
+    valutazione.esito = bool(esito) if esito is not None else None
+    valutazione.calcolata_il = timezone.now()
+    valutazione.save()
+    chiavi = {
+        c.get("articoloId") for ss in valutazione.dettaglio.get("sottosistemi", []) for c in ss.get("componenti", [])
+    } - {None, ""}
+    oggi = timezone.localdate()
+    for articolo in ArticoloSicurezza.objects.filter(chiave__in=chiavi).exclude(utilizzato=oggi):
+        articolo.utilizzato = oggi
+        articolo.save(update_fields=["utilizzato"])
+    esito_testo = "PL " + valutazione.pl if valutazione.pl else "PL non ancora calcolabile"
+    if valutazione.esito:
+        esito_testo += f" ≥ PLr {funzione.plr}"
+    elif valutazione.pl and funzione.plr:
+        esito_testo += f", requisito PLr {funzione.plr} non dimostrato"
+    return {"messaggio": f"{messaggio}: {esito_testo}.", "pl": valutazione.pl, "pfh": valutazione.pfh, "ok": valutazione.esito}
 
 
 # ---------------------------------------------------------------------------

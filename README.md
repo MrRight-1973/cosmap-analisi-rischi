@@ -65,7 +65,16 @@ Fase 2, le funzioni nella scheda:
   compare come riferimento: i parametri del grafo non coincidono con quelli del metodo di stima.
 - Prima della verifica si segnalano le funzioni senza PLr.
 
-Il calcolo del PL (schema a blocchi e componenti) arriva con la fase 3.
+Fase 3, il calcolo del PL:
+
+- Dalla pagina della funzione, "Apri il calcolo del PL" porta alla pagina con le schede Schema a blocchi,
+  Componenti, Calcolo e Verifica PL ≥ PLr: le stesse dei passi 2-5 della safety evaluation, con lo stesso motore
+  (`rischi/static/rischi/safety/engine.js` e `schema.js`, copie dei file della safety evaluation).
+- I componenti si scelgono dagli "Articoli di sicurezza" della libreria (anche solo tra quelli già utilizzati).
+- "Salva valutazione" registra il dettaglio nella revisione; il server ricalcola PL, PFH ed esito con lo
+  stesso `engine.js` eseguito con Node, così il risultato salvato non dipende dalla pagina. Senza Node sul server
+  valgono i risultati della pagina e il messaggio lo dice. Gli articoli usati diventano "già utilizzati".
+- Se S, F o P cambiano, il confronto con il nuovo PLr si rifà da solo.
 
 La dichiarazione elenca come "norme armonizzate" solo le norme segnate come
 armonizzate nella libreria; le altre norme citate nelle schede compaiono come
