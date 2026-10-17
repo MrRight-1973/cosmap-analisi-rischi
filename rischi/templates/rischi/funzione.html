@@ -1,0 +1,53 @@
+{% extends "rischi/base.html" %}
+{% load rischi_extra %}
+{% block titolo %}{{ funzione.nome|default:"Nuova funzione di sicurezza" }}{% endblock %}
+{% block contenuto %}
+<p><a href="{% url 'analisi' revisione.analisi_id %}#funzioni">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
+<h1>{% if funzione.pk %}Funzione di sicurezza · {{ funzione.nome }}{% else %}Nuova funzione di sicurezza{% endif %}</h1>
+{% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
+<form method="post" class="modulo" id="form-funzione">{% csrf_token %}
+{{ form.non_field_errors }}
+<fieldset><legend>1. FUNZIONE</legend>
+  {% include "rischi/_campo.html" with f=form.nome %}
+  {% include "rischi/_campo.html" with f=form.descrizione %}
+</fieldset>
+<fieldset><legend>2. MISURE DI PROTEZIONE DELLE SCHEDE</legend>
+  {% include "rischi/_campo.html" with f=form.misure %}
+  {% if schede %}
+  <p class="sotto">Stima del rischio nelle schede collegate, come riferimento per S, F e P:
+  {% for s in schede %}<br><a href="{% url 'scheda' s.pk %}">{{ s.codice }}</a> · iniziale Se {{ s.se_iniziale|default:"–" }}, Fr {{ s.fr_iniziale|default:"–" }}, Pr {{ s.pr_iniziale|default:"–" }}, Av {{ s.av_iniziale|default:"–" }} ({% esito s.se_iniziale s.cl_iniziale s.esito_iniziale %}){% endfor %}</p>
+  {% endif %}
+</fieldset>
+<fieldset><legend>3. PLr DAL GRAFO DEL RISCHIO (EN ISO 13849-1, ALLEGATO A)</legend>
+  <p class="sotto">I parametri del grafo non coincidono con quelli del metodo di stima della scheda: si scelgono qui, guardando la stima della scheda come riferimento.</p>
+  <div class="grafo-rischio">
+    {% include "rischi/_campo.html" with f=form.s %}
+    {% include "rischi/_campo.html" with f=form.f %}
+    {% include "rischi/_campo.html" with f=form.p %}
+  </div>
+  <p class="plr">PLr: <strong id="plr">{{ funzione.plr|default:"–" }}</strong></p>
+</fieldset>
+{% if modificabile %}<button class="primario">Salva funzione</button>{% endif %}
+</form>
+{% if funzione.pk and modificabile %}
+<form method="post" action="{% url 'elimina_funzione' funzione.pk %}" class="modulo"
+      onsubmit="return confirm('Eliminare la funzione «{{ funzione.nome|escapejs }}» e la sua valutazione?');">{% csrf_token %}
+  <p><button class="pericolo">Elimina funzione</button></p>
+</form>
+{% endif %}
+<script>
+// Stessa tabella di models.plr e di engine.js (fig. A.1)
+(function () {
+  const modulo = document.getElementById('form-funzione');
+  const valore = n => (modulo.querySelector(`input[name="${n}"]:checked`) || {}).value;
+  const aggiorna = () => {
+    const s = valore('s'), f = valore('f'), p = valore('p');
+    document.getElementById('plr').textContent = s && f && p
+      ? ['a', 'b', 'b', 'c', 'c', 'd', 'd', 'e'][(s === 'S2' ? 4 : 0) + (f === 'F2' ? 2 : 0) + (p === 'P2' ? 1 : 0)]
+      : '–';
+  };
+  modulo.addEventListener('change', aggiorna);
+  aggiorna();
+})();
+</script>
+{% endblock %}

@@ -186,3 +186,11 @@ small.errore { color: var(--error-fg); }
 .sezione-allegati { margin-top: 20px; }
 .carica-allegato > button { margin: 8px 0; }
 .pulsanti-scheda { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Funzioni di sicurezza */
+.grafo-rischio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 20px; }
+.grafo-rischio ul { list-style: none; padding: 0; margin: 0; }
+.plr { font-size: 1rem; padding: 10px 0; }
+.plr strong { font-size: 1.25rem; }
+.funzioni-misura { font-size: 0.8125rem; margin: 4px 0 8px; }
+@media (max-width: 760px) { .grafo-rischio { grid-template-columns: 1fr; } }

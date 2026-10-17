@@ -572,4 +572,9 @@ def controlli(revisione):
             anomalie.append(
                 Anomalia("stima", "Esito finale non verde senza rischio residuo indicato per le istruzioni.", s)
             )
+    for funzione in revisione.funzioni.all():
+        if not funzione.plr:
+            anomalie.append(
+                Anomalia("funzione", f"Funzione di sicurezza «{funzione.nome}»: completare S, F e P per il PLr.")
+            )
     return anomalie

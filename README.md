@@ -55,7 +55,17 @@ La safety evaluation (calcolo del PL secondo EN ISO 13849-1, oggi nel repository
   `python manage.py importa_articoli percorso\archivio-articoli.json` (stesso id = stesso articolo; se PFH,
   B10d o MTTFd cambiano l'articolo torna "da verificare").
 
-Le pagine per compilare funzioni e valutazioni arrivano nelle fasi successive.
+Fase 2, le funzioni nella scheda:
+
+- Nella pagina dell'analisi, il riquadro "Funzioni di sicurezza" elenca le funzioni della revisione con
+  misure collegate, S F P, PLr e PL; "Aggiungi funzione di sicurezza" crea quelle che non nascono da una scheda.
+- Nella scheda, sotto ogni misura di protezione (o ancora da classificare), "Crea funzione di sicurezza"
+  apre la funzione con quella misura già scelta; le funzioni collegate compaiono sotto la misura.
+- Nella pagina della funzione si scelgono S, F e P e il PLr si aggiorna subito. La stima della scheda
+  compare come riferimento: i parametri del grafo non coincidono con quelli del metodo di stima.
+- Prima della verifica si segnalano le funzioni senza PLr.
+
+Il calcolo del PL (schema a blocchi e componenti) arriva con la fase 3.
 
 La dichiarazione elenca come "norme armonizzate" solo le norme segnate come
 armonizzate nella libreria; le altre norme citate nelle schede compaiono come

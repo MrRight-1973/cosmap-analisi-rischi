@@ -1,6 +1,8 @@
 from django import forms
+from django.db.models import Q
 from django.forms import inlineformset_factory, modelformset_factory
 
+from .testo import semplice
 from .models import (
     AllegatoAnalisi,
     SoluzioneProtezione,
@@ -11,6 +13,7 @@ from .models import (
     Commessa,
     Figura,
     FiguraMacchina,
+    FunzioneSicurezza,
     Macchina,
     MisuraAnalisi,
     Modulo,
@@ -451,3 +454,47 @@ ApplicabilitaFormSet = modelformset_factory(
 
 class NotaForm(forms.Form):
     testo = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), required=False)
+
+
+class SceltaMisure(forms.ModelMultipleChoiceField):
+    def label_from_instance(self, misura):
+        testo = semplice(misura.testo)
+        return f"{misura.scheda.codice or 'scheda'} – {testo[:120]}{'…' if len(testo) > 120 else ''}"
+
+
+# Le misure importate dalla libreria Excel precedente sono ancora "da classificare": possono essere di protezione
+TIPI_PER_FUNZIONI = (TipoMisura.PROTEZIONE, TipoMisura.DA_CLASSIFICARE)
+
+
+class FunzioneForm(forms.ModelForm):
+    """Funzione di sicurezza: S, F e P danno il PLr (EN ISO 13849-1, allegato A); le misure sono quelle di
+    protezione (o ancora da classificare) delle schede attive della stessa revisione."""
+
+    misure = SceltaMisure(
+        queryset=MisuraAnalisi.objects.none(), required=False, widget=forms.CheckboxSelectMultiple,
+        label="Misure di protezione realizzate dalla funzione",
+        help_text="Vuoto per una funzione che non nasce da una scheda (es. arresto di emergenza generale).",
+    )
+
+    class Meta:
+        model = FunzioneSicurezza
+        fields = ["nome", "descrizione", "s", "f", "p", "misure"]
+        widgets = {
+            "descrizione": forms.Textarea(attrs={"rows": 3}),
+            "s": forms.RadioSelect, "f": forms.RadioSelect, "p": forms.RadioSelect,
+        }
+
+    def __init__(self, *args, revisione, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Le misure già collegate restano scelte anche se nel frattempo sono cambiate di tipo
+        collegate = Q(pk__in=self.instance.misure.values("pk")) if self.instance.pk else Q(pk__in=[])
+        self.fields["misure"].queryset = (
+            MisuraAnalisi.objects.filter(scheda__revisione=revisione)
+            .filter(
+                Q(tipo__in=TIPI_PER_FUNZIONI) & ~Q(scheda__decisione=SchedaAnalisi.Decisione.SCARTATA) | collegate
+            )
+            .select_related("scheda")
+            .order_by("scheda__modulo__ordine", "scheda__codice", "ordine", "pk")
+        )
+        for nome in ("s", "f", "p"):
+            self.fields[nome].choices = [c for c in self.fields[nome].choices if c[0]]
