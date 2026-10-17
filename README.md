@@ -39,6 +39,24 @@ La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
    documento generato resta archiviato; da una revisione non approvata esce
    con la scritta BOZZA.
 
+## Funzioni di sicurezza (in costruzione)
+
+La safety evaluation (calcolo del PL secondo EN ISO 13849-1, oggi nel repository
+`cosmap-safety-evaluation`) entra in questa app a fasi. Fase 1, la base dati:
+
+- **Funzione di sicurezza**: appartiene alla revisione e si blocca con essa. Nasce da una o più misure
+  di protezione delle schede, oppure a mano (es. arresto di emergenza generale). S, F e P danno il PLr
+  dal grafo del rischio (allegato A).
+- **Valutazione della funzione**: il dettaglio del calcolo (schema a blocchi, componenti, prove) nello
+  stesso JSON della safety evaluation, più PL raggiunto, PFH, esito e "validata" in campi propri.
+- Una nuova revisione copia funzioni e valutazioni collegandole alle misure copiate; la copia su
+  un'altra macchina toglie gli esiti delle prove di validazione.
+- **Articoli di sicurezza** in "Libreria e utenti": l'archivio articoli della safety evaluation si importa con
+  `python manage.py importa_articoli percorso\archivio-articoli.json` (stesso id = stesso articolo; se PFH,
+  B10d o MTTFd cambiano l'articolo torna "da verificare").
+
+Le pagine per compilare funzioni e valutazioni arrivano nelle fasi successive.
+
 La dichiarazione elenca come "norme armonizzate" solo le norme segnate come
 armonizzate nella libreria; le altre norme citate nelle schede compaiono come
 "altre norme". I testi fissi della dichiarazione vanno confrontati con

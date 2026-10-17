@@ -1575,3 +1575,164 @@ class RitocchiLibreriaTest(BaseConLibreria):
         self.assertIn("1. Pericoli meccanici", pagina)
         self.assertIn(f'name="pericoli" value="{scheda.pericoli.first().pk}"', pagina)
         self.assertNotIn("SelectFilter", pagina)
+
+
+class FunzioniSicurezzaTest(BaseConLibreria):
+    """Funzioni di sicurezza (EN ISO 13849-1) nella revisione: collegate alle misure, bloccate e copiate con essa."""
+
+    def setUp(self):
+        from .models import FunzioneSicurezza, MisuraAnalisi, ValutazioneFunzione
+
+        self.analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+        self.scheda = self.rev.schede.filter(origine__isnull=False, misure__isnull=False).first()
+        self.misura = MisuraAnalisi.objects.create(
+            scheda=self.scheda, ordine=99, tipo="PROT", testo="Riparo interbloccato sulla porta di carico"
+        )
+        self.funzione = FunzioneSicurezza.objects.create(
+            revisione=self.rev, nome="Apertura porta di carico", s="S2", f="F2", p="P1"
+        )
+        self.funzione.misure.add(self.misura)
+        self.valutazione = ValutazioneFunzione.objects.create(
+            funzione=self.funzione, dettaglio={"sottosistemi": [{"nome": "Interruttore"}], "validazione": {"esiti": {}}},
+            pl="d", pfh=42.9, esito=True, validata=True,
+        )
+
+    def approva(self, rev):
+        servizi.invia_in_verifica(rev, self.compilatore)
+        servizi.segna_verificata(rev, self.verificatore)
+        servizi.approva(rev, self.approvatore)
+
+    def test_plr_dal_grafo_del_rischio(self):
+        from .models import plr
+
+        attesi = {
+            ("S1", "F1", "P1"): "a", ("S1", "F1", "P2"): "b", ("S1", "F2", "P1"): "b", ("S1", "F2", "P2"): "c",
+            ("S2", "F1", "P1"): "c", ("S2", "F1", "P2"): "d", ("S2", "F2", "P1"): "d", ("S2", "F2", "P2"): "e",
+        }
+        for parametri, atteso in attesi.items():
+            self.assertEqual(plr(*parametri), atteso, parametri)
+        self.assertEqual(plr("S2", "", "P1"), "")
+        self.assertEqual(self.funzione.plr, "d")
+
+    def test_funzione_anche_senza_misura(self):
+        from .models import FunzioneSicurezza
+
+        emergenza = FunzioneSicurezza.objects.create(revisione=self.rev, nome="Arresto di emergenza generale")
+        self.assertEqual(emergenza.plr, "")
+        self.assertFalse(emergenza.misure.exists())
+        self.assertEqual(list(self.misura.funzioni.all()), [self.funzione])
+
+    def test_bloccata_con_la_revisione(self):
+        self.approva(self.rev)
+        self.funzione.refresh_from_db()
+        with self.assertRaises(RevisioneBloccata):
+            self.funzione.save()
+        with self.assertRaises(RevisioneBloccata):
+            self.funzione.misure.clear()
+        with self.assertRaises(RevisioneBloccata):
+            self.valutazione.save()
+
+    def test_nuova_revisione_copia_funzioni_e_valutazioni(self):
+        self.approva(self.rev)
+        rev1 = servizi.nuova_revisione(self.analisi, self.compilatore, "Aggiunta porta")
+        funzione = rev1.funzioni.get()
+        self.assertEqual((funzione.nome, funzione.plr), ("Apertura porta di carico", "d"))
+        misura = funzione.misure.get()
+        self.assertEqual(misura.scheda.revisione, rev1)
+        self.assertEqual(misura.testo, self.misura.testo)
+        self.assertEqual(funzione.valutazione.dettaglio, self.valutazione.dettaglio)
+        self.assertTrue(funzione.valutazione.validata)
+        # La revisione approvata resta com'era
+        self.assertEqual(list(self.rev.funzioni.get().misure.all()), [self.misura])
+
+    def test_copia_su_altra_macchina_senza_validazione(self):
+        self.approva(self.rev)
+        copia = servizi.crea_analisi_da_copia(self.nuova_macchina("26-04"), self.rev, self.compilatore)
+        funzione = copia.revisione_corrente.funzioni.get()
+        self.assertEqual(funzione.misure.get().scheda.revisione, copia.revisione_corrente)
+        self.assertFalse(funzione.valutazione.validata)
+        self.assertNotIn("validazione", funzione.valutazione.dettaglio)
+        self.assertEqual(funzione.valutazione.pl, "d")
+
+    def test_aggiorna_da_modello_tiene_il_collegamento(self):
+        misura = self.scheda.misure.exclude(pk=self.misura.pk).first()
+        self.funzione.misure.set([misura])
+        servizi.aggiorna_da_modello(self.scheda, self.compilatore)
+        nuova = self.funzione.misure.get()
+        self.assertEqual(nuova.scheda, self.scheda)
+        self.assertEqual(nuova.testo, misura.testo)
+
+    def test_registro_con_impronta_del_dettaglio(self):
+        with utente_attivo(self.compilatore):
+            self.valutazione.dettaglio = {"sottosistemi": []}
+            self.valutazione.save()
+        voce = RegistroModifica.objects.filter(
+            tabella="valutazione della funzione", azione=RegistroModifica.Azione.MODIFICA
+        ).get()
+        prima, dopo = voce.modifiche["dettaglio"]
+        self.assertTrue(prima.startswith("JSON ") and dopo.startswith("JSON "))
+        self.assertNotEqual(prima, dopo)
+
+    def test_elimina_commessa_con_funzioni(self):
+        from .models import FunzioneSicurezza, ValutazioneFunzione
+
+        servizi.elimina_commessa(self.analisi.macchina.commessa, self.compilatore)
+        self.assertFalse(FunzioneSicurezza.objects.exists())
+        self.assertFalse(ValutazioneFunzione.objects.exists())
+
+
+class ArticoliSicurezzaTest(TestCase):
+    """Import dell'archivio articoli della safety evaluation nella libreria."""
+
+    ARCHIVIO = [
+        {"id": "s120-smm", "codice": "S120 SMM booksize", "descrizione": "Motor Module singolo", "produttore": "Siemens",
+         "tipo": "attuatore", "pfh": 10, "b10d": None, "mttfd": None, "plMax": None, "fonte": "Entry-ID 76254308",
+         "dataFonte": "2024-04", "verificato": True, "note": "Confrontato con il PDF", "utilizzato": "2026-10-01"},
+        {"id": "pizzato-1", "codice": "FR 693", "descrizione": "Interruttore", "produttore": "Pizzato", "tipo": "sensore",
+         "pfh": None, "b10d": 2000000, "mttfd": None, "plMax": None, "fonte": "SISTEMA A26", "verificato": False,
+         "libreria": "A26", "gruppo": "FR"},
+    ]
+
+    def importa(self, dati):
+        import json
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
+            json.dump(dati, f)
+        uscita = io.StringIO()
+        call_command("importa_articoli", f.name, stdout=uscita)
+        Path(f.name).unlink()
+        return uscita.getvalue()
+
+    def test_import_e_reimport(self):
+        import datetime
+
+        from .models import ArticoloSicurezza
+
+        self.assertIn("2 nuovi", self.importa(self.ARCHIVIO))
+        smm = ArticoloSicurezza.objects.get(chiave="s120-smm")
+        self.assertEqual((smm.pfh, smm.verificato, smm.utilizzato), (10, True, datetime.date(2026, 10, 1)))
+        self.assertEqual(ArticoloSicurezza.objects.get(chiave="pizzato-1").b10d, 2000000)
+        self.assertIn("2 invariati", self.importa(self.ARCHIVIO))
+
+        # Un valore cambiato rimette l'articolo da verificare; le note restano, l'ultimo utilizzo è il più recente
+        cambiato = [{**self.ARCHIVIO[0], "pfh": 14, "note": "", "utilizzato": "2026-09-01"}]
+        self.assertIn("1 aggiornati", self.importa({"articoli": cambiato}))
+        smm.refresh_from_db()
+        self.assertEqual((smm.pfh, smm.verificato, smm.note), (14, False, "Confrontato con il PDF"))
+        self.assertEqual(smm.utilizzato, datetime.date(2026, 10, 1))
+
+    def test_file_non_valido(self):
+        from django.core.management.base import CommandError
+
+        with self.assertRaises(CommandError):
+            self.importa([{"codice": "senza id"}])
+
+    def test_elenco_in_libreria(self):
+        self.importa(self.ARCHIVIO)
+        capo = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(capo)
+        pagina = self.client.get(reverse("admin:rischi_articolosicurezza_changelist") + "?verificato__exact=0")
+        self.assertContains(pagina, "FR 693")
+        self.assertNotContains(pagina, "S120 SMM booksize")
