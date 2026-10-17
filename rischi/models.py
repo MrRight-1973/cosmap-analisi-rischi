@@ -1037,6 +1037,40 @@ class FunzioneSicurezza(ContenutoRevisione):
         super().save(*args, **kwargs)
 
 
+class FunzioneTipo(models.Model):
+    """Funzione di sicurezza standard Cosmap in libreria (es. arresto di emergenza con architettura e componenti già
+    scelti): si salva da una funzione calcolata e si riprende nelle analisi. Quelle di un modulo si propongono
+    nelle macchine che hanno il modulo."""
+
+    nome = models.CharField(max_length=200, unique=True)
+    descrizione = models.TextField(blank=True, help_text="Evento che la attiva, reazione, stato sicuro.")
+    modulo = models.ForeignKey(
+        Modulo, on_delete=models.SET_NULL, null=True, blank=True, related_name="funzioni_tipo",
+        help_text="Vuoto: proposta per tutte le macchine.",
+    )
+    s = models.CharField("S", max_length=2, blank=True, choices=Gravita.choices)
+    f = models.CharField("F", max_length=2, blank=True, choices=Frequenza.choices)
+    p = models.CharField("P", max_length=2, blank=True, choices=Evitabilita.choices)
+    dettaglio = models.JSONField(
+        default=dict, blank=True, help_text="Schema a blocchi e componenti, nella forma della safety evaluation."
+    )
+    note = models.TextField(blank=True)
+    attiva = models.BooleanField(default=True)
+    ordine = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "funzione tipo"
+        verbose_name_plural = "funzioni tipo"
+        ordering = ["ordine", "nome"]
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def plr(self):
+        return plr(self.s, self.f, self.p)
+
+
 class ValutazioneFunzione(ContenutoRevisione):
     """Calcolo del PL di una funzione. Il dettaglio (schema a blocchi, sottosistemi, componenti) resta nel
     JSON della safety evaluation, così il motore lo legge senza conversioni; i risultati stanno in campi propri

@@ -2238,3 +2238,187 @@ class VerificheElettricheTest(BaseConLibreria):
         self.client.force_login(self.compilatore)
         self.client.post(reverse("azione_verifica_elettrica", args=[self.verifica.pk, "elimina"]))
         self.assertFalse(self.rev.verifiche_elettriche.exists())
+
+
+class ChiusuraIntegrazioneTest(BaseConLibreria):
+    """Fase 6: import delle valutazioni della safety evaluation, funzioni tipo, import delle librerie dei
+    costruttori, EN 60204-1 nella dichiarazione."""
+
+    def setUp(self):
+        self.macchina = self.nuova_macchina()
+        self.analisi = servizi.crea_analisi_da_libreria(self.macchina, self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+        blocco = lambda ruolo, chiave: {
+            "id": f"ss-{chiave}", "nome": chiave.upper(), "ruolo": ruolo, "percorso": "", "metodo": "pfh",
+            "categoria": None, "componenti": [{"id": f"c-{chiave}", "articoloId": chiave, "qty": 1}], "ccf": {},
+            "pfhK1": None,
+        }
+        # Come il file di "Esporta valutazione" della safety evaluation
+        self.esportata = {
+            "step": 7, "fSel": 0,
+            "progetto": {"nome": "Isola robot", "macchina": "Isola robot R1", "cliente": "Kohler", "documento": "SE-25-20",
+                         "revisione": 1, "data": "2026-09-30", "autore": "M. Rossi", "missionTime": 20},
+            "funzioni": [
+                {"id": "f1", "nome": "Arresto di emergenza", "descrizione": "Fungo: STO sugli assi", "S": "S2", "F": "F1",
+                 "P": "P2", "sottosistemi": [blocco("rilevamento", "fdi"), blocco("logica", "fcpu"), blocco("attuazione", "sto")],
+                 "validazione": {"esiti": {"funz:unico": {"esito": "ok", "note": "fungo pulpito"}},
+                                 "extra": [{"id": "x1", "testo": "Fungo da quadro", "atteso": "Arresto"}],
+                                 "esecutore": "M. Rossi", "data": "2026-09-30"}},
+                {"id": "f2", "nome": "Porta di carico", "descrizione": "", "S": "S9", "F": "F2", "P": "P1", "sottosistemi": []},
+            ],
+            "sistematiche": {"esiti": {"g1": {"esito": "ok"}}, "swVersione": "V1.2", "swFirma": "F-CRC 3A9C"},
+            "elettriche": {"quadro": "QE1", "tensione": "400 V", "esiti": {"continuita": {"esito": "ok"}}, "extra": [],
+                           "cavi": [{"id": "c1", "sigla": "W1", "l1pe": "0,5", "rpe": "0,05"}]},
+            "articoli": [
+                {"id": k, "codice": k.upper(), "tipo": t, "pfh": 10, "fonte": "Certificato", "verificato": False}
+                for k, t in (("fdi", "sensore"), ("fcpu", "logica"), ("sto", "attuatore"))
+            ],
+        }
+
+    def importa(self, dati, utente=None):
+        import json
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.client.force_login(utente or self.compilatore)
+        contenuto = dati if isinstance(dati, bytes) else json.dumps(dati).encode()
+        return self.client.post(reverse("importa_safety_evaluation", args=[self.rev.pk]),
+                                {"file": SimpleUploadedFile("valutazione.json", contenuto, "application/json")}, follow=True)
+
+    def test_importa_valutazione_della_safety_evaluation(self):
+        from .models import ArticoloSicurezza
+
+        risposta = self.importa(self.esportata)
+        testo = risposta.content.decode()
+        self.assertIn("Importato SE-25-20 rev. 1: 2 funzioni di sicurezza; articoli di sicurezza 3 nuovi", testo)
+        self.assertIn("prove di validazione di 1 funzioni", testo)
+        self.assertIn("verifica elettrica «QE1»", testo)
+        emergenza, porta = self.rev.funzioni.order_by("ordine")
+        self.assertEqual((emergenza.nome, emergenza.descrizione, emergenza.plr), ("Arresto di emergenza", "Fungo: STO sugli assi", "d"))
+        self.assertEqual((emergenza.valutazione.pl, emergenza.valutazione.pfh, emergenza.valutazione.esito), ("e", 30, True))
+        self.assertNotIn("validazione", emergenza.valutazione.dettaglio)
+        self.assertEqual(emergenza.valutazione.dettaglio["missionTime"], 20)
+        self.assertEqual(emergenza.prove.dati["esecutore"], "M. Rossi")
+        self.assertEqual(emergenza.prove.dati["extra"][0]["testo"], "Fungo da quadro")
+        # S non valido: resta vuoto; senza sottosistemi niente calcolo
+        self.assertEqual((porta.s, porta.f, porta.p), ("", "F2", "P1"))
+        self.assertFalse(hasattr(porta, "valutazione"))
+        self.assertEqual(self.rev.validazione.sistematiche["swFirma"], "F-CRC 3A9C")
+        verifica = self.rev.verifiche_elettriche.get()
+        self.assertEqual((verifica.quadro, verifica.isolamento_non_ok), ("QE1", 1))
+        self.assertFalse(ArticoloSicurezza.objects.get(chiave="sto").verificato)
+        # Un secondo import non sovrascrive: nomi distinti, misure sistematiche già compilate restano
+        testo = self.importa(self.esportata).content.decode()
+        self.assertIn("misure contro i guasti sistematici non importate perché già compilate", testo)
+        self.assertTrue(self.rev.funzioni.filter(nome="Arresto di emergenza (2)").exists())
+
+    def test_import_non_valido_o_non_permesso(self):
+        self.assertIn("non è un file JSON leggibile", self.importa(b"\x00non json").content.decode())
+        self.assertIn("manca l&#x27;elenco delle funzioni", self.importa({"articoli": []}).content.decode())
+        # Componente senza articolo nel file né in libreria: si segnala
+        dati = dict(self.esportata, articoli=[], elettriche={}, sistematiche={})
+        self.assertIn("3 componenti senza articolo nella libreria", self.importa(dati).content.decode())
+        # Solo il compilatore, solo in bozza
+        self.importa(self.esportata, utente=self.verificatore)
+        self.assertEqual(self.rev.funzioni.count(), 2)
+        self.rev.stato = Revisione.Stato.APPROVATA
+        self.rev.save()
+        self.assertContains(self.importa(self.esportata), "è approvata: non è modificabile")
+        self.assertEqual(self.rev.funzioni.count(), 2)
+
+    def test_funzioni_tipo(self):
+        from .models import FunzioneTipo
+
+        self.importa(self.esportata)
+        emergenza = self.rev.funzioni.get(nome="Arresto di emergenza")
+        modulo = self.macchina.moduli.first()
+        url = reverse("salva_come_funzione_tipo", args=[emergenza.pk])
+        # Serve il permesso sulla libreria
+        self.client.post(url, {"nome": "Arresto di emergenza Cosmap", "modulo": modulo.pk})
+        self.assertFalse(FunzioneTipo.objects.exists())
+        capo = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(capo)
+        self.assertContains(self.client.get(reverse("funzione", args=[emergenza.pk])), "Salva come funzione tipo")
+        self.client.post(url, {"nome": "Arresto di emergenza Cosmap", "modulo": modulo.pk})
+        tipo = FunzioneTipo.objects.get()
+        self.assertEqual((tipo.modulo, tipo.s, tipo.plr, len(tipo.dettaglio["sottosistemi"])), (modulo, "S2", "d", 3))
+        self.assertNotIn("validazione", tipo.dettaglio)
+        # Stesso nome: rifiutata
+        risposta = self.client.post(url, {"nome": "Arresto di emergenza Cosmap"}, follow=True)
+        self.assertContains(risposta, "Esiste già una funzione tipo")
+        # Libreria: elenco con lo schema a blocchi
+        self.assertContains(self.client.get(reverse("admin:rischi_funzionetipo_change", args=[tipo.pk])), "FDI")
+        # In un'altra macchina con lo stesso modulo si propone e si aggiunge
+        altra = servizi.crea_analisi_da_libreria(self.nuova_macchina("25-21"), self.compilatore).revisione_corrente
+        self.client.force_login(self.compilatore)
+        pagina = self.client.get(reverse("analisi", args=[altra.analisi_id]))
+        self.assertContains(pagina, "Funzioni tipo dei moduli della macchina non ancora aggiunte")
+        risposta = self.client.post(reverse("aggiungi_funzione_tipo", args=[altra.pk]), {"funzione_tipo": tipo.pk})
+        nuova = altra.funzioni.get()
+        self.assertRedirects(risposta, reverse("funzione", args=[nuova.pk]), fetch_redirect_response=False)
+        self.assertEqual((nuova.nome, nuova.plr, nuova.valutazione.pl), ("Arresto di emergenza Cosmap", "d", "e"))
+        self.assertNotContains(self.client.get(reverse("analisi", args=[altra.analisi_id])), "non ancora aggiunte")
+        # Una funzione tipo disattivata non si aggiunge
+        tipo.attiva = False
+        tipo.save()
+        risposta = self.client.post(reverse("aggiungi_funzione_tipo", args=[altra.pk]), {"funzione_tipo": tipo.pk})
+        self.assertEqual(risposta.status_code, 404)
+
+    def test_importa_libreria_del_costruttore(self):
+        import json
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from .models import ArticoloSicurezza
+
+        capo = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(capo)
+        self.assertContains(self.client.get(reverse("admin:rischi_articolosicurezza_changelist")), "Importa libreria del costruttore")
+        url = reverse("admin:rischi_articolosicurezza_importa")
+        pagina = self.client.get(url)
+        self.assertContains(pagina, "rischi/safety/sistema.js")
+        self.assertContains(pagina, "rischi/safety/vdma.js")
+        articoli = [{"id": "piz-1", "codice": "FS 2996", "produttore": "Pizzato", "tipo": "sensore", "b10d": 2000000,
+                     "fonte": "SISTEMA Pizzato", "libreria": "Pizzato A26", "immagine": "x.png"}]
+        file = SimpleUploadedFile("articoli.json", json.dumps(articoli).encode(), "application/json")
+        risposta = self.client.post(url, {"articoli": file})
+        self.assertEqual(risposta.json()["messaggio"], "Articoli di sicurezza: 1 nuovi, 0 aggiornati, 0 invariati.")
+        self.assertFalse(ArticoloSicurezza.objects.get(chiave="piz-1").verificato)
+        file = SimpleUploadedFile("articoli.json", b'[{"codice": "senza id"}]', "application/json")
+        self.assertEqual(self.client.post(url, {"articoli": file}).status_code, 400)
+        # Senza permesso sulla libreria
+        self.client.force_login(self.compilatore)
+        self.assertNotEqual(self.client.get(url).status_code, 200)
+
+    def test_dichiarazione_cita_en_60204_1(self):
+        from .documenti import norme_applicate
+        from .models import Norma, VerificaElettrica
+
+        Norma.objects.get_or_create(codice="EN 60204-1", defaults={"armonizzata": True})
+        codici = lambda: {n.codice for gruppo in norme_applicate(self.rev) for n in gruppo}
+        presente_prima = "EN 60204-1" in codici()  # può già venire dalle schede della libreria
+        prima = VerificaElettrica.objects.create(revisione=self.rev, quadro="QE1", stato=VerificaElettrica.Stato.APPROVATA)
+        seconda = VerificaElettrica.objects.create(revisione=self.rev, quadro="QE2")
+        self.assertEqual("EN 60204-1" in codici(), presente_prima)
+        seconda.stato = VerificaElettrica.Stato.APPROVATA
+        seconda.save()
+        self.assertIn("EN 60204-1", codici())
+        self.assertTrue(prima.pk)
+
+
+class MotoreJavaScriptTest(TestCase):
+    """I test Node della safety evaluation (motore, schema, validazione, lettori delle librerie) girano con quelli
+    Django: rischi/js_test, sui file di rischi/static/rischi/safety."""
+
+    def test_node(self):
+        import shutil
+        import subprocess
+        import unittest
+
+        node = shutil.which("node")
+        if not node:
+            raise unittest.SkipTest("Node non installato")
+        cartella = Path(settings.BASE_DIR) / "rischi" / "js_test"
+        file = sorted(str(f) for f in cartella.glob("*.test.js"))
+        esito = subprocess.run([node, "--test", *file], capture_output=True, text=True, timeout=120)
+        self.assertEqual(esito.returncode, 0, esito.stdout[-3000:] + esito.stderr[-2000:])

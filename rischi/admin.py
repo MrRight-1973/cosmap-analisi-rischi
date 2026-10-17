@@ -1,16 +1,22 @@
+import json
+
 from django import forms
 from django.contrib import admin, messages
 from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib.auth import admin as _admin_utenti  # noqa: F401 (registra Gruppi prima di aggiungere Duplica)
 from django.contrib.auth.models import Group
 from django.db import models
+from django.core.exceptions import PermissionDenied
 from django.db.models import Max
+from django.http import JsonResponse
+from django.template.response import TemplateResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from . import models as m
+from .articoli import importa as importa_articoli
 from .duplica import duplica
 from .forms import (
     CAMPI_CONSIDERAZIONI,
@@ -402,6 +408,63 @@ class ArticoloSicurezzaAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         return self.readonly_fields if obj else ()
+
+    def get_urls(self):
+        return [
+            path("importa/", self.admin_site.admin_view(self.importa_libreria), name="rischi_articolosicurezza_importa"),
+            *super().get_urls(),
+        ]
+
+    def importa_libreria(self, request):
+        """Librerie dei costruttori (SISTEMA .slb, VDMA 66413 .xml o .zip) o archivio JSON della safety evaluation.
+        Il file si legge nel browser con sistema.js, vdma.js e zip.js; al server arriva l'elenco degli articoli."""
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+        if request.method == "POST":
+            file = request.FILES.get("articoli")
+            try:
+                dati = json.loads(file.read().decode("utf-8")) if file else None
+                esito = importa_articoli(dati)
+            except (ValueError, UnicodeDecodeError) as errore:  # JSON, ArchivioNonValido, valori non numerici
+                return JsonResponse({"errore": f"Articoli non importati: {errore}"}, status=400)
+            return JsonResponse({"messaggio": f"Articoli di sicurezza: {esito}."})
+        contesto = {**self.admin_site.each_context(request), "opts": self.opts, "title": "Importa articoli di sicurezza"}
+        return TemplateResponse(request, "admin/rischi/articolosicurezza/importa.html", contesto)
+
+
+@admin.register(m.FunzioneTipo)
+class FunzioneTipoAdmin(admin.ModelAdmin):
+    list_display = ("nome", "modulo", "parametri", "componenti", "attiva")
+    list_filter = ("attiva", "modulo")
+    search_fields = ("nome", "descrizione")
+    fields = ("nome", "descrizione", "modulo", ("s", "f", "p"), "schema", "note", "attiva", "ordine")
+    readonly_fields = ("schema",)
+
+    @admin.display(description="S F P")
+    def parametri(self, obj):
+        return f"{obj.s or '–'} {obj.f or '–'} {obj.p or '–'}" + (f" · PLr {obj.plr}" if obj.plr else "")
+
+    @admin.display(description="componenti")
+    def componenti(self, obj):
+        return sum(len(ss.get("componenti") or []) for ss in obj.dettaglio.get("sottosistemi") or [])
+
+    @admin.display(description="schema a blocchi")
+    def schema(self, obj):
+        """Sottosistemi e articoli salvati dalla funzione di partenza: si cambiano rifacendo il calcolo in un'analisi
+        e salvandolo di nuovo come funzione tipo."""
+        sottosistemi = obj.dettaglio.get("sottosistemi") or []
+        if not sottosistemi:
+            return "Nessuno: la funzione tipo dà solo nome, descrizione e PLr."
+        articoli = {a.chiave: a for a in m.ArticoloSicurezza.objects.filter(
+            chiave__in={c.get("articoloId") for ss in sottosistemi for c in ss.get("componenti") or []})}
+        righe = []
+        for ss in sottosistemi:
+            nomi = [str(articoli.get(c.get("articoloId"), "articolo non in libreria")) for c in ss.get("componenti") or []]
+            percorso = f" · percorso {ss['percorso']}" if (ss.get("percorso") or "").strip() else ""
+            categoria = f"cat. {ss['categoria']}" if ss.get("metodo") == "arch" else "PFH da certificato"
+            righe.append(format_html("<li><strong>{}</strong> ({}, {}{}): {}</li>", ss.get("nome") or "–", ss.get("ruolo") or "–",
+                                     categoria, percorso, ", ".join(nomi) or "nessun articolo"))
+        return format_html("<ul style='margin:0;padding-left:16px'>{}</ul>", mark_safe("".join(righe)))
 
 
 class ScalaInline(admin.TabularInline):

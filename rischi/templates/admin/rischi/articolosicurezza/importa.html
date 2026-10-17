@@ -1,0 +1,77 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Libreria</a> › <a href="{% url 'admin:rischi_articolosicurezza_changelist' %}">Articoli di sicurezza</a> › Importa</div>
+{% endblock %}
+{% block content %}
+<div id="content-main">
+  <p>Libreria del costruttore in formato SISTEMA (<code>.slb</code>) o VDMA 66413 (<code>.xml</code>, oppure il pacchetto <code>.zip</code>),
+  oppure l'archivio articoli esportato dalla safety evaluation (<code>.json</code>). Il file si legge in questa pagina: al server arriva solo l'elenco degli articoli.</p>
+  <p>Stesse regole della safety evaluation: stesso id = stesso articolo; gli articoli delle librerie entrano <strong>da verificare</strong>
+  e un articolo torna da verificare se cambiano PFH, B10d o MTTFd. Le immagini dei pacchetti .zip non si importano.
+  Le librerie dei costruttori non vanno messe nel repository.</p>
+  <p><input type="file" id="file-libreria" accept=".slb,.xml,.zip,.json"></p>
+  <div id="esito-libreria"></div>
+  <form id="form-libreria" hidden>{% csrf_token %}<input type="submit" class="default" id="invia-libreria" value="Importa"></form>
+</div>
+<script src="{% static 'rischi/safety/zip.js' %}"></script>
+<script src="{% static 'rischi/safety/vdma.js' %}"></script>
+<script src="{% static 'rischi/safety/sistema.js' %}"></script>
+<script>
+(function () {
+  'use strict';
+  const campo = document.getElementById('file-libreria');
+  const esito = document.getElementById('esito-libreria');
+  const modulo = document.getElementById('form-libreria');
+  let articoli = null;
+  const scrivi = (classe, testo) => { esito.replaceChildren(Object.assign(document.createElement('p'), { className: classe, textContent: testo })); };
+  // Come leggiLibreria della safety evaluation
+  async function leggi(f) {
+    if (/\.json$/i.test(f.name)) {
+      const d = JSON.parse(await f.text());
+      const elenco = Array.isArray(d) ? d : d && d.articoli;
+      if (!Array.isArray(elenco)) throw new Error('il file JSON non contiene un elenco di articoli');
+      return { libreria: f.name, articoli: elenco };
+    }
+    if (/\.xml$/i.test(f.name)) return window.Vdma.importa(await f.text());
+    if (/\.zip$/i.test(f.name)) return window.Vdma.importaPacchetto(window.Zip.apri(new Uint8Array(await f.arrayBuffer())));
+    return window.Sistema.importa(new Uint8Array(await f.arrayBuffer()));
+  }
+  campo.addEventListener('change', async () => {
+    const f = campo.files[0];
+    articoli = null; modulo.hidden = true;
+    if (!f) return;
+    scrivi('', `Lettura di ${f.name}…`);
+    try {
+      const r = await leggi(f);
+      articoli = r.articoli.map(({ immagine, icona, ...a }) => a);
+      const con = k => articoli.filter(a => a[k] != null && a[k] !== '').length;
+      scrivi('', `Libreria ${r.libreria || f.name}: ${articoli.length} articoli letti, ${con('pfh')} con PFH, ${con('b10d')} con B10d, ${con('mttfd')} con MTTFd.`);
+      document.getElementById('invia-libreria').value = `Importa ${articoli.length} articoli`;
+      modulo.hidden = !articoli.length;
+    } catch (e) {
+      const formato = [window.Sistema, window.Vdma, window.Zip].some(m => m.FormatError && e instanceof m.FormatError);
+      scrivi('errornote', `${f.name}: non importato. ${formato ? e.message : 'Lettura non riuscita: ' + e.message}`);
+    }
+  });
+  modulo.addEventListener('submit', async e => {
+    e.preventDefault();
+    const dati = new FormData(modulo);
+    // Come file: un elenco grande supera il limite dei campi del modulo
+    dati.append('articoli', new Blob([JSON.stringify(articoli)], { type: 'application/json' }), 'articoli.json');
+    modulo.hidden = true;
+    scrivi('', 'Importazione…');
+    try {
+      const risposta = await fetch(location.href, { method: 'POST', body: dati });
+      const r = await risposta.json();
+      if (!risposta.ok) throw new Error(r.errore || risposta.status);
+      esito.replaceChildren(Object.assign(document.createElement('p'), { textContent: r.messaggio }),
+        Object.assign(document.createElement('a'), { href: '{% url "admin:rischi_articolosicurezza_changelist" %}?verificato__exact=0', textContent: 'Vedi gli articoli da verificare' }));
+    } catch (err) {
+      scrivi('errornote', 'Non importato: ' + err.message);
+      modulo.hidden = false;
+    }
+  });
+})();
+</script>
+{% endblock %}

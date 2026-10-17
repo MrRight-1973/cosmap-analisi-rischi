@@ -35,7 +35,9 @@ from .models import (
     Commessa,
     DocumentoGenerato,
     FunzioneSicurezza,
+    FunzioneTipo,
     MisuraAnalisi,
+    Modulo,
     Macchina,
     RegistroModifica,
     RequisitoRESS,
@@ -152,6 +154,11 @@ def analisi(request, pk, numero=None):
         "funzioni": revisione.funzioni.select_related("valutazione", "prove").prefetch_related("misure__scheda"),
         "verifiche_elettriche": revisione.verifiche_elettriche.all(),
     }
+    funzioni_tipo = list(servizi.funzioni_tipo_per(revisione.analisi.macchina))
+    nomi = {f.nome for f in contesto["funzioni"]}
+    contesto["funzioni_tipo"] = funzioni_tipo
+    # Proposte: le funzioni tipo dei moduli della macchina che la revisione non ha ancora
+    contesto["funzioni_tipo_proposte"] = [t for t in funzioni_tipo if t.modulo_id and t.nome not in nomi]
     return render(request, "rischi/analisi.html", contesto)
 
 
@@ -396,6 +403,8 @@ def _salva_funzione(request, funzione, revisione):
         {
             "form": form, "funzione": funzione, "revisione": revisione, "modificabile": modificabile,
             "schede": sorted(schede, key=lambda s: s.codice),
+            "puo_funzione_tipo": funzione.pk and request.user.has_perm("rischi.add_funzionetipo"),
+            "moduli_macchina": revisione.analisi.macchina.moduli.filter(attivo=True),
         },
     )
 
@@ -410,6 +419,56 @@ def funzione(request, pk):
 def nuova_funzione(request, revisione_pk):
     revisione = get_object_or_404(Revisione, pk=revisione_pk)
     return _salva_funzione(request, FunzioneSicurezza(revisione=revisione), revisione)
+
+
+def _vai_funzioni(revisione):
+    return redirect(reverse("analisi_revisione", args=[revisione.analisi_id, revisione.numero]) + "#funzioni")
+
+
+@login_required
+@require_POST
+def aggiungi_funzione_tipo(request, revisione_pk):
+    revisione = get_object_or_404(Revisione.objects.select_related("analisi__macchina"), pk=revisione_pk)
+    funzione_tipo = get_object_or_404(servizi.funzioni_tipo_per(revisione.analisi.macchina), pk=request.POST.get("funzione_tipo") or 0)
+    try:
+        funzione = servizi.aggiungi_funzione_tipo(revisione, funzione_tipo, request.user)
+    except (PermissionDenied, ValidationError) as e:
+        _errore(request, e)
+        return _vai_funzioni(revisione)
+    messages.success(request, f"Funzione «{funzione.nome}» aggiunta dalla funzione tipo: collega le misure delle schede.")
+    return redirect("funzione", pk=funzione.pk)
+
+
+@login_required
+@require_POST
+def importa_safety_evaluation(request, revisione_pk):
+    """Valutazione esportata dalla safety evaluation (pulsante "Esporta valutazione", file .json)."""
+    revisione = get_object_or_404(Revisione, pk=revisione_pk)
+    file = request.FILES.get("file")
+    try:
+        if file is None:
+            raise ValidationError("Scegli il file .json esportato dalla safety evaluation.")
+        try:
+            dati = json.loads(file.read().decode("utf-8-sig"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise ValidationError(f"{file.name} non è un file JSON leggibile.")
+        messages.success(request, servizi.importa_safety_evaluation(revisione, dati, request.user))
+    except (PermissionDenied, ValidationError) as e:
+        _errore(request, e)
+    return _vai_funzioni(revisione)
+
+
+@login_required
+@require_POST
+def salva_come_funzione_tipo(request, pk):
+    funzione = get_object_or_404(FunzioneSicurezza.objects.select_related("valutazione"), pk=pk)
+    modulo = Modulo.objects.filter(pk=request.POST.get("modulo") or 0).first()
+    try:
+        tipo = servizi.salva_come_funzione_tipo(funzione, request.POST.get("nome", ""), modulo, request.user)
+        messages.success(request, f"Funzione tipo «{tipo.nome}» salvata nella libreria" + (f", modulo {modulo}." if modulo else ", per tutte le macchine."))
+    except (PermissionDenied, ValidationError) as e:
+        _errore(request, e)
+    return redirect("funzione", pk=funzione.pk)
 
 
 @login_required
