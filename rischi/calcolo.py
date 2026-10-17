@@ -86,3 +86,9 @@ def analizza(funzioni):
         "articoli": list(articoli.values()),
     })
     return {int(k): v for k, v in uscita["risultati"].items()}, uscita["sistematiche"]
+
+
+def elettriche(dati):
+    """Verifiche elettriche di un quadro con validazione.js: prove con esiti, riepilogo del registro misure, esito
+    dell'isolamento di ogni cavo, colonne del registro e fonte dei criteri."""
+    return _esegui({"elettriche": dati})

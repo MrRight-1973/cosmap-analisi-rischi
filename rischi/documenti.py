@@ -19,7 +19,7 @@ from xml.sax.saxutils import escape
 from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm, mm
 from reportlab.pdfbase import pdfmetrics
@@ -210,14 +210,18 @@ ALTEZZA = A4[1] - 2 * MARGINE_VERTICALE
 class Pdf:
     """Documento A4 con intestazione BOZZA (se serve) e numero di pagina."""
 
-    def __init__(self, titolo, bozza="", pagina="Pagina"):
+    def __init__(self, titolo, bozza="", pagina="Pagina", orizzontale=False):
         normale, grassetto, _ = _carattere_registrato()
+        self.formato = landscape(A4) if orizzontale else A4
+        self.larghezza = self.formato[0] - 2 * MARGINE
+        self.altezza = self.formato[1] - 2 * MARGINE_VERTICALE
         self.titolo, self.bozza, self.pagina = titolo, bozza, pagina
         self.grassetto = grassetto
         base = ParagraphStyle("base", fontName=normale, fontSize=9, leading=11, spaceAfter=2)
         self.stili = {
             "base": base,
             "cella": ParagraphStyle("cella", parent=base, leading=10.8, spaceAfter=0),
+            "cella_piccola": ParagraphStyle("cella_piccola", parent=base, fontSize=7.5, leading=9, spaceAfter=0),
             "etichetta": ParagraphStyle("etichetta", parent=base, fontName=grassetto, leading=10.8,
                                         textColor=colors.HexColor("#4A5563"), spaceAfter=0),
             "testata": ParagraphStyle("testata", parent=base, fontName=grassetto, fontSize=10.5, leading=12.5, spaceAfter=0),
@@ -284,7 +288,7 @@ class Pdf:
     def testata(self, testo, a_destra="", sfondo="#DDE4EE", stile="testata"):
         """Fascia a tutta larghezza: titolo a sinistra, codice a destra."""
         destra = ParagraphStyle("destra", parent=self.stili[stile], alignment=TA_RIGHT)
-        larghezza = LARGHEZZA
+        larghezza = self.larghezza
         tabella = Table(
             [[Paragraph(_pulito(testo), self.stili[stile]), Paragraph(_pulito(a_destra), destra)]],
             colWidths=[larghezza - 3 * cm, 3 * cm],
@@ -325,13 +329,13 @@ class Pdf:
             return
         # linea sotto ogni valore tranne l'ultimo (le etichette restano attaccate al loro valore)
         stile += [("LINEBELOW", (0, r), (0, r), 0.25, colors.HexColor("#D5DAE1")) for r in range(1, len(dati) - 1, 2)]
-        tabella = Table(dati, colWidths=[LARGHEZZA], hAlign="LEFT", splitInRow=1)
+        tabella = Table(dati, colWidths=[self.larghezza], hAlign="LEFT", splitInRow=1)
         tabella.setStyle(TableStyle(stile))
         self.storia.append(tabella)
         self.spazio(1)
 
     def riquadro(self, testo, colore="#F3F4F6"):
-        tabella = Table([[Paragraph(_pulito(testo), self.stili["cella"])]], colWidths=[LARGHEZZA], splitInRow=1)
+        tabella = Table([[Paragraph(_pulito(testo), self.stili["cella"])]], colWidths=[self.larghezza], splitInRow=1)
         tabella.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(colore)),
             ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#9AA3AE")),
@@ -343,9 +347,10 @@ class Pdf:
     def spazio(self, altezza=4):
         self.storia.append(Spacer(1, altezza * mm))
 
-    def tabella(self, intestazioni, righe, larghezze=None, sfondi=None, bordo=True):
-        """Tabella con celle a capo automatico. sfondi: {(colonna, riga): colore}, riga 0 = intestazione."""
-        cella = self.stili["cella"]
+    def tabella(self, intestazioni, righe, larghezze=None, sfondi=None, bordo=True, piccola=False):
+        """Tabella con celle a capo automatico. sfondi: {(colonna, riga): colore}, riga 0 = intestazione.
+        piccola: carattere ridotto, per i registri con molte colonne."""
+        cella = self.stili["cella_piccola" if piccola else "cella"]
         dati = []
         if intestazioni:
             dati.append([Paragraph(f"<b>{_pulito(t)}</b>", cella) for t in intestazioni])
@@ -353,7 +358,7 @@ class Pdf:
             [v if isinstance(v, Paragraph) else Paragraph(_pulito("" if v is None else v), cella) for v in riga]
             for riga in righe
         ]
-        larghezza_utile = LARGHEZZA
+        larghezza_utile = self.larghezza
         if larghezze:
             totale = sum(larghezze)
             larghezze = [larghezza_utile * l / totale for l in larghezze]
@@ -379,8 +384,8 @@ class Pdf:
             aggiungi()
         blocco = list(prima) + self.storia[inizio:]
         del self.storia[inizio:]
-        altezza = _listWrapOn(blocco, LARGHEZZA, Canvas(io.BytesIO()))[1]
-        if altezza <= ALTEZZA / 2:
+        altezza = _listWrapOn(blocco, self.larghezza, Canvas(io.BytesIO()))[1]
+        if altezza <= self.altezza / 2:
             self.storia.append(KeepTogether(blocco))
             return
         self.storia.append(CondPageBreak(4 * cm))
@@ -390,7 +395,7 @@ class Pdf:
 
     def _pagina(self, canvas, doc):
         canvas.saveState()
-        larghezza, altezza = A4
+        larghezza, altezza = self.formato
         if self.bozza:
             canvas.setFont(self.grassetto, 10)
             canvas.setFillColor(colors.HexColor("#B3261E"))
@@ -404,7 +409,7 @@ class Pdf:
     def salva(self):
         buffer = io.BytesIO()
         documento = SimpleDocTemplate(
-            buffer, pagesize=A4, leftMargin=MARGINE, rightMargin=MARGINE, topMargin=MARGINE_VERTICALE, bottomMargin=MARGINE_VERTICALE,
+            buffer, pagesize=self.formato, leftMargin=MARGINE, rightMargin=MARGINE, topMargin=MARGINE_VERTICALE, bottomMargin=MARGINE_VERTICALE,
             title=self.titolo, author="Cosmap – Analisi dei rischi",
         )
         documento.build(self.storia, onFirstPage=self._pagina, onLaterPages=self._pagina)
@@ -1245,6 +1250,150 @@ def relazione_funzioni(revisione):
         )
     else:
         doc.p("Nessun componente scelto.")
+    return doc.salva()
+
+
+# ---------------------------------------------------------------------------
+# Verifiche elettriche di un quadro (IEC 60204-1, cap. 18) e modulo rilievi per i tecnici
+# ---------------------------------------------------------------------------
+
+
+# Proporzioni delle colonne del registro cavi (A4 orizzontale); le misure hanno 1,3, l'isolamento 1,25
+LARGHEZZE_CAVI = {"sigla": 1.5, "percorso": 2.4, "tipo": 2.0, "formazione": 2.0, "sezione": 1.3, "protezione": 1.9,
+                  "in": 1.1, "note": 2.0, "l1pe": 1.25, "l2pe": 1.25, "l3pe": 1.25, "l1l2": 1.25, "l1l3": 1.25, "l2l3": 1.25}
+
+
+def _dati_quadro(verifica):
+    macchina = verifica.revisione.analisi.macchina
+    dati = verifica.dati or {}
+    return macchina, dati
+
+
+def _valore_prova(p):
+    if p.get("misurato"):
+        return f"{p['misurato']} {p.get('unita') or ''}".strip()
+    if p.get("dalRegistro"):
+        return f"{p['dalRegistro']} {p.get('unita') or ''} (registro)".strip()
+    return ""
+
+
+def verifiche_elettriche(verifica):
+    """Documento da firmare delle verifiche elettriche di un quadro: dati, firme, prove, registro misure."""
+    r = calcolo.elettriche(verifica.dati or {})
+    macchina, dati = _dati_quadro(verifica)
+    commessa = macchina.commessa
+    approvata = verifica.stato == verifica.Stato.APPROVATA
+    doc = Pdf(
+        f"Verifiche elettriche – commessa {commessa.numero} – {verifica.quadro} – analisi rev. {verifica.revisione.numero}",
+        "" if approvata else "BOZZA – verifica non approvata, documento non valido",
+        orizzontale=True,
+    )
+    fabbricante = Fabbricante.objects.first()
+    if fabbricante:
+        doc.p(fabbricante.ragione_sociale, "etichetta")
+    doc.titolo_documento("Verifiche dell'equipaggiamento elettrico")
+    doc.p(f"EN 60204-1, capitolo 18 · riferimento: {r['fonte']}.")
+    doc.tabella(None, [
+        ["Commessa", commessa.numero, "Equipaggiamento / quadro", verifica.quadro],
+        ["Cliente", str(commessa.cliente), "Tensione nominale", dati.get("tensione") or "–"],
+        ["Macchina", macchina.denominazione, "Strumento", dati.get("strumento") or "–"],
+        ["Modello", macchina.modello or "–", "Scadenza taratura", _data_testo(dati.get("taratura")) or "–"],
+        ["Matricola", macchina.matricola or "–", "Tensione di prova isolamento", dati.get("vprova") or "–"],
+    ], [3, 7, 4.5, 7])
+    data = lambda d: f"{d:%d/%m/%Y}" if d else ""
+    doc.tabella(
+        ["", "Nome", "Data", "Firma"],
+        [
+            ["Redatta", _nome(verifica.inviata_da) if verifica.inviata_da else "", data(verifica.inviata_il), ""],
+            ["Verificata", _nome(verifica.verificata_da) if verifica.verificata_da else "", data(verifica.verificata_il), ""],
+            ["Approvata", _nome(verifica.approvata_da) if verifica.approvata_da else "", data(verifica.approvata_il), ""],
+        ],
+        [3, 7, 3, 8],
+    )
+
+    doc.titoletto("Prove")
+    righe, sfondi = [], {}
+    for indice, p in enumerate(r["prove"], start=1):
+        esito = p.get("esito", "")
+        righe.append([p.get("clausola") or "", p.get("testo") or "–", p.get("criterio") or "", _valore_prova(p),
+                      ESITI_PROVA.get(esito, ""), p.get("note", "")])
+        if esito in COLORI_PROVA:
+            sfondi[(4, indice)] = COLORI_PROVA[esito]
+    doc.tabella(["Rif.", "Prova", "Criterio", "Misurato", "Esito", "Note"], righe, [1.4, 7, 8, 3, 2, 4.5], sfondi)
+
+    equi, cavi = dati.get("equipotenziali") or [], dati.get("cavi") or []
+    if equi or cavi:
+        doc.titoletto("Registro misure")
+        if dati.get("vprova"):
+            doc.p(f"Tensione di prova isolamento: {dati['vprova'].rstrip('.')}. Isolamento in MΩ, RPE e Zs in Ω.")
+    if equi:
+        colonne = r["colonne"]["equipotenziali"]
+        doc.titoletto("Collegamenti equipotenziali (18.2.2)", 3)
+        doc.tabella(["N."] + [t for _, t in colonne], [[i] + [x.get(k, "") for k, _ in colonne] for i, x in enumerate(equi, 1)],
+                    [0.8, 9, 4, 2.5, 2.5, 7], piccola=True)
+    if cavi:
+        colonne = r["colonne"]["cavi"]
+        doc.titoletto("Cavi (18.2.2, 18.2.3, 18.3)", 3)
+        righe, sfondi = [], {}
+        for i, (x, iso) in enumerate(zip(cavi, r["isolamento"]), start=1):
+            righe.append([i] + [x.get(k, "") for k, _ in colonne] + [{"ok": "OK", "ko": "Non OK"}.get(iso, "")])
+            if iso in COLORI_PROVA:
+                sfondi[(len(colonne) + 1, i)] = COLORI_PROVA[iso]
+        doc.tabella(["N."] + [t for _, t in colonne] + ["Isol."], righe,
+                    [0.8] + [LARGHEZZE_CAVI.get(k, 1.3) for k, _ in colonne] + [1.4], sfondi, piccola=True)
+    doc.spazio(2)
+    doc.tabella(None, [[
+        f"Prove eseguite da: {dati.get('esecutore') or ''}\n\n", f"Data: {_data_testo(dati.get('data'))}", "Firma:",
+    ]], [8, 4, 8])
+    return doc.salva()
+
+
+def modulo_tecnici(verifica):
+    """Modulo da stampare per i tecnici: dati della macchina e righe del registro con i valori da scrivere a mano.
+    Non è un documento firmato dell'analisi e non si archivia."""
+    r = calcolo.elettriche(verifica.dati or {})
+    macchina, dati = _dati_quadro(verifica)
+    doc = Pdf(f"Modulo rilievi – commessa {macchina.commessa.numero} – {verifica.quadro}", orizzontale=True)
+    cella = doc.stili["cella_piccola"]
+    vuoto = "______________________"
+
+    def tabella(intestazioni, righe, larghezze, vuote):
+        dati_tab = [[Paragraph(f"<b>{_pulito(t)}</b>", cella) for t in intestazioni]]
+        dati_tab += [[Paragraph(_pulito(v), cella) for v in riga] for riga in righe]
+        dati_tab += [[""] * len(intestazioni) for _ in range(vuote)]
+        totale = sum(larghezze)
+        t = Table(dati_tab, colWidths=[doc.larghezza * l / totale for l in larghezze], repeatRows=1,
+                  rowHeights=[None] + [0.62 * cm] * (len(dati_tab) - 1))
+        t.setStyle(TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#444444")), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EEEEEE")),
+        ]))
+        doc.storia.append(t)
+        doc.spazio(2)
+
+    doc.titolo_documento("Modulo rilievi: verifiche elettriche EN 60204-1, cap. 18")
+    doc.tabella(None, [
+        ["Commessa", macchina.commessa.numero, "Equipaggiamento / quadro", verifica.quadro, "Data prova", ""],
+        ["Macchina", macchina.denominazione, "Tensione nominale", dati.get("tensione") or vuoto, "Tensione di prova isolamento", dati.get("vprova") or vuoto],
+        ["Matricola", macchina.matricola or "–", "Strumento (modello, matricola)", dati.get("strumento") or vuoto, "Scadenza taratura", _data_testo(dati.get("taratura")) or vuoto],
+    ], [2.4, 5, 4.2, 5.5, 4.2, 4])
+    misure = set(r["colonne"]["misure"])
+    colonne = r["colonne"]["equipotenziali"]
+    doc.titoletto("Collegamenti equipotenziali (18.2.2): R in Ω", 3)
+    tabella(["N."] + [t for _, t in colonne],
+            [[i] + ["" if k in misure else x.get(k, "") for k, _ in colonne] for i, x in enumerate(dati.get("equipotenziali") or [], 1)],
+            [0.8, 9, 4, 2.5, 2.5, 7], 4)
+    colonne = r["colonne"]["cavi"]
+    doc.titoletto("Cavi: RPE e Zs in Ω, isolamento in MΩ", 3)
+    tabella(["N."] + [t for _, t in colonne],
+            [[i] + ["" if k in misure else x.get(k, "") for k, _ in colonne] for i, x in enumerate(dati.get("cavi") or [], 1)],
+            [0.8] + [LARGHEZZE_CAVI.get(k, 1.3) for k, _ in colonne], 8)
+    doc.titoletto("Altre prove", 3)
+    tabella(["Rif.", "Prova", "Valore", "Esito", "Note"],
+            [[p["clausola"], p["testo"], "", "", ""] for p in r["prove"] if p["key"] in ("tensione", "residue")],
+            [1.5, 11, 3, 2.5, 6], 0)
+    doc.spazio(4)
+    doc.p(f"Tecnico: {vuoto}{vuoto} · Firma: {vuoto}{vuoto}")
     return doc.salva()
 
 

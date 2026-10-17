@@ -1,0 +1,83 @@
+{% extends "rischi/base.html" %}
+{% load static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'rischi/safety/valutazione.css' %}">{% endblock %}
+{% block titolo %}Verifiche elettriche · {{ verifica.quadro }}{% endblock %}
+{% block contenuto %}
+{% with c=analisi.macchina.commessa v=verifica %}
+<p><a href="{% url 'analisi_revisione' analisi.pk revisione.numero %}#verifiche-elettriche">← Commessa {{ c.numero }}, revisione {{ revisione.numero }}</a></p>
+<div class="intestazione">
+  <div>
+    <h1>Verifiche elettriche · {{ v.quadro }}</h1>
+    <p class="sotto">EN 60204-1, cap. 18 · commessa {{ c.numero }} · {{ analisi.macchina.modello|default:analisi.macchina.denominazione }}{% if analisi.macchina.matricola %} · matricola {{ analisi.macchina.matricola }}{% endif %} · analisi rev. {{ revisione.numero }}</p>
+  </div>
+  <span class="stato grande {{ v.stato|lower }}">{{ v.get_stato_display }}</span>
+</div>
+
+<section class="riquadro griglia-2">
+  <div>
+    <h2>Flusso</h2>
+    <dl class="dati">
+      <dt>Compilata da</dt><dd>{% if v.inviata_da %}{{ v.inviata_da.get_full_name|default:v.inviata_da.username }} · {{ v.inviata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      <dt>Verificata da</dt><dd>{% if v.verificata_da %}{{ v.verificata_da.get_full_name|default:v.verificata_da.username }} · {{ v.verificata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      <dt>Approvata da</dt><dd>{% if v.approvata_da %}{{ v.approvata_da.get_full_name|default:v.approvata_da.username }} · {{ v.approvata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+    </dl>
+    {% if v.nota_verifica and v.stato == "BOZZA" %}<div class="messaggio warning"><strong>Da correggere:</strong> {{ v.nota_verifica|linebreaksbr }}</div>{% endif %}
+    {% if v.superata %}<div class="messaggio info">Esiste una revisione più recente dell'analisi: le verifiche proseguono in quella.</div>{% endif %}
+  </div>
+  <div class="azioni">
+    <h2>Azioni</h2>
+    {% if v.stato == "BOZZA" and v.modificabile and puo.compilare %}
+      <form method="post" action="{% url 'azione_verifica_elettrica' v.pk 'invia' %}">{% csrf_token %}<button class="primario">Invia in verifica</button></form>
+    {% elif v.stato == "IN_VERIFICA" %}
+      {% if puo.verificare and not v.verificata_da %}
+      <form method="post" action="{% url 'azione_verifica_elettrica' v.pk 'verifica' %}">{% csrf_token %}<button class="primario">Segna come verificata</button></form>
+      {% endif %}
+      {% if puo.approvare and v.verificata_da %}
+      <form method="post" action="{% url 'azione_verifica_elettrica' v.pk 'approva' %}">{% csrf_token %}<button class="primario">Approva</button></form>
+      {% endif %}
+      {% if puo.verificare or puo.approvare %}
+      <form method="post" action="{% url 'azione_verifica_elettrica' v.pk 'rimanda' %}">{% csrf_token %}
+        <textarea name="nota" rows="2" placeholder="Cosa va corretto"></textarea>
+        <button>Rimanda in bozza</button></form>
+      {% endif %}
+    {% elif v.stato == "APPROVATA" %}
+      <p class="sotto">Verifica approvata: sola lettura.</p>
+    {% else %}
+      <p class="sotto">Nessuna azione disponibile per il tuo ruolo.</p>
+    {% endif %}
+    <a class="bottone" href="{% url 'modulo_verifica_elettrica' v.pk %}" target="_blank">Stampa modulo per i tecnici</a>
+    <form method="post" action="{% url 'genera_verifica_elettrica' v.pk %}" target="_blank">{% csrf_token %}<button>Genera il documento PDF{% if v.stato != "APPROVATA" %} (bozza){% endif %}</button></form>
+    {% if modificabile and not v.approvata_il %}
+    <form method="post" action="{% url 'azione_verifica_elettrica' v.pk 'elimina' %}" onsubmit="return confirm('Eliminare la verifica elettrica «{{ v.quadro|escapejs }}»?');">{% csrf_token %}<button class="pericolo">Elimina verifica</button></form>
+    {% endif %}
+  </div>
+</section>
+
+{% if anomalie and v.stato != "APPROVATA" %}
+<details class="riquadro anomalie" {% if v.stato == "IN_VERIFICA" %}open{% endif %}>
+  <summary>Controlli: {{ anomalie|length }} segnalazioni</summary>
+  <ul>{% for a in anomalie %}<li>{{ a.messaggio }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+{% if senza_motore %}<p class="messaggio warning">Node non è installato sul server: i conteggi sono quelli della pagina e il documento PDF non si può generare.</p>{% endif %}
+
+<section class="riquadro">
+  <h2>Prove e registro misure</h2>
+  {% if not modificabile %}<p class="sotto">Sola lettura: la verifica è {{ v.get_stato_display|lower }}{% if v.superata %} in una revisione superata{% endif %} o non hai il ruolo di compilatore.</p>{% endif %}
+  {{ dati|json_script:"dati-verifica" }}
+  <div id="verifica" class="valutazione"></div>
+</section>
+
+{% if documenti %}
+<section class="riquadro">
+  <h2>Documenti generati</h2>
+  <table class="tabella"><thead><tr><th>Documento</th><th>Generato</th><th></th></tr></thead><tbody>
+  {% for d in documenti %}<tr><td>{{ d.get_tipo_display }}{% if not d.definitivo %} <span class="etichetta">bozza</span>{% endif %}</td><td>{{ d.generato_il|date:"d/m/Y H:i" }} · {{ d.generato_da.get_full_name|default:d.generato_da.username }}</td><td><a href="{% url 'scarica_documento' d.pk %}">Scarica</a></td></tr>{% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+{% endwith %}
+<script src="{% static 'rischi/safety/schema.js' %}"></script>
+<script src="{% static 'rischi/safety/validazione.js' %}"></script>
+<script src="{% static 'rischi/safety/verifiche-pagina.js' %}"></script>
+{% endblock %}

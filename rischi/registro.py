@@ -29,6 +29,7 @@ MODELLI_REGISTRATI = (
     m.ValutazioneFunzione,
     m.ValidazioneSicurezza,
     m.ProveFunzione,
+    m.VerificaElettrica,
     m.ArticoloSicurezza,
     m.Modulo,
     m.Figura,
@@ -45,7 +46,7 @@ MODELLI_REGISTRATI = (
 
 _CONTENUTI = (
     m.SchedaAnalisi, m.MisuraAnalisi, m.ApplicabilitaRequisito, m.FunzioneSicurezza, m.ValutazioneFunzione,
-    m.ValidazioneSicurezza, m.ProveFunzione,
+    m.ValidazioneSicurezza, m.ProveFunzione, m.VerificaElettrica,
 )
 
 

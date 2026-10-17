@@ -106,6 +106,28 @@
   {% if funzioni %}<a class="bottone" href="{% url 'validazione' revisione.pk %}">Validazione e relazione PDF</a> <span class="sotto">Validazione {% if revisione.validazione %}{{ revisione.validazione.get_stato_display|lower }}{% else %}da compilare{% endif %}: prove ISO 13849-2, misure contro i guasti sistematici, relazione da firmare.</span>{% endif %}</p>
 </section>
 
+<section class="riquadro" id="verifiche-elettriche">
+  <h2>Verifiche elettriche (EN 60204-1, cap. 18)</h2>
+  <p class="sotto">Una per quadro o equipaggiamento: prove, registro delle misure sul campo, modulo per i tecnici e documento da firmare. Hanno un flusso proprio: si compilano e si approvano anche dopo l'approvazione dell'analisi.</p>
+  {% if verifiche_elettriche %}
+  <table class="tabella"><thead><tr><th>Quadro</th><th>Stato</th><th>Prove</th><th>Isolamento</th><th>Eseguite</th></tr></thead><tbody>
+  {% for v in verifiche_elettriche %}<tr class="{% if v.isolamento_non_ok or v.non_ok %}con-anomalia{% endif %}">
+    <td><a href="{% url 'verifica_elettrica' v.pk %}">{{ v.quadro }}</a></td>
+    <td><span class="stato {{ v.stato|lower }}">{{ v.get_stato_display }}</span></td>
+    <td>{% if v.non_ok %}<strong>{{ v.non_ok }} non OK</strong>{% if v.da_eseguire %} · {% endif %}{% endif %}{% if v.da_eseguire %}{{ v.da_eseguire }} senza esito{% elif not v.non_ok %}tutte con esito{% endif %}</td>
+    <td>{% if v.isolamento_non_ok %}<strong>non OK su {{ v.isolamento_non_ok }} cavi</strong>{% else %}–{% endif %}</td>
+    <td>{{ v.dati.esecutore|default:"–" }}{% if v.data_prove %} · {{ v.data_prove|date:"d/m/Y" }}{% endif %}</td>
+  </tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+  {% if ultima and puo.compilare %}
+  <form method="post" action="{% url 'nuova_verifica_elettrica' revisione.pk %}" class="riga-form">{% csrf_token %}
+    <input name="quadro" required maxlength="200" placeholder="Quadro o equipaggiamento, es. Quadro elettrico principale QE1">
+    <button>Aggiungi verifica elettrica</button>
+  </form>
+  {% endif %}
+</section>
+
 <p class="riepilogo">{{ conteggi.totali }} schede · {{ conteggi.da_decidere }} da decidere · {{ conteggi.scartate }} scartate</p>
 
 {% if anomalie %}
