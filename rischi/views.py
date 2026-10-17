@@ -16,6 +16,7 @@ from . import servizi
 from . import documenti
 from .forms import (
     AllegatoForm,
+    FunzioneForm,
     ApplicabilitaFormSet,
     MacchinaForm,
     MisureFormSet,
@@ -29,6 +30,8 @@ from .models import (
     Cliente,
     Commessa,
     DocumentoGenerato,
+    FunzioneSicurezza,
+    MisuraAnalisi,
     Macchina,
     RegistroModifica,
     RequisitoRESS,
@@ -139,6 +142,7 @@ def analisi(request, pk, numero=None):
         "puo_eliminare": servizi.puo_eliminare(utente, revisione.analisi.macchina.commessa),
         "commessa_approvata": servizi.ha_revisioni_approvate(revisione.analisi.macchina.commessa),
         "documenti": revisione.documenti.select_related("generato_da")[:20],
+        "funzioni": revisione.funzioni.select_related("valutazione").prefetch_related("misure__scheda"),
     }
     return render(request, "rischi/analisi.html", contesto)
 
@@ -348,6 +352,69 @@ def applicabilita(request, revisione_pk):
         "rischi/applicabilita.html",
         {"formset": formset, "righe": righe_form, "revisione": revisione, "modificabile": modificabile},
     )
+
+
+def _salva_funzione(request, funzione, revisione):
+    modificabile = revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
+    iniziali = {}
+    if not funzione.pk and request.GET.get("misura", "").isdigit():
+        misura = MisuraAnalisi.objects.filter(pk=request.GET["misura"], scheda__revisione=revisione).first()
+        if misura:
+            iniziali["misure"] = [misura.pk]
+    form = FunzioneForm(request.POST or None, instance=funzione, revisione=revisione, initial=iniziali)
+    if not modificabile:
+        for campo in form.fields.values():
+            campo.disabled = True
+    if request.method == "POST":
+        if not modificabile:
+            raise PermissionDenied("Funzione non modificabile.")
+        if form.is_valid():
+            nuova = not funzione.pk
+            with transaction.atomic():
+                funzione = form.save(commit=False)
+                if nuova:
+                    funzione.revisione = revisione
+                    funzione.ordine = (revisione.funzioni.aggregate(m=Max("ordine"))["m"] or 0) + 10
+                funzione.save()
+                form.save_m2m()
+            messages.success(request, f"Funzione «{funzione.nome}» salvata" + (f", PLr {funzione.plr}." if funzione.plr else "."))
+            return redirect(f"{reverse('analisi', args=[revisione.analisi_id])}#funzioni")
+    schede = {m.scheda for m in funzione.misure.select_related("scheda__revisione__metodo")} if funzione.pk else set()
+    return render(
+        request,
+        "rischi/funzione.html",
+        {
+            "form": form, "funzione": funzione, "revisione": revisione, "modificabile": modificabile,
+            "schede": sorted(schede, key=lambda s: s.codice),
+        },
+    )
+
+
+@login_required
+def funzione(request, pk):
+    funzione = get_object_or_404(FunzioneSicurezza.objects.select_related("revisione__analisi"), pk=pk)
+    return _salva_funzione(request, funzione, funzione.revisione)
+
+
+@login_required
+def nuova_funzione(request, revisione_pk):
+    revisione = get_object_or_404(Revisione, pk=revisione_pk)
+    return _salva_funzione(request, FunzioneSicurezza(revisione=revisione), revisione)
+
+
+@login_required
+@require_POST
+def elimina_funzione(request, pk):
+    funzione = get_object_or_404(FunzioneSicurezza.objects.select_related("revisione"), pk=pk)
+    revisione = funzione.revisione
+    if not (revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)):
+        raise PermissionDenied("Funzione non modificabile.")
+    with transaction.atomic():
+        if hasattr(funzione, "valutazione"):
+            funzione.valutazione.delete()
+        funzione.delete()
+    messages.success(request, f"Funzione «{funzione.nome}» eliminata.")
+    return redirect(f"{reverse('analisi', args=[revisione.analisi_id])}#funzioni")
 
 
 @login_required

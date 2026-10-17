@@ -88,6 +88,22 @@
   {% endif %}
 </section>
 
+<section class="riquadro" id="funzioni">
+  <h2>Funzioni di sicurezza (EN ISO 13849-1)</h2>
+  {% if funzioni %}
+  <table class="tabella"><thead><tr><th>Funzione</th><th>Misure delle schede</th><th>S F P</th><th>PLr</th><th>PL</th></tr></thead><tbody>
+  {% for f in funzioni %}<tr class="{% if not f.plr %}con-anomalia{% endif %}">
+    <td><a href="{% url 'funzione' f.pk %}">{{ f.nome }}</a></td>
+    <td>{% for m in f.misure.all %}<a href="{% url 'scheda' m.scheda_id %}">{{ m.scheda.codice|default:"scheda" }}</a>{% if not forloop.last %}, {% endif %}{% empty %}<span class="sotto">a mano</span>{% endfor %}</td>
+    <td>{{ f.s|default:"–" }} {{ f.f|default:"–" }} {{ f.p|default:"–" }}</td>
+    <td>{{ f.plr|default:"–" }}</td>
+    <td>{% if f.valutazione %}{{ f.valutazione.pl|default:"–" }}{% else %}<span class="sotto">da calcolare</span>{% endif %}</td>
+  </tr>{% endfor %}
+  </tbody></table>
+  {% else %}<p class="sotto">Nessuna funzione di sicurezza. Si crea dalla misura di protezione di una scheda, oppure qui per le funzioni che non nascono da una scheda.</p>{% endif %}
+  {% if ultima and revisione.stato == "BOZZA" and puo.compilare %}<p><a class="bottone" href="{% url 'nuova_funzione' revisione.pk %}">Aggiungi funzione di sicurezza</a></p>{% endif %}
+</section>
+
 <p class="riepilogo">{{ conteggi.totali }} schede · {{ conteggi.da_decidere }} da decidere · {{ conteggi.scartate }} scartate</p>
 
 {% if anomalie %}

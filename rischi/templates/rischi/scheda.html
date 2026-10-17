@@ -43,6 +43,11 @@
   <div class="misura">{{ mf.id }}
     <div class="stime">{% include "rischi/_campo.html" with f=mf.ordine %}{% include "rischi/_campo.html" with f=mf.soluzione %}{% include "rischi/_campo.html" with f=mf.tipo %}{% include "rischi/_campo.html" with f=mf.norma %}{% if mf.instance.pk %}{% include "rischi/_campo.html" with f=mf.DELETE %}{% endif %}</div>
     {% include "rischi/_campo.html" with f=mf.testo %}
+    {% if mf.instance.pk %}{% with funzioni=mf.instance.funzioni.all %}{% if funzioni or modificabile and mf.instance.tipo in "PROT DACL" %}
+    <p class="funzioni-misura">Funzioni di sicurezza:
+      {% for fz in funzioni %}<a href="{% url 'funzione' fz.pk %}">{{ fz.nome }}</a>{% if fz.plr %} (PLr {{ fz.plr }}){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}<span class="sotto">nessuna</span>{% endfor %}
+      {% if modificabile and mf.instance.tipo in "PROT DACL" %} · <a href="{% url 'nuova_funzione' revisione.pk %}?misura={{ mf.instance.pk }}">Crea funzione di sicurezza</a>{% endif %}
+    </p>{% endif %}{% endwith %}{% endif %}
   </div>
   {% endfor %}
   {% dati_soluzioni %}

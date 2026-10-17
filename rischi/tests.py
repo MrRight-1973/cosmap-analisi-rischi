@@ -1736,3 +1736,77 @@ class ArticoliSicurezzaTest(TestCase):
         pagina = self.client.get(reverse("admin:rischi_articolosicurezza_changelist") + "?verificato__exact=0")
         self.assertContains(pagina, "FR 693")
         self.assertNotContains(pagina, "S120 SMM booksize")
+
+
+class PagineFunzioniTest(BaseConLibreria):
+    """Fase 2: la funzione di sicurezza si crea dalla misura della scheda o a mano dalla pagina dell'analisi."""
+
+    def setUp(self):
+        from .models import MisuraAnalisi
+
+        self.analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+        self.scheda = self.rev.schede.first()
+        self.misura = MisuraAnalisi.objects.create(
+            scheda=self.scheda, ordine=99, tipo="PROT", testo="Riparo interbloccato sulla porta di carico"
+        )
+
+    def test_crea_dalla_misura_della_scheda(self):
+        self.client.force_login(self.compilatore)
+        url = f"{reverse('nuova_funzione', args=[self.rev.pk])}?misura={self.misura.pk}"
+        self.assertContains(self.client.get(reverse("scheda", args=[self.scheda.pk])), url.replace("&", "&amp;"))
+        pagina = self.client.get(url)
+        self.assertRegex(pagina.content.decode(), rf'value="{self.misura.pk}" id="id_misure_\d+" checked')
+        risposta = self.client.post(url, {
+            "nome": "Apertura porta di carico", "descrizione": "Apertura porta → STO", "s": "S2", "f": "F1", "p": "P2",
+            "misure": [self.misura.pk],
+        })
+        self.assertRedirects(risposta, reverse("analisi", args=[self.analisi.pk]) + "#funzioni")
+        funzione = self.rev.funzioni.get()
+        self.assertEqual((funzione.plr, list(funzione.misure.all())), ("d", [self.misura]))
+        analisi = self.client.get(reverse("analisi", args=[self.analisi.pk]))
+        self.assertContains(analisi, "Apertura porta di carico")
+        self.assertContains(self.client.get(reverse("scheda", args=[self.scheda.pk])), "(PLr d)")
+
+    def test_a_mano_e_controllo_plr(self):
+        self.client.force_login(self.compilatore)
+        self.client.post(reverse("nuova_funzione", args=[self.rev.pk]), {"nome": "Arresto di emergenza generale"})
+        funzione = self.rev.funzioni.get()
+        self.assertFalse(funzione.misure.exists())
+        self.assertIn("funzione", {a.tipo for a in servizi.controlli(self.rev)})
+        self.client.post(reverse("funzione", args=[funzione.pk]), {
+            "nome": "Arresto di emergenza generale", "s": "S2", "f": "F2", "p": "P1",
+        })
+        funzione.refresh_from_db()
+        self.assertEqual(funzione.plr, "d")
+        self.assertNotIn("funzione", {a.tipo for a in servizi.controlli(self.rev)})
+
+    def test_misure_solo_della_stessa_revisione(self):
+        from .models import MisuraAnalisi
+
+        altra = servizi.crea_analisi_da_libreria(self.nuova_macchina("26-05"), self.compilatore)
+        estranea = MisuraAnalisi.objects.create(
+            scheda=altra.revisione_corrente.schede.first(), tipo="PROT", testo="Misura di un'altra commessa"
+        )
+        informazione = MisuraAnalisi.objects.create(scheda=self.scheda, tipo="INFO", testo="Cartello")
+        self.client.force_login(self.compilatore)
+        pagina = self.client.get(reverse("nuova_funzione", args=[self.rev.pk]))
+        self.assertContains(pagina, "Riparo interbloccato")
+        self.assertNotContains(pagina, "Misura di un&#x27;altra commessa")
+        self.assertNotContains(pagina, "Cartello")
+        risposta = self.client.post(reverse("nuova_funzione", args=[self.rev.pk]), {
+            "nome": "Prova", "misure": [estranea.pk, informazione.pk],
+        })
+        self.assertEqual(risposta.status_code, 200)
+        self.assertFalse(self.rev.funzioni.exists())
+
+    def test_sola_lettura_e_eliminazione(self):
+        from .models import FunzioneSicurezza
+
+        funzione = FunzioneSicurezza.objects.create(revisione=self.rev, nome="Barriera", s="S1", f="F1", p="P1")
+        self.client.force_login(self.verificatore)
+        self.assertContains(self.client.get(reverse("funzione", args=[funzione.pk])), "Sola lettura")
+        self.assertEqual(self.client.post(reverse("elimina_funzione", args=[funzione.pk])).status_code, 403)
+        self.client.force_login(self.compilatore)
+        self.client.post(reverse("elimina_funzione", args=[funzione.pk]))
+        self.assertFalse(FunzioneSicurezza.objects.exists())
