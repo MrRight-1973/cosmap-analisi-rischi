@@ -54,6 +54,7 @@ from .models import (
     SchedaAnalisi,
     SoluzioneProtezione,
     ValidazioneSicurezza,
+    VerificaElettrica,
 )
 from .testo import e_formattato, in_reportlab
 
@@ -466,6 +467,11 @@ def norme_applicate(revisione):
     validazione = getattr(revisione, "validazione", None)
     if validazione and validazione.stato == ValidazioneSicurezza.Stato.APPROVATA:
         for norma in Norma.objects.filter(codice__in=("EN ISO 13849-1", "EN ISO 13849-2")):
+            norme[norma.pk] = norma
+    # Equipaggiamento elettrico verificato: tutte le verifiche elettriche della revisione approvate
+    verifiche = list(revisione.verifiche_elettriche.values_list("stato", flat=True))
+    if verifiche and all(stato == VerificaElettrica.Stato.APPROVATA for stato in verifiche):
+        for norma in Norma.objects.filter(codice="EN 60204-1"):
             norme[norma.pk] = norma
     ordinate = sorted(norme.values(), key=lambda n: n.codice)
     return [n for n in ordinate if n.armonizzata], [n for n in ordinate if not n.armonizzata]

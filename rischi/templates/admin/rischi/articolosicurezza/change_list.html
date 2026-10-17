@@ -1,0 +1,5 @@
+{% extends "admin/change_list.html" %}
+{% block object-tools-items %}
+  {% if has_add_permission %}<li><a href="{% url 'admin:rischi_articolosicurezza_importa' %}">Importa libreria del costruttore</a></li>{% endif %}
+  {{ block.super }}
+{% endblock %}

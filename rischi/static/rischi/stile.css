@@ -197,3 +197,4 @@ small.errore { color: var(--error-fg); }
 @media (max-width: 760px) { .grafo-rischio { grid-template-columns: 1fr; } }
 .riga-form { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
 .riga-form input { flex: 1; max-width: 520px; }
+.riga-form input[type=file] { flex: 0 1 auto; }

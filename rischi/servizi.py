@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .registro import senza_registro_contenuti
+from . import articoli as archivio_articoli
 from . import calcolo
 
 from .models import (
@@ -20,7 +21,11 @@ from .models import (
     Esito,
     Figura,
     FiguraMacchina,
+    Evitabilita,
+    Frequenza,
     FunzioneSicurezza,
+    FunzioneTipo,
+    Gravita,
     MetodoStima,
     MisuraAnalisi,
     Modulo,
@@ -1116,3 +1121,165 @@ def controlli(revisione):
             "articoli", f"{len(da_verificare)} articoli di sicurezza usati nei calcoli sono ancora da verificare: {elenco}."
         ))
     return anomalie
+
+
+# ---------------------------------------------------------------------------
+# Funzioni tipo della libreria e import delle valutazioni della safety evaluation
+# ---------------------------------------------------------------------------
+
+# Chiavi della funzione della safety evaluation che non fanno parte del dettaglio del calcolo
+FUORI_DETTAGLIO = ("nome", "S", "F", "P", "descrizione", "validazione")
+
+
+def _parametro(valore, scelte):
+    return valore if valore in scelte.values else ""
+
+
+def _nome_libero(revisione, nome):
+    usati = set(revisione.funzioni.values_list("nome", flat=True))
+    if nome not in usati:
+        return nome
+    numero = 2
+    while f"{nome} ({numero})" in usati:
+        numero += 1
+    return f"{nome} ({numero})"
+
+
+def _componenti(dettaglio):
+    return {
+        c.get("articoloId") for ss in dettaglio.get("sottosistemi") or [] if isinstance(ss, dict)
+        for c in ss.get("componenti") or [] if isinstance(c, dict)
+    } - {None, ""}
+
+
+def _nuova_funzione_calcolata(revisione, utente, nome, descrizione, s, f, p, dettaglio):
+    """Crea la funzione nella revisione e ne salva il calcolo (ricalcolato dal server come dalla pagina)."""
+    funzione = FunzioneSicurezza.objects.create(
+        revisione=revisione,
+        ordine=(revisione.funzioni.aggregate(m=models_Max("ordine"))["m"] or 0) + 10,
+        nome=_nome_libero(revisione, nome),
+        descrizione=descrizione,
+        s=_parametro(s, Gravita), f=_parametro(f, Frequenza), p=_parametro(p, Evitabilita),
+    )
+    if dettaglio.get("sottosistemi"):
+        salva_valutazione(funzione, dettaglio, {}, utente)
+    return funzione
+
+
+def funzioni_tipo_per(macchina):
+    """Funzioni tipo attive proposte per la macchina: quelle dei suoi moduli e quelle generali."""
+    return FunzioneTipo.objects.filter(attiva=True).filter(
+        Q(modulo__isnull=True) | Q(modulo__in=macchina.moduli.all())
+    ).select_related("modulo")
+
+
+@transaction.atomic
+def aggiungi_funzione_tipo(revisione, funzione_tipo, utente):
+    """Nuova funzione della revisione con nome, S, F, P, schema a blocchi e componenti della funzione tipo.
+    Le misure delle schede si collegano poi nella pagina della funzione."""
+    richiedi_ruolo(utente, COMPILATORE)
+    revisione.verifica_modificabile()
+    return _nuova_funzione_calcolata(
+        revisione, utente, funzione_tipo.nome, funzione_tipo.descrizione,
+        funzione_tipo.s, funzione_tipo.f, funzione_tipo.p, dict(funzione_tipo.dettaglio),
+    )
+
+
+def salva_come_funzione_tipo(funzione, nome, modulo, utente):
+    """Copia nome, descrizione, S, F, P, schema a blocchi e componenti della funzione in una funzione tipo della
+    libreria. Le prove di validazione restano alla macchina."""
+    if not utente.has_perm("rischi.add_funzionetipo"):
+        raise PermissionDenied("Serve il permesso di aggiungere funzioni tipo alla libreria.")
+    nome = _testo(nome, 200) or funzione.nome
+    if FunzioneTipo.objects.filter(nome=nome).exists():
+        raise ValidationError(f"Esiste già una funzione tipo «{nome}»: scegli un altro nome o modificala dalla libreria.")
+    valutazione = getattr(funzione, "valutazione", None)
+    dettaglio = {k: v for k, v in (valutazione.dettaglio if valutazione else {}).items() if k not in FUORI_DETTAGLIO}
+    return FunzioneTipo.objects.create(
+        nome=nome, descrizione=funzione.descrizione, modulo=modulo, s=funzione.s, f=funzione.f, p=funzione.p,
+        dettaglio=dettaglio,
+    )
+
+
+def _stringa(valore, massimo):
+    """Testo da un file importato: numeri e altri valori semplici diventano testo."""
+    return _testo(str(valore), massimo) if isinstance(valore, (str, int, float)) else ""
+
+
+def _con_contenuto(dati, chiavi):
+    return isinstance(dati, dict) and any(dati.get(k) for k in chiavi)
+
+
+@transaction.atomic
+def importa_safety_evaluation(revisione, dati, utente):
+    """Importa nella revisione una valutazione esportata dalla safety evaluation ("Esporta valutazione"): gli
+    articoli usati nella libreria (stesse regole di importa_articoli), le funzioni con il calcolo, le prove di
+    validazione, le misure contro i guasti sistematici e le verifiche elettriche. Restituisce il messaggio."""
+    richiedi_ruolo(utente, COMPILATORE)
+    revisione.verifica_modificabile()
+    if not isinstance(dati, dict) or not isinstance(dati.get("funzioni"), list):
+        raise ValidationError("Il file non è una valutazione esportata dalla safety evaluation: manca l'elenco delle funzioni.")
+    progetto = dati.get("progetto") if isinstance(dati.get("progetto"), dict) else {}
+    parti = []
+    if dati.get("articoli"):
+        try:
+            parti.append(f"articoli di sicurezza {archivio_articoli.importa(dati['articoli'])}")
+        except ValueError as errore:  # ArchivioNonValido o valori non numerici
+            raise ValidationError(f"Articoli del file non validi: {errore}")
+    try:
+        mission_time = float(progetto.get("missionTime"))
+    except (TypeError, ValueError):
+        mission_time = None
+    importate = []
+    for voce in dati["funzioni"]:
+        if not isinstance(voce, dict) or not isinstance(voce.get("sottosistemi", []), list):
+            raise ValidationError("Funzione non valida nel file.")
+        dettaglio = {k: v for k, v in voce.items() if k not in FUORI_DETTAGLIO}
+        if mission_time and mission_time > 0:
+            dettaglio["missionTime"] = mission_time
+        funzione = _nuova_funzione_calcolata(
+            revisione, utente, _stringa(voce.get("nome"), 200) or "Funzione importata", _stringa(voce.get("descrizione"), 5000),
+            voce.get("S"), voce.get("F"), voce.get("P"), dettaglio,
+        )
+        importate.append((funzione, voce.get("validazione")))
+    parti.insert(0, f"{len(importate)} funzioni di sicurezza")
+
+    chiavi = set().union(*(_componenti(getattr(f, "valutazione", None).dettaglio) for f, _ in importate if hasattr(f, "valutazione")))
+    mancanti = chiavi - set(ArticoloSicurezza.objects.filter(chiave__in=chiavi).values_list("chiave", flat=True))
+    if mancanti:
+        parti.append(f"{len(mancanti)} componenti senza articolo nella libreria (da scegliere di nuovo nel calcolo)")
+
+    con_prove = [(f, v) for f, v in importate if _con_contenuto(v, ("esiti", "extra", "esecutore"))]
+    sistematiche = dati.get("sistematiche")
+    if con_prove or _con_contenuto(sistematiche, ("esiti", "swVersione", "swFirma")):
+        validazione = validazione_di(revisione)
+        if validazione.pk and not validazione.modificabile:
+            parti.append(f"prove di validazione non importate perché la validazione è {validazione.get_stato_display().lower()}")
+        else:
+            for funzione, prove in con_prove:
+                salva_prove(funzione, prove, [], utente)
+            if con_prove:
+                parti.append(f"prove di validazione di {len(con_prove)} funzioni")
+            if _con_contenuto(sistematiche, ("esiti", "swVersione", "swFirma")):
+                attuali = validazione_di(revisione).sistematiche or {}
+                if _con_contenuto(attuali, ("esiti", "swVersione", "swFirma")):
+                    parti.append("misure contro i guasti sistematici non importate perché già compilate")
+                else:
+                    salva_sistematiche(revisione, sistematiche, utente)
+                    parti.append("misure contro i guasti sistematici")
+
+    elettriche = dati.get("elettriche")
+    if _con_contenuto(elettriche, ("esiti", "extra", "equipotenziali", "cavi", "strumento", "esecutore")):
+        quadro = _stringa(elettriche.get("quadro"), 200) or _stringa(progetto.get("macchina"), 200) or "Equipaggiamento elettrico"
+        verifica = nuova_verifica_elettrica(revisione, quadro, utente)
+        try:
+            salva_verifica_elettrica(verifica, quadro, elettriche, None, utente)
+        except ValidationError as errore:
+            if "Riepilogo" in str(errore):  # senza Node non ci sono i conteggi della pagina
+                raise ValidationError("Per importare le verifiche elettriche serve Node sul server: niente è stato importato.")
+            raise
+        parti.append(f"verifica elettrica «{verifica.quadro}»")
+
+    documento, numero = _stringa(progetto.get("documento"), 100), _stringa(progetto.get("revisione"), 20)
+    origine = " ".join(x for x in (documento, f"rev. {numero}" if numero else "") if x)
+    return f"Importato{' ' + origine if origine else ''}: " + "; ".join(parti) + "."

@@ -39,7 +39,7 @@ La struttura dati segue il documento "Struttura dati – Analisi rischi Cosmap":
    documento generato resta archiviato; da una revisione non approvata esce
    con la scritta BOZZA.
 
-## Funzioni di sicurezza (in costruzione)
+## Funzioni di sicurezza e verifiche elettriche
 
 La safety evaluation (calcolo del PL secondo EN ISO 13849-1, oggi nel repository
 `cosmap-safety-evaluation`) entra in questa app a fasi. Fase 1, la base dati:
@@ -113,6 +113,23 @@ Fase 5, verifiche elettriche (EN 60204-1, cap. 18):
   taratura mancanti o scaduti, esecutore e data mancanti; l'analisi segnala i quadri con isolamento non OK.
 - Una nuova revisione copia le verifiche in bozza. I criteri sono riassunti dalla IEC 60204-1:2016 e vanno
   confrontati con il testo ufficiale.
+- Con tutte le verifiche elettriche della revisione approvate, la dichiarazione UE cita anche la EN 60204-1.
+
+Fase 6, chiusura (la safety evaluation `cosmap-safety-evaluation` non si usa più):
+
+- **Valutazioni già fatte**: nella safety evaluation "Esporta valutazione" salva un file .json; nel riquadro
+  Funzioni di sicurezza dell'analisi (revisione in bozza) "Importa dalla safety evaluation" lo carica. Entrano gli
+  articoli usati (stesse regole di `importa_articoli`), le funzioni con S, F, P e il calcolo (ricalcolato dal
+  server), le prove di validazione, le misure contro i guasti sistematici (se la validazione non le ha già) e le
+  verifiche elettriche come nuovo quadro. Le misure delle schede si collegano poi nella pagina di ogni funzione.
+- **Funzioni tipo** (Libreria e utenti → Funzioni tipo): dalla pagina di una funzione calcolata, chi gestisce la
+  libreria la salva come funzione tipo, per tutte le macchine o per un modulo. Nell'analisi "Aggiungi dalla funzione
+  tipo" crea la funzione con nome, S, F, P, schema a blocchi e componenti; quelle dei moduli della macchina non
+  ancora aggiunte si propongono in cima al riquadro.
+- **Librerie dei costruttori**: Libreria e utenti → Articoli di sicurezza → "Importa libreria del costruttore" legge
+  SISTEMA (.slb), VDMA 66413 (.xml o .zip) o l'archivio JSON della safety evaluation. Il file si legge nel browser
+  con `sistema.js`, `vdma.js` e `zip.js`; gli articoli entrano da verificare. Le immagini dei pacchetti non si
+  importano. Le librerie dei costruttori non vanno nel repository.
 
 La dichiarazione elenca come "norme armonizzate" solo le norme segnate come
 armonizzate nella libreria; le altre norme citate nelle schede compaiono come
@@ -169,3 +186,5 @@ $env:SQLITE_PATH = "db-libreria-nuova.sqlite3"
 ```bash
 python manage.py test rischi
 ```
+
+Con Node installato girano anche i test del motore JavaScript (`rischi/js_test`).

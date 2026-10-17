@@ -41,6 +41,18 @@
 </fieldset>
 </div>
 {% endif %}
+{% if puo_funzione_tipo %}
+<form method="post" action="{% url 'salva_come_funzione_tipo' funzione.pk %}" class="modulo">{% csrf_token %}
+<fieldset><legend>FUNZIONE TIPO DELLA LIBRERIA</legend>
+  <p class="sotto">Salva nome, descrizione, S, F, P, schema a blocchi e componenti come funzione tipo, da riprendere nelle altre analisi. Le prove di validazione restano a questa macchina.</p>
+  <div class="riga-form">
+    <input name="nome" value="{{ funzione.nome }}" maxlength="200" required aria-label="Nome della funzione tipo">
+    <select name="modulo" aria-label="Modulo"><option value="">Per tutte le macchine</option>{% for m in moduli_macchina %}<option value="{{ m.pk }}">Modulo {{ m }}</option>{% endfor %}</select>
+    <button>Salva come funzione tipo</button>
+  </div>
+</fieldset>
+</form>
+{% endif %}
 {% if funzione.pk and modificabile %}
 <form method="post" action="{% url 'elimina_funzione' funzione.pk %}" class="modulo"
       onsubmit="return confirm('Eliminare la funzione «{{ funzione.nome|escapejs }}» e la sua valutazione?');">{% csrf_token %}

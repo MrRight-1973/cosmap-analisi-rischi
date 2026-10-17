@@ -31,6 +31,7 @@ MODELLI_REGISTRATI = (
     m.ProveFunzione,
     m.VerificaElettrica,
     m.ArticoloSicurezza,
+    m.FunzioneTipo,
     m.Modulo,
     m.Figura,
     m.SchedaModello,
