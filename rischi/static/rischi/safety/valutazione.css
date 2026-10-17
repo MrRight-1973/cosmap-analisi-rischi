@@ -90,3 +90,8 @@ html[data-theme="dark"] .r-logica { --rc: #4cc38a; } html[data-theme="dark"] .r-
 .valutazione .legenda { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.78rem; color: var(--mute); margin: 0 0 6px; }
 .valutazione .legenda span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--rc); margin-right: 5px; vertical-align: -1px; }
 .valutazione .legenda .leg-comune { --rc: transparent; border: 1px dashed var(--mute); padding: 0 4px; border-radius: 4px; }
+/* registro misure delle verifiche elettriche */
+.valutazione table.reg td { padding: 3px; }
+.valutazione table.reg td input { min-width: 0; padding: 3px 4px; }
+.valutazione input.ko { outline: 2px solid var(--rich); color: var(--rich); }
+#verifica.valutazione { max-width: none; }

@@ -195,3 +195,5 @@ small.errore { color: var(--error-fg); }
 .plr strong { font-size: 1.25rem; }
 .funzioni-misura { font-size: 0.8125rem; margin: 4px 0 8px; }
 @media (max-width: 760px) { .grafo-rischio { grid-template-columns: 1fr; } }
+.riga-form { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.riga-form input { flex: 1; max-width: 520px; }

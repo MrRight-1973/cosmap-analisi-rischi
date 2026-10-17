@@ -2097,3 +2097,144 @@ class ValidazioneTest(BaseConLibreria):
 
         codici = {n.codice for gruppo in norme_applicate(self.rev) for n in gruppo}
         self.assertTrue({"EN ISO 13849-1", "EN ISO 13849-2"} <= codici)
+
+
+class VerificheElettricheTest(BaseConLibreria):
+    """Fase 5: verifiche elettriche per quadro (IEC 60204-1, cap. 18), flusso proprio, documento e modulo."""
+
+    def setUp(self):
+        self.analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+        self.client.force_login(self.compilatore)
+        risposta = self.client.post(reverse("nuova_verifica_elettrica", args=[self.rev.pk]), {"quadro": "Quadro QE1"})
+        self.verifica = self.rev.verifiche_elettriche.get()
+        self.assertRedirects(risposta, reverse("verifica_elettrica", args=[self.verifica.pk]), fetch_redirect_response=False)
+        self.url = reverse("verifica_elettrica", args=[self.verifica.pk])
+        self.dati = {
+            "tensione": "400 V 50 Hz TN-S", "strumento": "Fluke 1664 FC, matr. 123", "taratura": "2027-03-01",
+            "vprova": "500 V c.c.", "esecutore": "L. Verdi", "data": "2026-10-17",
+            "esiti": {k: {"esito": "ok"} for k in ("continuita", "anello", "isolamento", "tensione", "residue", "funzionali")},
+            "extra": [],
+            "equipotenziali": [{"id": "e1", "punto": "Telaio - morsetto PE", "conduttore": "G/V", "sezione": "16", "rpe": "0,02"}],
+            "cavi": [
+                {"id": "c1", "sigla": "W1", "l1pe": ">1", "l2pe": "250", "rpe": "0,05", "zs": "0,31", "in": "16"},
+                {"id": "c2", "sigla": "W2", "l1pe": "0,4", "rpe": "0,07"},
+            ],
+        }
+
+    def salva(self, dati=None, quadro="Quadro QE1", utente=None, risultato=None):
+        import json
+
+        self.client.force_login(utente or self.compilatore)
+        corpo = {"quadro": quadro, "dati": dati if dati is not None else self.dati, "risultato": risultato or {}}
+        return self.client.post(self.url, json.dumps(corpo), content_type="application/json")
+
+    def test_salva_e_conteggi_dal_server(self):
+        risposta = self.salva()
+        self.assertEqual(risposta.status_code, 200, risposta.content)
+        self.assertIn("isolamento non OK su 1 cavi", risposta.json()["messaggio"])
+        self.verifica.refresh_from_db()
+        self.assertEqual((self.verifica.da_eseguire, self.verifica.non_ok, self.verifica.isolamento_non_ok), (0, 0, 1))
+        self.assertEqual(self.verifica.dati["cavi"][0]["l1pe"], ">1")
+        dati = dict(self.dati, esiti={"continuita": {"esito": "ko", "misurato": "0,9", "note": "PE allentato"}},
+                    extra=[{"id": "x", "testo": "Quadro QE2", "criterio": "≤ 0,1 Ω", "unita": "Ω"}])
+        self.salva(dati, quadro="Quadro QE1 bordo macchina")
+        self.verifica.refresh_from_db()
+        self.assertEqual((self.verifica.quadro, self.verifica.da_eseguire, self.verifica.non_ok), ("Quadro QE1 bordo macchina", 6, 1))
+        self.assertEqual(self.verifica.dati["esiti"]["continuita"]["misurato"], "0,9")
+
+    def test_senza_node_valgono_i_conteggi_della_pagina(self):
+        from unittest import mock
+
+        risultato = {"riepilogo": {"aperte": 2, "ko": 0}, "registro": {"isoKo": []}}
+        with mock.patch("rischi.calcolo.shutil.which", return_value=None):
+            risposta = self.salva(risultato=risultato)
+        self.assertIn("conteggi della pagina", risposta.json()["messaggio"])
+        self.verifica.refresh_from_db()
+        self.assertEqual((self.verifica.da_eseguire, self.verifica.isolamento_non_ok), (2, 0))
+
+    def test_dati_non_validi_e_ruoli(self):
+        self.assertEqual(self.salva(dict(self.dati, data="ieri")).status_code, 400)
+        self.assertEqual(self.salva(dict(self.dati, cavi="W1")).status_code, 400)
+        self.assertEqual(self.salva(dict(self.dati, esiti={"anello": {"esito": "boh"}})).status_code, 400)
+        self.assertEqual(self.salva(quadro=" ").status_code, 400)
+        self.assertEqual(self.salva(utente=self.verificatore).status_code, 403)
+
+    def test_flusso_indipendente_dall_analisi(self):
+        from .models import RevisioneBloccata
+
+        self.salva()
+        servizi.invia_verifica_elettrica(self.verifica, self.compilatore)
+        self.assertEqual(self.salva().status_code, 400)  # in verifica: non si modifica
+        servizi.segna_verifica_elettrica_verificata(self.verifica, self.verificatore)
+        doppio = crea_utente("doppio", servizi.COMPILATORE, servizi.APPROVATORE)
+        servizi.rimanda_verifica_elettrica(self.verifica, self.verificatore, "Manca la taratura")
+        servizi.invia_verifica_elettrica(self.verifica, doppio)
+        servizi.segna_verifica_elettrica_verificata(self.verifica, self.verificatore)
+        with self.assertRaises(PermissionDenied):
+            servizi.approva_verifica_elettrica(self.verifica, doppio)
+        # L'analisi è ancora in bozza: la verifica elettrica si approva lo stesso
+        servizi.approva_verifica_elettrica(self.verifica, self.approvatore)
+        self.verifica.refresh_from_db()
+        self.assertEqual(self.verifica.stato, "APPROVATA")
+        with self.assertRaises(RevisioneBloccata):
+            servizi.elimina_verifica_elettrica(self.verifica, self.compilatore)
+
+    def test_nuova_revisione_copia_le_verifiche(self):
+        self.salva()
+        servizi.invia_in_verifica(self.rev, self.compilatore)
+        servizi.segna_verificata(self.rev, self.verificatore)
+        servizi.approva(self.rev, self.approvatore)
+        rev1 = servizi.nuova_revisione(self.analisi, self.compilatore, "Nuovo quadro")
+        copia = rev1.verifiche_elettriche.get()
+        self.assertEqual((copia.quadro, copia.stato, copia.isolamento_non_ok), ("Quadro QE1", "BOZZA", 1))
+        self.assertEqual(copia.dati["cavi"], self.verifica.__class__.objects.get(pk=self.verifica.pk).dati["cavi"])
+        self.assertEqual(self.salva().status_code, 400)  # la verifica della revisione precedente non si tocca più
+        with self.assertRaises(ValidationError):
+            servizi.nuova_verifica_elettrica(self.rev, "QE2", self.compilatore)
+
+    def test_controlli(self):
+        self.salva(dict(self.dati, taratura="2026-01-31"))
+        self.assertIn(
+            "Verifica elettrica «Quadro QE1»: isolamento non OK su 1 cavi.", [a.messaggio for a in servizi.controlli(self.rev)]
+        )
+        from . import calcolo
+
+        self.verifica.refresh_from_db()
+        messaggi = [a.messaggio for a in servizi.controlli_verifica_elettrica(self.verifica, calcolo.elettriche(self.verifica.dati))]
+        self.assertIn("Isolamento sotto 1 MΩ: W2.", messaggi)
+        self.assertIn("Taratura dello strumento scaduta alla data delle prove.", messaggi)
+
+    def test_documento_e_modulo(self):
+        import io as _io
+
+        from pypdf import PdfReader
+
+        from .models import DocumentoGenerato
+
+        self.salva()
+        risposta = self.client.post(reverse("genera_verifica_elettrica", args=[self.verifica.pk]))
+        testo = " ".join(p.extract_text() for p in PdfReader(_io.BytesIO(b"".join(risposta.streaming_content))).pages)
+        for atteso in ("Verifiche dell'equipaggiamento elettrico", "Quadro QE1", "BOZZA", "Fluke 1664 FC", "01/03/2027",
+                       "Telaio - morsetto PE", "Non OK", "max 0,07", "L. Verdi", "L1-PE"):
+            self.assertIn(atteso, testo)
+        documento = DocumentoGenerato.objects.get(tipo="ELETTRICHE")
+        self.assertEqual((documento.verifica_elettrica, documento.definitivo), (self.verifica, False))
+        modulo = self.client.get(reverse("modulo_verifica_elettrica", args=[self.verifica.pk]))
+        self.assertEqual(modulo["Content-Type"], "application/pdf")
+        testo = " ".join(p.extract_text() for p in PdfReader(_io.BytesIO(modulo.content)).pages)
+        self.assertIn("Modulo rilievi", testo)
+        self.assertIn("W2", testo)
+        self.assertNotIn("0,07", testo)  # i valori misurati si scrivono a mano
+        self.assertEqual(DocumentoGenerato.objects.count(), 1)  # il modulo non si archivia
+
+    def test_pagine_ed_eliminazione(self):
+        self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Quadro QE1")
+        pagina = self.client.get(self.url)
+        self.assertContains(pagina, 'id="dati-verifica"')
+        self.assertContains(pagina, "rischi/safety/verifiche-pagina.js")
+        self.client.force_login(self.verificatore)
+        self.assertContains(self.client.get(self.url), "Sola lettura")
+        self.client.force_login(self.compilatore)
+        self.client.post(reverse("azione_verifica_elettrica", args=[self.verifica.pk, "elimina"]))
+        self.assertFalse(self.rev.verifiche_elettriche.exists())

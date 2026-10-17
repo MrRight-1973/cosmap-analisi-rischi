@@ -7,11 +7,12 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Max
 from django.core.files.base import ContentFile
-from django.http import FileResponse, JsonResponse
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from . import servizi
@@ -42,6 +43,7 @@ from .models import (
     SchedaAnalisi,
     ValidazioneSicurezza,
     ValutazioneFunzione,
+    VerificaElettrica,
 )
 
 
@@ -148,6 +150,7 @@ def analisi(request, pk, numero=None):
         "commessa_approvata": servizi.ha_revisioni_approvate(revisione.analisi.macchina.commessa),
         "documenti": revisione.documenti.select_related("generato_da")[:20],
         "funzioni": revisione.funzioni.select_related("valutazione", "prove").prefetch_related("misure__scheda"),
+        "verifiche_elettriche": revisione.verifiche_elettriche.all(),
     }
     return render(request, "rischi/analisi.html", contesto)
 
@@ -576,6 +579,122 @@ def prove_funzione(request, pk):
         },
     }
     return render(request, "rischi/prove.html", contesto)
+
+
+@login_required
+@require_POST
+def nuova_verifica_elettrica(request, pk):
+    revisione = get_object_or_404(Revisione, pk=pk)
+    try:
+        verifica = servizi.nuova_verifica_elettrica(revisione, request.POST.get("quadro", ""), request.user)
+    except (PermissionDenied, ValidationError) as e:
+        _errore(request, e)
+        return redirect(reverse("analisi_revisione", args=[revisione.analisi_id, revisione.numero]) + "#verifiche-elettriche")
+    return redirect("verifica_elettrica", pk=verifica.pk)
+
+
+@login_required
+def verifica_elettrica(request, pk):
+    """Verifiche elettriche di un quadro (IEC 60204-1, cap. 18): prove, registro misure, flusso, PDF e modulo."""
+    verifica = get_object_or_404(VerificaElettrica.objects.select_related("revisione__analisi__macchina__commessa"), pk=pk)
+    revisione = verifica.revisione
+    modificabile = verifica.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
+    if request.method == "POST":
+        try:
+            dati = _json_post(request, "dati")
+            risposta = servizi.salva_verifica_elettrica(
+                verifica, dati.get("quadro", ""), dati["dati"], dati.get("risultato") or {}, request.user
+            )
+            return JsonResponse(risposta)
+        except (PermissionDenied, ValidationError) as e:
+            return _risposta_errore(e)
+    try:
+        risultato = calcolo.elettriche(verifica.dati)
+    except calcolo.CalcoloNonRiuscito:
+        risultato = None
+    contesto = {
+        "verifica": verifica, "revisione": revisione, "analisi": revisione.analisi, "modificabile": modificabile,
+        "puo": _puo(request.user),
+        "anomalie": servizi.controlli_verifica_elettrica(verifica, risultato),
+        "senza_motore": risultato is None,
+        "documenti": verifica.documenti.select_related("generato_da")[:20],
+        "dati": {
+            "quadro": verifica.quadro, "dati": verifica.dati, "modificabile": modificabile,
+            "macchina": str(revisione.analisi.macchina.denominazione),
+            "salva_url": reverse("verifica_elettrica", args=[verifica.pk]),
+            "modulo_url": reverse("modulo_verifica_elettrica", args=[verifica.pk]),
+            "csrf": get_token(request),
+        },
+    }
+    return render(request, "rischi/verifica_elettrica.html", contesto)
+
+
+@login_required
+@require_POST
+def azione_verifica_elettrica(request, pk, azione):
+    verifica = get_object_or_404(VerificaElettrica.objects.select_related("revisione"), pk=pk)
+    azioni = {
+        "invia": (servizi.invia_verifica_elettrica, "Verifica inviata in verifica."),
+        "verifica": (servizi.segna_verifica_elettrica_verificata, "Verifica controllata: ora può essere approvata."),
+        "approva": (servizi.approva_verifica_elettrica, "Verifica elettrica approvata."),
+    }
+    try:
+        if azione == "rimanda":
+            servizi.rimanda_verifica_elettrica(verifica, request.user, request.POST.get("nota", ""))
+            messages.success(request, "Verifica rimandata in bozza.")
+        elif azione == "elimina":
+            revisione = verifica.revisione
+            servizi.elimina_verifica_elettrica(verifica, request.user)
+            messages.success(request, f"Verifica elettrica «{verifica.quadro}» eliminata.")
+            return redirect(reverse("analisi_revisione", args=[revisione.analisi_id, revisione.numero]) + "#verifiche-elettriche")
+        elif azione in azioni:
+            funzione, messaggio = azioni[azione]
+            funzione(verifica, request.user)
+            messages.success(request, messaggio)
+        else:
+            raise ValidationError("Azione sconosciuta.")
+    except (PermissionDenied, ValidationError) as e:
+        _errore(request, e)
+    return redirect("verifica_elettrica", pk=verifica.pk)
+
+
+def _nome_file_verifica(verifica, prefisso, definitivo):
+    revisione = verifica.revisione
+    numero = revisione.analisi.macchina.commessa.numero.replace("/", "-")
+    quadro = slugify(verifica.quadro)[:40] or f"quadro-{verifica.pk}"
+    return f"{prefisso}_{numero}_{quadro}_rev{revisione.numero}{'' if definitivo else '_BOZZA'}.pdf"
+
+
+@login_required
+@require_POST
+def genera_verifica_elettrica(request, pk):
+    verifica = get_object_or_404(VerificaElettrica.objects.select_related("revisione__analisi__macchina__commessa"), pk=pk)
+    try:
+        contenuto = documenti.verifiche_elettriche(verifica)
+    except calcolo.CalcoloNonRiuscito as e:
+        messages.error(request, f"Documento non generato: serve il motore di calcolo sul server ({e})")
+        return redirect("verifica_elettrica", pk=verifica.pk)
+    definitivo = verifica.stato == VerificaElettrica.Stato.APPROVATA
+    documento = DocumentoGenerato(
+        revisione=verifica.revisione, tipo=DocumentoGenerato.Tipo.ELETTRICHE, verifica_elettrica=verifica,
+        definitivo=definitivo, generato_da=request.user,
+    )
+    documento.file.save(_nome_file_verifica(verifica, "Verifiche_elettriche", definitivo), ContentFile(contenuto), save=True)
+    return FileResponse(documento.file.open("rb"), as_attachment=False, filename=documento.file.name.rsplit("/", 1)[-1],
+                        content_type="application/pdf")
+
+
+@login_required
+def modulo_verifica_elettrica(request, pk):
+    """Modulo rilievi da stampare per i tecnici: non è un documento firmato e non si archivia."""
+    verifica = get_object_or_404(VerificaElettrica.objects.select_related("revisione__analisi__macchina__commessa"), pk=pk)
+    try:
+        contenuto = documenti.modulo_tecnici(verifica)
+    except calcolo.CalcoloNonRiuscito as e:
+        messages.error(request, f"Modulo non generato: serve il motore di calcolo sul server ({e})")
+        return redirect("verifica_elettrica", pk=verifica.pk)
+    nome = _nome_file_verifica(verifica, "Modulo_rilievi", True)
+    return HttpResponse(contenuto, content_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{nome}"'})
 
 
 @login_required

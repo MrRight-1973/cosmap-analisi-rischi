@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Max as models_Max
 from django.db.models import Q
 from django.utils import timezone
 
@@ -30,6 +31,7 @@ from .models import (
     SchedaModello,
     ValidazioneSicurezza,
     ValutazioneFunzione,
+    VerificaElettrica,
     prossimo_codice,
 )
 
@@ -427,6 +429,7 @@ def nuova_revisione(analisi, utente, motivo):
         )
     mappa_funzioni = _copia_funzioni(corrente, revisione, mappa_misure, stessa_macchina=True)
     _copia_validazione(corrente, revisione, mappa_funzioni)
+    _copia_verifiche_elettriche(corrente, revisione)
     _crea_applicabilita(revisione, precedente=corrente)
     return revisione
 
@@ -534,14 +537,14 @@ def _testo(valore, massimo=2000):
     return valore.strip()[:massimo]
 
 
-def _esiti_puliti(esiti):
+def _esiti_puliti(esiti, campi=("esito", "note")):
     if not isinstance(esiti, dict):
         raise ValidationError("Esiti non validi.")
     puliti = {}
     for chiave, valore in esiti.items():
         if not isinstance(valore, dict) or valore.get("esito", "") not in ESITI_PROVA:
             raise ValidationError(f"Esito non valido per «{chiave}».")
-        voce = {k: _testo(valore.get(k)) for k in ("esito", "note") if valore.get(k)}
+        voce = {k: _testo(valore.get(k)) for k in campi if valore.get(k)}
         if voce:
             puliti[str(chiave)[:100]] = voce
     return puliti
@@ -603,66 +606,84 @@ def salva_sistematiche(revisione, dati, utente):
     return {"messaggio": "Misure contro i guasti sistematici salvate."}
 
 
-def _verifica_stato_validazione(validazione, *stati):
-    if not validazione.pk or validazione.stato not in stati:
-        stato = validazione.get_stato_display().lower() if validazione.pk else "non ancora compilata"
-        raise ValidationError(f"Operazione non possibile: la validazione è {stato}.")
+def _verifica_stato_flusso(oggetto, *stati):
+    if not oggetto.pk or oggetto.stato not in stati:
+        stato = oggetto.get_stato_display().lower() if oggetto.pk else "non ancora compilata"
+        raise ValidationError(f"Operazione non possibile: {oggetto.NOME} è {stato}.")
+
+
+def _invia(oggetto, utente):
+    """Flusso proprio di validazione e verifiche elettriche, come quello della revisione."""
+    richiedi_ruolo(utente, COMPILATORE)
+    oggetto.verifica_modificabile()
+    oggetto.stato = oggetto.Stato.IN_VERIFICA
+    oggetto.inviata_da = utente
+    oggetto.inviata_il = timezone.now()
+    oggetto.verificata_da = None
+    oggetto.verificata_il = None
+    oggetto.save()
+
+
+def _rimanda(oggetto, utente, nota):
+    if not (ha_ruolo(utente, VERIFICATORE) or ha_ruolo(utente, APPROVATORE)):
+        raise PermissionDenied("Serve il ruolo Verificatore o Approvatore.")
+    _verifica_stato_flusso(oggetto, oggetto.Stato.IN_VERIFICA)
+    if not nota.strip():
+        raise ValidationError("Scrivi cosa va corretto.")
+    oggetto.stato = oggetto.Stato.BOZZA
+    oggetto.nota_verifica = nota
+    oggetto.verificata_da = None
+    oggetto.verificata_il = None
+    oggetto.save()
+
+
+def _segna_verificata(oggetto, utente):
+    richiedi_ruolo(utente, VERIFICATORE)
+    _verifica_stato_flusso(oggetto, oggetto.Stato.IN_VERIFICA)
+    oggetto.verificata_da = utente
+    oggetto.verificata_il = timezone.now()
+    oggetto.save()
+
+
+def _verifica_approvabile(oggetto, utente):
+    richiedi_ruolo(utente, APPROVATORE)
+    _verifica_stato_flusso(oggetto, oggetto.Stato.IN_VERIFICA)
+    if not oggetto.verificata_da_id:
+        raise ValidationError(f"{oggetto.NOME.capitalize()} deve essere prima verificata.")
+    if oggetto.inviata_da_id == utente.pk:
+        raise PermissionDenied(f"Chi ha compilato {oggetto.NOME} non può approvarla.")
+
+
+def _approva(oggetto, utente):
+    oggetto.stato = oggetto.Stato.APPROVATA
+    oggetto.approvata_da = utente
+    oggetto.approvata_il = timezone.now()
+    oggetto.save()
 
 
 def invia_validazione(revisione, utente):
-    richiedi_ruolo(utente, COMPILATORE)
-    validazione = validazione_di(revisione)
-    validazione.verifica_modificabile()
     if not revisione.funzioni.exists():
         raise ValidationError("La revisione non ha funzioni di sicurezza da validare.")
-    validazione.stato = ValidazioneSicurezza.Stato.IN_VERIFICA
-    validazione.inviata_da = utente
-    validazione.inviata_il = timezone.now()
-    validazione.verificata_da = None
-    validazione.verificata_il = None
-    validazione.save()
+    _invia(validazione_di(revisione), utente)
 
 
 def rimanda_validazione(revisione, utente, nota):
-    if not (ha_ruolo(utente, VERIFICATORE) or ha_ruolo(utente, APPROVATORE)):
-        raise PermissionDenied("Serve il ruolo Verificatore o Approvatore.")
-    validazione = validazione_di(revisione)
-    _verifica_stato_validazione(validazione, ValidazioneSicurezza.Stato.IN_VERIFICA)
-    if not nota.strip():
-        raise ValidationError("Scrivi cosa va corretto.")
-    validazione.stato = ValidazioneSicurezza.Stato.BOZZA
-    validazione.nota_verifica = nota
-    validazione.verificata_da = None
-    validazione.verificata_il = None
-    validazione.save()
+    _rimanda(validazione_di(revisione), utente, nota)
 
 
 def verifica_validazione(revisione, utente):
-    richiedi_ruolo(utente, VERIFICATORE)
-    validazione = validazione_di(revisione)
-    _verifica_stato_validazione(validazione, ValidazioneSicurezza.Stato.IN_VERIFICA)
-    validazione.verificata_da = utente
-    validazione.verificata_il = timezone.now()
-    validazione.save()
+    _segna_verificata(validazione_di(revisione), utente)
 
 
 def approva_validazione(revisione, utente):
-    richiedi_ruolo(utente, APPROVATORE)
     validazione = validazione_di(revisione)
-    _verifica_stato_validazione(validazione, ValidazioneSicurezza.Stato.IN_VERIFICA)
-    if not validazione.verificata_da_id:
-        raise ValidationError("La validazione deve essere prima verificata.")
-    if validazione.inviata_da_id == utente.pk:
-        raise PermissionDenied("Chi ha compilato la validazione non può approvarla.")
+    _verifica_approvabile(validazione, utente)
     if revisione.stato != Revisione.Stato.APPROVATA:
         raise ValidationError(
             f"Approva prima la revisione {revisione.numero} dell'analisi: la validazione si riferisce alle funzioni "
             "e ai calcoli approvati."
         )
-    validazione.stato = ValidazioneSicurezza.Stato.APPROVATA
-    validazione.approvata_da = utente
-    validazione.approvata_il = timezone.now()
-    validazione.save()
+    _approva(validazione, utente)
 
 
 @dataclass
@@ -753,6 +774,166 @@ def controlli_validazione(revisione, validazione, righe, sistematiche):
 
 
 # ---------------------------------------------------------------------------
+# Verifiche elettriche (IEC 60204-1, cap. 18): una per quadro, flusso proprio
+# ---------------------------------------------------------------------------
+
+CAMPI_TESTATA = ("tensione", "strumento", "taratura", "vprova", "esecutore", "data")
+COLONNE_REGISTRO = {
+    "equipotenziali": ("punto", "conduttore", "sezione", "rpe", "note"),
+    "cavi": ("sigla", "percorso", "tipo", "formazione", "sezione", "protezione", "in", "zs",
+             "l1pe", "l2pe", "l3pe", "l1l2", "l1l3", "l2l3", "rpe", "note"),
+}
+MASSIMO_RIGHE = 2000
+
+
+def _verifica_ultima_revisione(revisione):
+    if revisione.analisi.revisioni.filter(numero__gt=revisione.numero).exists():
+        raise ValidationError("Esiste una revisione più recente dell'analisi: le verifiche si compilano in quella.")
+
+
+def nuova_verifica_elettrica(revisione, quadro, utente):
+    richiedi_ruolo(utente, COMPILATORE)
+    _verifica_ultima_revisione(revisione)
+    quadro = _testo(quadro, 200)
+    if not quadro:
+        raise ValidationError("Scrivi il nome dell'equipaggiamento o del quadro.")
+    ordine = (revisione.verifiche_elettriche.aggregate(m=models_Max("ordine"))["m"] or 0) + 1
+    return VerificaElettrica.objects.create(revisione=revisione, quadro=quadro, ordine=ordine)
+
+
+def elimina_verifica_elettrica(verifica, utente):
+    richiedi_ruolo(utente, COMPILATORE)
+    verifica.verifica_modificabile()
+    if verifica.approvata_il:
+        raise ValidationError("Una verifica già approvata non si elimina.")
+    verifica.delete()
+
+
+def _righe_registro(righe, colonne):
+    if not isinstance(righe, list) or len(righe) > MASSIMO_RIGHE:
+        raise ValidationError("Registro misure non valido.")
+    pulite = []
+    for riga in righe:
+        if not isinstance(riga, dict):
+            raise ValidationError("Registro misure non valido.")
+        pulita = {"id": _testo(str(riga.get("id") or ""), 20)}
+        pulita.update({k: _testo(riga.get(k), 200) for k in colonne if riga.get(k)})
+        pulite.append(pulita)
+    return pulite
+
+
+def _conteggi_verifica(verifica, risultato):
+    verifica.da_eseguire = risultato["riepilogo"]["aperte"]
+    verifica.non_ok = risultato["riepilogo"]["ko"]
+    verifica.isolamento_non_ok = len(risultato["registro"]["isoKo"])
+
+
+@transaction.atomic
+def salva_verifica_elettrica(verifica, quadro, dati, risultato_pagina, utente):
+    """Testata, prove con valore ed esito, punti di misura aggiunti e registro misure. I conteggi (prove da eseguire
+    o non OK, cavi con isolamento non OK) vengono da validazione.js eseguito dal server; senza Node da quelli della
+    pagina."""
+    richiedi_ruolo(utente, COMPILATORE)
+    verifica.verifica_modificabile()
+    quadro = _testo(quadro, 200)
+    if not quadro:
+        raise ValidationError("Scrivi il nome dell'equipaggiamento o del quadro.")
+    extra = dati.get("extra") or []
+    if not isinstance(extra, list) or not all(isinstance(x, dict) and x.get("id") for x in extra):
+        raise ValidationError("Punti di misura aggiunti non validi.")
+    for campo in ("taratura", "data"):
+        valore = _testo(dati.get(campo), 10)
+        if valore and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", valore):
+            raise ValidationError("Data non valida.")
+    verifica.quadro = quadro
+    verifica.dati = {
+        **{k: _testo(dati.get(k), 200) for k in CAMPI_TESTATA},
+        "esiti": _esiti_puliti(dati.get("esiti") or {}, ("esito", "note", "misurato")),
+        "extra": [
+            {"id": _testo(str(x["id"]), 20), **{k: _testo(x.get(k), 500) for k in ("testo", "criterio", "unita")}}
+            for x in extra
+        ],
+        **{chiave: _righe_registro(dati.get(chiave) or [], colonne) for chiave, colonne in COLONNE_REGISTRO.items()},
+    }
+    try:
+        risultato = calcolo.elettriche(verifica.dati)
+        messaggio = "Verifica salvata"
+    except calcolo.CalcoloNonRiuscito as errore:
+        risultato = risultato_pagina
+        messaggio = f"Verifica salvata con i conteggi della pagina ({errore})"
+    try:
+        _conteggi_verifica(verifica, risultato)
+    except (KeyError, TypeError):
+        raise ValidationError("Riepilogo della pagina non valido.")
+    verifica.save()
+    parti = [
+        f"{verifica.da_eseguire} prove da eseguire" if verifica.da_eseguire else "",
+        f"{verifica.non_ok} non OK" if verifica.non_ok else "",
+        f"isolamento non OK su {verifica.isolamento_non_ok} cavi" if verifica.isolamento_non_ok else "",
+    ]
+    return {"messaggio": f"{messaggio}: {', '.join(p for p in parti if p) or 'tutte le prove eseguite'}."}
+
+
+def invia_verifica_elettrica(verifica, utente):
+    _invia(verifica, utente)
+
+
+def rimanda_verifica_elettrica(verifica, utente, nota):
+    _rimanda(verifica, utente, nota)
+
+
+def segna_verifica_elettrica_verificata(verifica, utente):
+    _segna_verificata(verifica, utente)
+
+
+def approva_verifica_elettrica(verifica, utente):
+    _verifica_approvabile(verifica, utente)
+    _approva(verifica, utente)
+
+
+def controlli_verifica_elettrica(verifica, risultato=None):
+    """Segnalazioni della verifica; con il risultato del motore anche il dettaglio del registro."""
+    anomalie = []
+    dati = verifica.dati or {}
+    if risultato:
+        r = risultato["riepilogo"]
+        if r["aperte"]:
+            anomalie.append(Anomalia("prove", f"{r['aperte']} prove senza esito."))
+        if r["ko"]:
+            anomalie.append(Anomalia("prove", f"{r['ko']} prove non OK."))
+        registro = risultato["registro"]
+        if registro["isoKo"]:
+            anomalie.append(Anomalia("isolamento", f"Isolamento sotto {risultato['isoMin']} MΩ: {', '.join(registro['isoKo'])}."))
+        if registro["senzaMisure"]:
+            anomalie.append(Anomalia("registro", f"Registro misure: {registro['senzaMisure']} righe senza valori misurati."))
+    else:
+        if verifica.da_eseguire:
+            anomalie.append(Anomalia("prove", f"{verifica.da_eseguire} prove senza esito."))
+        if verifica.non_ok:
+            anomalie.append(Anomalia("prove", f"{verifica.non_ok} prove non OK."))
+        if verifica.isolamento_non_ok:
+            anomalie.append(Anomalia("isolamento", f"Isolamento non OK su {verifica.isolamento_non_ok} cavi."))
+    if not dati.get("strumento"):
+        anomalie.append(Anomalia("strumento", "Indicare lo strumento (modello, matricola)."))
+    if not dati.get("taratura"):
+        anomalie.append(Anomalia("strumento", "Indicare la scadenza della taratura dello strumento."))
+    elif dati.get("data") and dati["taratura"] < dati["data"]:
+        anomalie.append(Anomalia("strumento", "Taratura dello strumento scaduta alla data delle prove."))
+    if not (dati.get("esecutore") and dati.get("data")):
+        anomalie.append(Anomalia("prove", "Indicare chi ha eseguito le prove e quando."))
+    return anomalie
+
+
+def _copia_verifiche_elettriche(sorgente, revisione):
+    """La nuova revisione riparte dalle verifiche della precedente, in bozza."""
+    for v in sorgente.verifiche_elettriche.all():
+        VerificaElettrica.objects.create(
+            revisione=revisione, ordine=v.ordine, quadro=v.quadro, dati=v.dati,
+            da_eseguire=v.da_eseguire, non_ok=v.non_ok, isolamento_non_ok=v.isolamento_non_ok,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Flusso di approvazione
 # ---------------------------------------------------------------------------
 
@@ -831,6 +1012,7 @@ def elimina_commessa(commessa, utente):
             documento.delete()
         with senza_registro_contenuti():
             ValidazioneSicurezza.objects.filter(revisione=revisione).delete()
+            VerificaElettrica.objects.filter(revisione=revisione).delete()
             ValutazioneFunzione.objects.filter(funzione__revisione=revisione).delete()
             revisione.funzioni.all().delete()
             MisuraAnalisi.objects.filter(scheda__revisione=revisione).delete()
@@ -921,6 +1103,10 @@ def controlli(revisione):
         chiavi |= {
             c.get("articoloId") for ss in valutazione.dettaglio.get("sottosistemi", []) for c in ss.get("componenti", [])
         }
+    for verifica in revisione.verifiche_elettriche.filter(isolamento_non_ok__gt=0):
+        anomalie.append(Anomalia(
+            "elettriche", f"Verifica elettrica «{verifica.quadro}»: isolamento non OK su {verifica.isolamento_non_ok} cavi."
+        ))
     da_verificare = list(
         ArticoloSicurezza.objects.filter(chiave__in=chiavi - {None, ""}, verificato=False).values_list("codice", flat=True)
     )

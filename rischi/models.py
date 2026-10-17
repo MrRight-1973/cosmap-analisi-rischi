@@ -8,6 +8,7 @@ Ogni revisione contiene una copia completa delle schede: modificare la
 libreria non altera mai un'analisi esistente.
 """
 
+import datetime
 import re
 
 from django.conf import settings
@@ -1059,21 +1060,19 @@ class ValutazioneFunzione(ContenutoRevisione):
         return self.funzione.revisione
 
 
-class ValidazioneSicurezza(models.Model):
-    """Validazione delle funzioni di sicurezza di una revisione (EN ISO 13849-2) e misure contro i guasti sistematici
-    (EN ISO 13849-1, all. G). Ha un flusso proprio: le prove si fanno a macchina finita, spesso dopo l'approvazione
-    dell'analisi, e si approvano senza riaprire la revisione. I dati JSON hanno la forma della safety evaluation."""
+class FlussoProprio(models.Model):
+    """Documento collegato alla revisione ma con un flusso di approvazione suo (Bozza → In verifica → Approvata):
+    validazione e verifiche elettriche si fanno a macchina finita, spesso dopo l'approvazione dell'analisi, e si
+    approvano senza riaprire la revisione. Si compila nella revisione più recente dell'analisi."""
+
+    NOME = "il documento"  # per i messaggi: "la validazione", "la verifica elettrica"
 
     class Stato(models.TextChoices):
         BOZZA = "BOZZA", "Bozza"
         IN_VERIFICA = "IN_VERIFICA", "In verifica"
         APPROVATA = "APPROVATA", "Approvata"
 
-    revisione = models.OneToOneField(Revisione, on_delete=models.CASCADE, related_name="validazione")
     stato = models.CharField(max_length=12, choices=Stato.choices, default=Stato.BOZZA)
-    sistematiche = models.JSONField(
-        default=dict, blank=True, help_text="Esiti delle misure contro i guasti sistematici, versione e firma del programma F."
-    )
     inviata_da = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
     )
@@ -1089,15 +1088,11 @@ class ValidazioneSicurezza(models.Model):
     nota_verifica = models.TextField(blank=True)
 
     class Meta:
-        verbose_name = "validazione delle funzioni di sicurezza"
-        verbose_name_plural = "validazioni delle funzioni di sicurezza"
-
-    def __str__(self):
-        return f"Validazione {self.revisione}"
+        abstract = True
 
     @property
     def superata(self):
-        """Esiste una revisione successiva dell'analisi: la validazione si porta avanti in quella."""
+        """Esiste una revisione successiva dell'analisi: il lavoro si porta avanti in quella."""
         return self.revisione.analisi.revisioni.filter(numero__gt=self.revisione.numero).exists()
 
     @property
@@ -1106,9 +1101,60 @@ class ValidazioneSicurezza(models.Model):
 
     def verifica_modificabile(self):
         if self.stato != self.Stato.BOZZA:
-            raise RevisioneBloccata(f"La validazione è {self.get_stato_display().lower()}: non è modificabile.")
+            raise RevisioneBloccata(f"{self.NOME.capitalize()} è {self.get_stato_display().lower()}: non è modificabile.")
         if self.superata:
-            raise RevisioneBloccata("Esiste una revisione più recente dell'analisi: la validazione si compila in quella.")
+            raise RevisioneBloccata(f"Esiste una revisione più recente dell'analisi: {self.NOME} si compila in quella.")
+
+
+class ValidazioneSicurezza(FlussoProprio):
+    """Validazione delle funzioni di sicurezza di una revisione (EN ISO 13849-2) e misure contro i guasti sistematici
+    (EN ISO 13849-1, all. G). I dati JSON hanno la forma della safety evaluation."""
+
+    NOME = "la validazione"
+
+    revisione = models.OneToOneField(Revisione, on_delete=models.CASCADE, related_name="validazione")
+    sistematiche = models.JSONField(
+        default=dict, blank=True, help_text="Esiti delle misure contro i guasti sistematici, versione e firma del programma F."
+    )
+
+    class Meta:
+        verbose_name = "validazione delle funzioni di sicurezza"
+        verbose_name_plural = "validazioni delle funzioni di sicurezza"
+
+    def __str__(self):
+        return f"Validazione {self.revisione}"
+
+
+class VerificaElettrica(FlussoProprio):
+    """Verifiche dell'equipaggiamento elettrico di un quadro (IEC 60204-1, cap. 18): prove, registro delle misure sul
+    campo (collegamenti equipotenziali e cavi), strumento e taratura. Una per quadro; i dati JSON hanno la forma della
+    safety evaluation (S.elettriche), i conteggi stanno in campi propri per elenchi e controlli."""
+
+    NOME = "la verifica elettrica"
+
+    revisione = models.ForeignKey(Revisione, on_delete=models.CASCADE, related_name="verifiche_elettriche")
+    ordine = models.PositiveSmallIntegerField(default=0)
+    quadro = models.CharField("equipaggiamento / quadro", max_length=200)
+    dati = models.JSONField(default=dict, blank=True)
+    da_eseguire = models.PositiveSmallIntegerField(default=0)
+    non_ok = models.PositiveSmallIntegerField(default=0)
+    isolamento_non_ok = models.PositiveSmallIntegerField(default=0, help_text="Cavi con isolamento sotto il minimo.")
+
+    class Meta:
+        verbose_name = "verifica elettrica"
+        verbose_name_plural = "verifiche elettriche"
+        ordering = ["ordine", "pk"]
+
+    def __str__(self):
+        return f"Verifica elettrica {self.quadro} – {self.revisione}"
+
+    @property
+    def data_prove(self):
+        """Data delle prove salvata nei dati (testo AAAA-MM-GG), come data; None se manca o non è valida."""
+        try:
+            return datetime.date.fromisoformat((self.dati or {}).get("data") or "")
+        except ValueError:
+            return None
 
 
 class ProveFunzione(models.Model):
@@ -1144,9 +1190,13 @@ class DocumentoGenerato(models.Model):
         RESIDUI = "RESIDUI", "Elenco dei rischi residui"
         DICHIARAZIONE = "DICHIARAZIONE", "Dichiarazione UE di conformità"
         FUNZIONI = "FUNZIONI", "Relazione funzioni di sicurezza"
+        ELETTRICHE = "ELETTRICHE", "Verifiche elettriche (EN 60204-1)"
 
     revisione = models.ForeignKey(Revisione, on_delete=models.PROTECT, related_name="documenti")
     tipo = models.CharField(max_length=15, choices=Tipo.choices)
+    verifica_elettrica = models.ForeignKey(
+        "VerificaElettrica", on_delete=models.SET_NULL, null=True, blank=True, related_name="documenti"
+    )
     lingua = models.CharField(max_length=2, default="it")
     definitivo = models.BooleanField(default=False, help_text="Generato da una revisione approvata.")
     file = models.FileField(upload_to="documenti/%Y/")

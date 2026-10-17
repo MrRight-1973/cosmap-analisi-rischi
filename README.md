@@ -97,6 +97,23 @@ Fase 4, validazione e relazione:
 - Una nuova revisione riparte dalla validazione della precedente, in bozza, con le prove già compilate.
 - Con la validazione approvata, la dichiarazione UE cita anche la EN ISO 13849-1 e -2.
 
+Fase 5, verifiche elettriche (EN 60204-1, cap. 18):
+
+- Nel riquadro "Verifiche elettriche" dell'analisi si aggiunge una verifica per ogni equipaggiamento o quadro.
+  Ha un flusso proprio, Bozza → In verifica → Approvata, come la validazione, ma si approva anche prima
+  dell'analisi; chi la compila non la approva.
+- La pagina della verifica ha i dati delle prove (tensione, strumento e scadenza della taratura, tensione di
+  prova, chi le ha eseguite e quando), le prove 18.2-18.6 con valore misurato, esito e note, e il registro misure
+  sul campo: collegamenti equipotenziali e cavi (RPE, Zs, isolamento) da compilare a mano o incollando le righe da
+  Excel/Calc. I valori peggiori del registro compaiono nelle righe 18.2.2, 18.2.3 e 18.3 se lì non si scrive
+  niente; i cavi con isolamento sotto 1 MΩ si segnano non OK.
+- "Stampa modulo per i tecnici" dà un PDF orizzontale con le righe del registro da compilare a mano in campo
+  (non si archivia); "Genera il documento PDF" archivia il documento da firmare, BOZZA finché non è approvata.
+- I controlli segnalano prove senza esito o non OK, isolamento sotto il minimo, righe senza misure, strumento o
+  taratura mancanti o scaduti, esecutore e data mancanti; l'analisi segnala i quadri con isolamento non OK.
+- Una nuova revisione copia le verifiche in bozza. I criteri sono riassunti dalla IEC 60204-1:2016 e vanno
+  confrontati con il testo ufficiale.
+
 La dichiarazione elenca come "norme armonizzate" solo le norme segnate come
 armonizzate nella libreria; le altre norme citate nelle schede compaiono come
 "altre norme". I testi fissi della dichiarazione vanno confrontati con
