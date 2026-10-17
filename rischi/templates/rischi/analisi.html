@@ -102,6 +102,21 @@
   </tr>{% endfor %}
   </tbody></table>
   {% else %}<p class="sotto">Nessuna funzione di sicurezza. Si crea dalla misura di protezione di una scheda, oppure qui per le funzioni che non nascono da una scheda.</p>{% endif %}
+  {% if misure_per_funzioni and ultima and puo.compilare %}
+  <details class="proposte-funzioni" open>
+    <summary>Misure delle schede che possono diventare funzioni di sicurezza ({{ misure_per_funzioni|length }})</summary>
+    <p class="sotto">Misure di protezione realizzate dal sistema di comando (interblocchi, barriere, emergenze, consensi…) non ancora collegate a una funzione. S, F e P sono suggeriti dalla stima iniziale della scheda.</p>
+    <table class="tabella"><thead><tr><th>Scheda</th><th>Misura</th><th>S F P suggeriti</th><th>PLr</th><th></th></tr></thead><tbody>
+    {% for misura, s, f, p, plr in misure_per_funzioni %}<tr>
+      <td><a href="{% url 'scheda' misura.scheda_id %}">{{ misura.scheda.codice }}</a></td>
+      <td>{{ misura.testo|truncatechars:140 }}</td>
+      <td>{{ s|default:"–" }} {{ f|default:"–" }} {{ p|default:"–" }}</td>
+      <td>{{ plr|default:"–" }}</td>
+      <td><a class="bottone" href="{% url 'nuova_funzione' revisione.pk %}?misura={{ misura.pk }}">Crea funzione</a></td>
+    </tr>{% endfor %}
+    </tbody></table>
+  </details>
+  {% endif %}
   {% if funzioni_tipo_proposte and revisione.stato == "BOZZA" %}<p class="messaggio info">Funzioni tipo dei moduli della macchina non ancora aggiunte: {% for t in funzioni_tipo_proposte %}<strong>{{ t.nome }}</strong> ({{ t.modulo }}){% if not forloop.last %}, {% endif %}{% endfor %}.</p>{% endif %}
   {% if ultima and revisione.stato == "BOZZA" and puo.compilare %}
   {% if funzioni_tipo %}

@@ -2335,12 +2335,12 @@ class ChiusuraIntegrazioneTest(BaseConLibreria):
         url = reverse("salva_come_funzione_tipo", args=[emergenza.pk])
         # Serve il permesso sulla libreria
         self.client.post(url, {"nome": "Arresto di emergenza Cosmap", "modulo": modulo.pk})
-        self.assertFalse(FunzioneTipo.objects.exists())
+        self.assertFalse(FunzioneTipo.objects.filter(nome="Arresto di emergenza Cosmap").exists())
         capo = User.objects.create_superuser("capo", password="prova-prova-123")
         self.client.force_login(capo)
         self.assertContains(self.client.get(reverse("funzione", args=[emergenza.pk])), "Salva come funzione tipo")
         self.client.post(url, {"nome": "Arresto di emergenza Cosmap", "modulo": modulo.pk})
-        tipo = FunzioneTipo.objects.get()
+        tipo = FunzioneTipo.objects.get(nome="Arresto di emergenza Cosmap")
         self.assertEqual((tipo.modulo, tipo.s, tipo.plr, len(tipo.dettaglio["sottosistemi"])), (modulo, "S2", "d", 3))
         self.assertNotIn("validazione", tipo.dettaglio)
         # Stesso nome: rifiutata
@@ -2422,3 +2422,65 @@ class MotoreJavaScriptTest(TestCase):
         file = sorted(str(f) for f in cartella.glob("*.test.js"))
         esito = subprocess.run([node, "--test", *file], capture_output=True, text=True, timeout=120)
         self.assertEqual(esito.returncode, 0, esito.stdout[-3000:] + esito.stderr[-2000:])
+
+
+class LibreriaSicurezzaTest(TestCase):
+    """Libreria divisa tra analisi e sicurezza funzionale; funzioni proposte dalle misure; funzioni tipo Cosmap."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        cls.compilatore = crea_utente("mario", servizi.COMPILATORE)
+        commessa = Commessa.objects.create(
+            numero="26-80", cliente=Cliente.objects.create(ragione_sociale="Prova"), anno=2026,
+            riferimento=RiferimentoNormativo.objects.get(),
+        )
+        cls.macchina = Macchina.objects.create(commessa=commessa, denominazione="Cella")
+        cls.macchina.moduli.set(servizi.moduli_proposti() | Modulo.objects.filter(sigla__in=["CAB", "TAV"]))
+        cls.analisi = servizi.crea_analisi_da_libreria(cls.macchina, cls.compilatore)
+
+    def test_gruppi_della_libreria(self):
+        capo = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(capo)
+        pagina = self.client.get(reverse("admin:index")).content.decode()
+        analisi = pagina.index("Libreria – analisi dei rischi")
+        sicurezza = pagina.index("Libreria – sicurezza funzionale")
+        commesse = pagina.index("Commesse e dati aziendali")
+        self.assertLess(analisi, sicurezza)
+        self.assertLess(sicurezza, commesse)
+        self.assertLess(sicurezza, pagina.index("Funzioni tipo"))
+        self.assertLess(pagina.index("Funzioni tipo"), commesse)
+        self.assertLess(pagina.index("Schede modello"), sicurezza)
+
+    def test_misure_proposte_come_funzioni(self):
+        from .models import FunzioneSicurezza
+
+        rev = self.analisi.revisione_corrente
+        proposte = servizi.misure_per_funzioni(rev)
+        porte = next(p for p in proposte if p[0].scheda.codice == "CAB-04" and "interblocco" in p[0].testo)
+        misura, s, f, p, plr = porte
+        self.assertEqual((s, f, p), servizi.sfp_suggeriti(misura.scheda))
+        self.assertEqual(s, "S2")  # Se iniziale 4
+
+        self.client.force_login(self.compilatore)
+        self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "possono diventare funzioni di sicurezza")
+        pagina = self.client.get(reverse("nuova_funzione", args=[rev.pk]) + f"?misura={misura.pk}")
+        self.assertContains(pagina, "suggeriti dalla stima iniziale")
+        self.assertEqual(pagina.context["form"].initial["s"], "S2")
+
+        funzione = FunzioneSicurezza.objects.create(revisione=rev, nome="Porte", s=s, f=f, p=p)
+        funzione.misure.add(misura)
+        self.assertNotIn(misura, [p[0] for p in servizi.misure_per_funzioni(rev)])
+
+    def test_funzioni_tipo_cosmap_dei_moduli(self):
+        from .models import FunzioneTipo
+
+        cabina = FunzioneTipo.objects.get(nome="Arresto all'apertura delle porte interbloccate")
+        self.assertEqual((cabina.modulo.sigla, cabina.plr), ("CAB", "d"))
+        self.assertTrue(FunzioneTipo.objects.filter(nome="Arresto di emergenza", modulo__isnull=True).exists())
+        proposte = {t.nome for t in servizi.funzioni_tipo_per(self.macchina)}
+        self.assertIn("Consenso alla rotazione della tavola", proposte)
+        self.assertNotIn("Barriera della zona di carico pallet", proposte)
+        # Rilanciare l'import non duplica
+        call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
+        self.assertEqual(FunzioneTipo.objects.filter(nome=cabina.nome).count(), 1)
