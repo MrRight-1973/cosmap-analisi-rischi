@@ -13,9 +13,12 @@ import openpyxl
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
+from rischi.funzioni_tipo_cosmap import crea as crea_funzioni_tipo
+
 from rischi.allegato import RINUMERATI, aggiorna_requisiti
 from rischi.dati.sintesi_norme import SINTESI
 from rischi.models import (
+    FunzioneTipo,
     CellaMatrice,
     CondizioneOperativa,
     Esito,
@@ -124,6 +127,8 @@ class Command(BaseCommand):
         self.importa_moduli(wb["Moduli"])
         self.misure = self.leggi_misure(wb["Misure"]) if "Misure" in wb.sheetnames else None
         self.importa_schede(wb["Libreria"])
+        create = crea_funzioni_tipo(FunzioneTipo, Modulo)
+        self.stdout.write(f"Funzioni tipo Cosmap create: {create}")
 
     # -- Metodo ---------------------------------------------------------------
 

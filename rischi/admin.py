@@ -606,12 +606,35 @@ for _modello, _admin in admin.site._registry.items():
         _admin.actions = [*(_admin.actions or ()), duplica]
 
 
-# "Libreria" resta in cima all'elenco, prima di "Autenticazione e autorizzazione" (l'admin ordina per nome).
+# Le voci dell'app sono divise in gruppi: libreria dell'analisi dei rischi, libreria della sicurezza funzionale,
+# commesse e dati aziendali. I gruppi restano in cima, prima di "Autenticazione e autorizzazione".
+GRUPPI_LIBRERIA = [
+    ("Libreria – analisi dei rischi", [
+        "Modulo", "SchedaModello", "Pericolo", "RequisitoRESS", "Norma", "SoluzioneProtezione",
+        "CondizioneOperativa", "Figura", "MetodoStima", "CapitoloValutazione", "RiferimentoNormativo",
+    ]),
+    ("Libreria – sicurezza funzionale", ["FunzioneTipo", "ArticoloSicurezza"]),
+    ("Commesse e dati aziendali", ["Commessa", "Macchina", "Cliente", "Fabbricante", "LegislazioneUE", "RegistroModifica"]),
+]
 _elenco_app = admin.site.get_app_list
 
 
-def _libreria_prima(request, app_label=None):
-    return sorted(_elenco_app(request, app_label), key=lambda app: app["app_label"] != "rischi")
+def _gruppi_libreria(request, app_label=None):
+    elenco = []
+    for app in _elenco_app(request, app_label):
+        if app["app_label"] != "rischi":
+            elenco.append(app)
+            continue
+        modelli = {modello["object_name"]: modello for modello in app["models"]}
+        gruppi = []
+        for nome, nomi_modelli in GRUPPI_LIBRERIA:
+            voci = [modelli.pop(n) for n in nomi_modelli if n in modelli]
+            if voci:
+                gruppi.append({**app, "name": nome, "models": voci})
+        if modelli:  # voci nuove non ancora assegnate a un gruppo
+            gruppi.append({**app, "name": "Altro", "models": list(modelli.values())})
+        elenco = gruppi + elenco
+    return elenco
 
 
-admin.site.get_app_list = _libreria_prima
+admin.site.get_app_list = _gruppi_libreria

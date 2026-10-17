@@ -1166,6 +1166,47 @@ def _nuova_funzione_calcolata(revisione, utente, nome, descrizione, s, f, p, det
     return funzione
 
 
+# Parole che indicano una misura realizzata da una funzione del sistema di comando legata alla sicurezza
+PAROLE_FUNZIONE = (
+    "interblocc", "barriera", "scanner", "tappet", "pedana sensibile", "bordo sensibile", "emergenza",
+    "vacuostat", "pressostat", "consenso", "abilitazione", "velocità ridotta", "arresto sicuro", "sorvegli",
+    "bloccaggio", "presenza", "fotoelettric", "elettrosensibil", "azione mantenuta", "doppio comando",
+    "limiti software sicuri", "fermo sicuro",
+)
+
+
+def sfp_suggeriti(scheda):
+    """S, F e P proposti dalla stima iniziale della scheda (da confermare: i metodi sono diversi).
+
+    Se 3-4 (lesioni permanenti o irreversibili) -> S2, altrimenti S1; Fr 5 (esposizione più volte al giorno)
+    -> F2, altrimenti F1; Av 5 (impossibile evitare il danno) -> P2, altrimenti P1."""
+    if scheda.se_iniziale is None:
+        return "", "", ""
+    s = "S2" if scheda.se_iniziale >= 3 else "S1"
+    f = ("F2" if scheda.fr_iniziale >= 5 else "F1") if scheda.fr_iniziale is not None else ""
+    p = ("P2" if scheda.av_iniziale >= 5 else "P1") if scheda.av_iniziale is not None else ""
+    return s, f, p
+
+
+def misure_per_funzioni(revisione):
+    """Misure di protezione delle schede attive che sembrano una funzione di sicurezza e non sono ancora
+    collegate a nessuna funzione: [(misura, s, f, p, PLr suggerito)]."""
+    from .models import plr as calcola_plr
+
+    proposte = []
+    misure = (
+        MisuraAnalisi.objects.filter(scheda__revisione=revisione, tipo__in=("PROT", "DACL"), funzioni__isnull=True)
+        .exclude(scheda__decisione=SchedaAnalisi.Decisione.SCARTATA)
+        .select_related("scheda")
+        .order_by("scheda__modulo__ordine", "scheda__requisito__ordine", "scheda__codice", "ordine")
+    )
+    for misura in misure:
+        if any(parola in misura.testo.lower() for parola in PAROLE_FUNZIONE):
+            s, f, p = sfp_suggeriti(misura.scheda)
+            proposte.append((misura, s, f, p, calcola_plr(s, f, p)))
+    return proposte
+
+
 def funzioni_tipo_per(macchina):
     """Funzioni tipo attive proposte per la macchina: quelle dei suoi moduli e quelle generali."""
     return FunzioneTipo.objects.filter(attiva=True).filter(

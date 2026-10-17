@@ -159,6 +159,7 @@ def analisi(request, pk, numero=None):
     contesto["funzioni_tipo"] = funzioni_tipo
     # Proposte: le funzioni tipo dei moduli della macchina che la revisione non ha ancora
     contesto["funzioni_tipo_proposte"] = [t for t in funzioni_tipo if t.modulo_id and t.nome not in nomi]
+    contesto["misure_per_funzioni"] = servizi.misure_per_funzioni(revisione) if revisione.modificabile else []
     return render(request, "rischi/analisi.html", contesto)
 
 
@@ -372,10 +373,14 @@ def applicabilita(request, revisione_pk):
 def _salva_funzione(request, funzione, revisione):
     modificabile = revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
     iniziali = {}
+    suggeriti = False
     if not funzione.pk and request.GET.get("misura", "").isdigit():
-        misura = MisuraAnalisi.objects.filter(pk=request.GET["misura"], scheda__revisione=revisione).first()
+        misura = MisuraAnalisi.objects.filter(pk=request.GET["misura"], scheda__revisione=revisione).select_related("scheda").first()
         if misura:
             iniziali["misure"] = [misura.pk]
+            iniziali["nome"] = misura.testo.split(".")[0].split(";")[0][:120]
+            iniziali["s"], iniziali["f"], iniziali["p"] = servizi.sfp_suggeriti(misura.scheda)
+            suggeriti = any((iniziali["s"], iniziali["f"], iniziali["p"]))
     form = FunzioneForm(request.POST or None, instance=funzione, revisione=revisione, initial=iniziali)
     if not modificabile:
         for campo in form.fields.values():
@@ -404,6 +409,7 @@ def _salva_funzione(request, funzione, revisione):
             "form": form, "funzione": funzione, "revisione": revisione, "modificabile": modificabile,
             "schede": sorted(schede, key=lambda s: s.codice),
             "puo_funzione_tipo": funzione.pk and request.user.has_perm("rischi.add_funzionetipo"),
+            "suggeriti": suggeriti,
             "moduli_macchina": revisione.analisi.macchina.moduli.filter(attivo=True),
         },
     )

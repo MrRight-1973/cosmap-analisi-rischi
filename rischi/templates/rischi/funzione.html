@@ -20,6 +20,7 @@
 </fieldset>
 <fieldset><legend>3. PLr DAL GRAFO DEL RISCHIO (EN ISO 13849-1, ALLEGATO A)</legend>
   <p class="sotto">I parametri del grafo non coincidono con quelli del metodo di stima della scheda: si scelgono qui, guardando la stima della scheda come riferimento.</p>
+  {% if suggeriti %}<p class="messaggio info">S, F e P sono suggeriti dalla stima iniziale della scheda (Se 3-4 → S2, Fr 5 → F2, Av 5 → P2): controllali prima di salvare.</p>{% endif %}
   <div class="grafo-rischio">
     {% include "rischi/_campo.html" with f=form.s %}
     {% include "rischi/_campo.html" with f=form.f %}
