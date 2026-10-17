@@ -39,6 +39,7 @@
 /* barra con le schede e il pulsante di salvataggio */
 .valutazione .barra { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
   background: var(--body-bg); border-bottom: 1px solid var(--line); padding: 8px 0; margin-bottom: 4px; }
+.valutazione .barra.in-fondo { position: static; border-bottom: none; border-top: 1px solid var(--line); margin: 12px 0 0; }
 .valutazione .schede { display: flex; flex-wrap: wrap; gap: 4px; }
 #content .valutazione button.scheda { background: var(--body-bg); color: var(--ink); border: 1px solid var(--line); }
 #content .valutazione button.scheda.on { background: var(--button-bg); color: var(--button-fg); border-color: var(--button-bg); }

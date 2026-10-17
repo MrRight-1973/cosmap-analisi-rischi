@@ -47,8 +47,8 @@ La safety evaluation (calcolo del PL secondo EN ISO 13849-1, oggi nel repository
 - **Funzione di sicurezza**: appartiene alla revisione e si blocca con essa. Nasce da una o più misure
   di protezione delle schede, oppure a mano (es. arresto di emergenza generale). S, F e P danno il PLr
   dal grafo del rischio (allegato A).
-- **Valutazione della funzione**: il dettaglio del calcolo (schema a blocchi, componenti, prove) nello
-  stesso JSON della safety evaluation, più PL raggiunto, PFH, esito e "validata" in campi propri.
+- **Valutazione della funzione**: il dettaglio del calcolo (schema a blocchi, componenti) nello
+  stesso JSON della safety evaluation, più PL raggiunto, PFH ed esito in campi propri.
 - Una nuova revisione copia funzioni e valutazioni collegandole alle misure copiate; la copia su
   un'altra macchina toglie gli esiti delle prove di validazione.
 - **Articoli di sicurezza** in "Libreria e utenti": l'archivio articoli della safety evaluation si importa con
@@ -75,6 +75,27 @@ Fase 3, il calcolo del PL:
   stesso `engine.js` eseguito con Node, così il risultato salvato non dipende dalla pagina. Senza Node sul server
   valgono i risultati della pagina e il messaggio lo dice. Gli articoli usati diventano "già utilizzati".
 - Se S, F o P cambiano, il confronto con il nuovo PLr si rifà da solo.
+
+Fase 4, validazione e relazione:
+
+- La validazione (EN ISO 13849-2) ha un flusso proprio, Bozza → In verifica → Approvata, collegato alla
+  revisione dell'analisi: le prove si fanno a macchina finita e si compilano anche dopo l'approvazione
+  dell'analisi, senza riaprirla. Si approva solo con l'analisi già approvata; chi la compila non la approva.
+- "Validazione e relazione PDF" (riquadro Funzioni di sicurezza dell'analisi) apre la pagina con il flusso, i
+  controlli, l'elenco delle funzioni con lo stato delle prove, le misure contro i guasti sistematici
+  (EN ISO 13849-1, all. G, software di sicurezza, versione e firma del programma F) e la relazione.
+- Le prove di ogni funzione si ricavano dallo schema a blocchi con `validazione.js` della safety evaluation
+  (una prova funzionale per percorso, tempo di risposta, reset, guasti e cortocircuiti per le categorie 2, 3 e 4,
+  parametri per i blocchi con PFH da certificato), più quelle aggiunte a mano, con esito, note, chi le ha
+  eseguite e quando. La funzione è validata quando ogni prova applicabile è OK.
+- La "Relazione funzioni di sicurezza" (PDF archiviato, BOZZA finché la validazione non è approvata) ha
+  copertina con le firme, riepilogo, un capitolo per funzione (PLr dal grafo, schema a blocchi, sottosistemi e
+  componenti, verifica PL ≥ PLr, prove con riga per la firma), misure contro i guasti sistematici, componenti e
+  fonti. Calcoli e prove sono rifatti dal server con Node: senza Node la relazione non si genera.
+- Prima della verifica dell'analisi si segnalano anche le funzioni senza calcolo o con PL < PLr e gli articoli
+  usati ancora "da verificare"; la pagina della validazione segnala prove da eseguire o non OK e misure senza esito.
+- Una nuova revisione riparte dalla validazione della precedente, in bozza, con le prove già compilate.
+- Con la validazione approvata, la dichiarazione UE cita anche la EN ISO 13849-1 e -2.
 
 La dichiarazione elenca come "norme armonizzate" solo le norme segnate come
 armonizzate nella libreria; le altre norme citate nelle schede compaiono come

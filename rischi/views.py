@@ -40,6 +40,7 @@ from .models import (
     RequisitoRESS,
     Revisione,
     SchedaAnalisi,
+    ValidazioneSicurezza,
     ValutazioneFunzione,
 )
 
@@ -146,7 +147,7 @@ def analisi(request, pk, numero=None):
         "puo_eliminare": servizi.puo_eliminare(utente, revisione.analisi.macchina.commessa),
         "commessa_approvata": servizi.ha_revisioni_approvate(revisione.analisi.macchina.commessa),
         "documenti": revisione.documenti.select_related("generato_da")[:20],
-        "funzioni": revisione.funzioni.select_related("valutazione").prefetch_related("misure__scheda"),
+        "funzioni": revisione.funzioni.select_related("valutazione", "prove").prefetch_related("misure__scheda"),
     }
     return render(request, "rischi/analisi.html", contesto)
 
@@ -459,6 +460,124 @@ def valutazione_funzione(request, pk):
     return render(request, "rischi/valutazione.html", contesto)
 
 
+def _puo(utente):
+    return {
+        "compilare": servizi.ha_ruolo(utente, servizi.COMPILATORE),
+        "verificare": servizi.ha_ruolo(utente, servizi.VERIFICATORE),
+        "approvare": servizi.ha_ruolo(utente, servizi.APPROVATORE),
+    }
+
+
+def _json_post(request, chiave):
+    try:
+        dati = json.loads(request.body)
+        valore = dati[chiave]
+        if not isinstance(valore, dict):
+            raise ValueError
+    except (ValueError, KeyError, TypeError):
+        raise ValidationError("Dati non validi.")
+    return dati
+
+
+def _risposta_errore(e):
+    stato = 403 if isinstance(e, PermissionDenied) else 400
+    return JsonResponse({"errore": "; ".join(getattr(e, "messages", [str(e)]))}, status=stato)
+
+
+@login_required
+def validazione(request, pk):
+    """Validazione delle funzioni della revisione (EN ISO 13849-2), con flusso proprio: prove per funzione, misure
+    contro i guasti sistematici, controlli e relazione PDF."""
+    revisione = get_object_or_404(Revisione.objects.select_related("analisi__macchina__commessa"), pk=pk)
+    validazione = servizi.validazione_di(revisione)
+    modificabile = validazione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
+    if request.method == "POST":
+        try:
+            dati = _json_post(request, "dati")
+            return JsonResponse(servizi.salva_sistematiche(revisione, dati["dati"], request.user))
+        except (PermissionDenied, ValidationError) as e:
+            return _risposta_errore(e)
+    quadro = servizi.quadro_validazione(revisione)
+    contesto = {
+        "revisione": revisione,
+        "analisi": revisione.analisi,
+        "validazione": validazione,
+        "righe": quadro["righe"],
+        "anomalie": quadro["anomalie"],
+        "senza_motore": quadro["sistematiche"] is None,
+        "modificabile": modificabile,
+        "puo": _puo(request.user),
+        "documenti": revisione.documenti.filter(tipo=DocumentoGenerato.Tipo.FUNZIONI).select_related("generato_da")[:20],
+        "dati": {
+            "modo": "sistematiche",
+            "sistematiche": validazione.sistematiche,
+            "modificabile": modificabile,
+            "salva_url": reverse("validazione", args=[revisione.pk]),
+            "csrf": get_token(request),
+        },
+    }
+    return render(request, "rischi/validazione.html", contesto)
+
+
+@login_required
+@require_POST
+def azione_validazione(request, pk, azione):
+    revisione = get_object_or_404(Revisione, pk=pk)
+    nota = request.POST.get("nota", "")
+    azioni = {
+        "invia": (servizi.invia_validazione, "Validazione inviata in verifica."),
+        "verifica": (servizi.verifica_validazione, "Validazione verificata: ora può essere approvata."),
+        "approva": (servizi.approva_validazione, "Validazione approvata."),
+    }
+    try:
+        if azione == "rimanda":
+            servizi.rimanda_validazione(revisione, request.user, nota)
+            messages.success(request, "Validazione rimandata in bozza.")
+        elif azione in azioni:
+            funzione, messaggio = azioni[azione]
+            funzione(revisione, request.user)
+            messages.success(request, messaggio)
+        else:
+            raise ValidationError("Azione sconosciuta.")
+    except (PermissionDenied, ValidationError) as e:
+        _errore(request, e)
+    return redirect("validazione", pk=revisione.pk)
+
+
+@login_required
+def prove_funzione(request, pk):
+    """Prove di validazione di una funzione: le prove standard vengono dallo schema a blocchi (validazione.js)."""
+    funzione = get_object_or_404(
+        FunzioneSicurezza.objects.select_related("revisione__analisi__macchina__commessa"), pk=pk
+    )
+    revisione = funzione.revisione
+    validazione = servizi.validazione_di(revisione)
+    modificabile = validazione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
+    prove = getattr(funzione, "prove", None)
+    if request.method == "POST":
+        try:
+            dati = _json_post(request, "dati")
+            prove_pagina = dati.get("prove") if isinstance(dati.get("prove"), list) else []
+            return JsonResponse(servizi.salva_prove(funzione, dati["dati"], prove_pagina, request.user))
+        except (PermissionDenied, ValidationError) as e:
+            return _risposta_errore(e)
+    valutazione = getattr(funzione, "valutazione", None)
+    contesto = {
+        "funzione": funzione, "revisione": revisione, "validazione": validazione, "modificabile": modificabile,
+        "valutazione": valutazione,
+        "dati": {
+            "modo": "prove",
+            "nome": funzione.nome,
+            "dettaglio": valutazione.dettaglio if valutazione else {},
+            "prove": prove.dati if prove else {},
+            "modificabile": modificabile,
+            "salva_url": reverse("prove_funzione", args=[funzione.pk]),
+            "csrf": get_token(request),
+        },
+    }
+    return render(request, "rischi/prove.html", contesto)
+
+
 @login_required
 def articoli_sicurezza(request):
     """Articoli di sicurezza della libreria nella forma di engine.js, per la pagina del calcolo PL."""
@@ -536,6 +655,7 @@ def macchina(request, pk):
 
 NOMI_FILE = {
     "DICHIARAZIONE": "Dichiarazione_UE",
+    "FUNZIONI": "Relazione_funzioni_sicurezza",
     "VALUTAZIONE": "Valutazione_rischi",
     "RESIDUI": "Rischi_residui",
 }
@@ -551,8 +671,17 @@ def genera_documento(request, pk, tipo):
     lingua = request.POST.get("lingua", "it") if tipo == "DICHIARAZIONE" else "it"
     if lingua not in documenti.TESTI:
         lingua = "it"
-    contenuto = documenti.genera(tipo, revisione, lingua)
-    definitivo = revisione.stato == Revisione.Stato.APPROVATA
+    if tipo == "FUNZIONI":
+        try:
+            contenuto = documenti.genera(tipo, revisione, lingua)
+        except calcolo.CalcoloNonRiuscito as e:
+            messages.error(request, f"Relazione non generata: serve il motore di calcolo sul server ({e})")
+            return redirect("validazione", pk=revisione.pk)
+        validazione = getattr(revisione, "validazione", None)
+        definitivo = bool(validazione and validazione.stato == ValidazioneSicurezza.Stato.APPROVATA)
+    else:
+        contenuto = documenti.genera(tipo, revisione, lingua)
+        definitivo = revisione.stato == Revisione.Stato.APPROVATA
     numero = revisione.analisi.macchina.commessa.numero.replace("/", "-")
     nome = f"{NOMI_FILE[tipo]}_{numero}_rev{revisione.numero}{'' if definitivo else '_BOZZA'}_{lingua}.pdf"
     documento = DocumentoGenerato(

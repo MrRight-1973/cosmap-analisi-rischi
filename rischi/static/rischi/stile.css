@@ -91,6 +91,7 @@ details.elimina input { display: block; margin: 6px 0; }
 .stato.approvata { background: var(--ok-f); color: var(--ok); } .stato.in_verifica { background: var(--sugg-f); color: var(--sugg); }
 .decisione.proposta { color: var(--sugg); font-weight: 600; } .decisione.scartata { color: var(--rich); }
 .etichetta { font-size: 0.6875rem; background: var(--sugg-f); color: var(--sugg); padding: 1px 6px; border-radius: 8px; }
+.etichetta.ok { background: var(--ok-f); color: var(--ok); }
 
 /* Messaggi dentro le pagine, come quelli della libreria */
 .messaggio { padding: 10px 10px 10px 14px; margin: 0 0 10px; font-size: 0.8125rem; background: var(--darkened-bg); color: var(--body-fg); border-left: 4px solid var(--border-color); }

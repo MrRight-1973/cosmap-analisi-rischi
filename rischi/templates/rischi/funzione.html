@@ -35,6 +35,10 @@
   <p class="sotto">{% if funzione.valutazione %}{% if funzione.valutazione.pl %}PL {{ funzione.valutazione.pl }}{% else %}PL non ancora calcolabile{% endif %}{% if funzione.valutazione.esito %} ≥ PLr {{ funzione.plr }}: requisito soddisfatto{% elif funzione.valutazione.esito is None %}: confronto con il PLr da rifare{% else %}: requisito non dimostrato{% endif %}.{% else %}Schema a blocchi, componenti e calcolo non ancora compilati.{% endif %}</p>
   <p><a class="bottone" href="{% url 'valutazione_funzione' funzione.pk %}">{% if modificabile %}Apri il calcolo del PL{% else %}Vedi il calcolo del PL{% endif %}</a></p>
 </fieldset>
+<fieldset><legend>5. VALIDAZIONE (EN ISO 13849-2)</legend>
+  <p class="sotto">{% if funzione.prove.validata %}Funzione validata: tutte le prove applicabili sono OK{% elif funzione.prove %}{{ funzione.prove.da_eseguire }} prove da eseguire{% if funzione.prove.non_ok %}, {{ funzione.prove.non_ok }} non OK{% endif %}{% else %}Prove non ancora compilate{% endif %}. Le prove si fanno sulla macchina finita e si approvano con la validazione, anche dopo l'approvazione dell'analisi.</p>
+  <p><a class="bottone" href="{% url 'prove_funzione' funzione.pk %}">Prove di validazione</a></p>
+</fieldset>
 </div>
 {% endif %}
 {% if funzione.pk and modificabile %}
