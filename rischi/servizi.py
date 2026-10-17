@@ -1,5 +1,6 @@
 """Operazioni sull'analisi: creazione, copia, flusso di approvazione, controlli."""
 
+import re
 from dataclasses import dataclass
 
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -22,10 +23,12 @@ from .models import (
     MetodoStima,
     MisuraAnalisi,
     Modulo,
+    ProveFunzione,
     RequisitoRESS,
     Revisione,
     SchedaAnalisi,
     SchedaModello,
+    ValidazioneSicurezza,
     ValutazioneFunzione,
     prossimo_codice,
 )
@@ -121,25 +124,44 @@ def _copia_scheda(sorgente, revisione, mappa_misure=None, **extra):
 
 
 def _copia_funzioni(sorgente, revisione, mappa_misure, stessa_macchina):
-    """Copia funzioni di sicurezza e valutazioni nella revisione, collegate alle misure copiate.
+    """Copia funzioni di sicurezza e valutazioni nella revisione, collegate alle misure copiate; restituisce
+    {pk della funzione di partenza: funzione copiata}.
 
-    Su un'altra macchina le prove di validazione non valgono: la valutazione si copia senza esiti delle prove."""
+    Le prove di validazione si copiano a parte (_copia_validazione) e solo sulla stessa macchina."""
+    mappa = {}
     for funzione in sorgente.funzioni.all():
         nuova = FunzioneSicurezza.objects.create(
             revisione=revisione, ordine=funzione.ordine, nome=funzione.nome, descrizione=funzione.descrizione,
             s=funzione.s, f=funzione.f, p=funzione.p,
         )
+        mappa[funzione.pk] = nuova
         nuova.misure.set([mappa_misure[mi.pk] for mi in funzione.misure.all() if mi.pk in mappa_misure])
         valutazione = getattr(funzione, "valutazione", None)
         if valutazione is None:
             continue
         dettaglio = dict(valutazione.dettaglio)
         if not stessa_macchina:
-            dettaglio.pop("validazione", None)
+            dettaglio.pop("validazione", None)  # esiti delle prove nel formato della safety evaluation
         ValutazioneFunzione.objects.create(
             funzione=nuova, dettaglio=dettaglio, pl=valutazione.pl, pfh=valutazione.pfh, esito=valutazione.esito,
-            validata=valutazione.validata and stessa_macchina, calcolata_il=valutazione.calcolata_il,
+            calcolata_il=valutazione.calcolata_il,
         )
+    return mappa
+
+
+def _copia_validazione(sorgente, revisione, mappa_funzioni):
+    """La nuova revisione riparte dalla validazione della precedente, in bozza: le prove già fatte restano
+    compilate e si confermano o si rifanno dove la revisione ha cambiato le funzioni."""
+    precedente = getattr(sorgente, "validazione", None)
+    if precedente is None:
+        return
+    validazione = ValidazioneSicurezza.objects.create(revisione=revisione, sistematiche=precedente.sistematiche)
+    for prove in precedente.prove.all():
+        if prove.funzione_id in mappa_funzioni:
+            ProveFunzione.objects.create(
+                validazione=validazione, funzione=mappa_funzioni[prove.funzione_id], dati=prove.dati,
+                validata=prove.validata, da_eseguire=prove.da_eseguire, non_ok=prove.non_ok,
+            )
 
 
 @transaction.atomic
@@ -403,7 +425,8 @@ def nuova_revisione(analisi, utente, motivo):
             decisa_da=scheda.decisa_da,
             decisa_il=scheda.decisa_il,
         )
-    _copia_funzioni(corrente, revisione, mappa_misure, stessa_macchina=True)
+    mappa_funzioni = _copia_funzioni(corrente, revisione, mappa_misure, stessa_macchina=True)
+    _copia_validazione(corrente, revisione, mappa_funzioni)
     _crea_applicabilita(revisione, precedente=corrente)
     return revisione
 
@@ -438,9 +461,10 @@ def salva_valutazione(funzione, dettaglio, risultato_pagina, utente):
     precedente = valutazione.dettaglio if valutazione.pk else {}
     # Le parti del dettaglio che la pagina non gestisce (es. le prove di validazione) restano
     valutazione.dettaglio = {**precedente, **dettaglio}
+    prove_auto = None
     try:
         r = calcolo.calcola(funzione, valutazione.dettaglio)
-        pl, pfh, esito = r["pl"], r["pfh"], r["ok"]
+        pl, pfh, esito, prove_auto = r["pl"], r["pfh"], r["ok"], r["prove"]
         messaggio = "Valutazione salvata e ricalcolata dal server"
     except calcolo.CalcoloNonRiuscito as errore:
         if risultato_pagina:
@@ -453,6 +477,10 @@ def salva_valutazione(funzione, dettaglio, risultato_pagina, utente):
     valutazione.esito = bool(esito) if esito is not None else None
     valutazione.calcolata_il = timezone.now()
     valutazione.save()
+    prove = ProveFunzione.objects.filter(funzione=funzione).select_related("validazione__revisione").first()
+    if prove_auto is not None and prove is not None and prove.validazione.modificabile:
+        _aggiorna_conteggi(prove, prove_auto)  # lo schema può aver cambiato le prove standard
+        prove.save()
     chiavi = {
         c.get("articoloId") for ss in valutazione.dettaglio.get("sottosistemi", []) for c in ss.get("componenti", [])
     } - {None, ""}
@@ -466,6 +494,262 @@ def salva_valutazione(funzione, dettaglio, risultato_pagina, utente):
     elif valutazione.pl and funzione.plr:
         esito_testo += f", requisito PLr {funzione.plr} non dimostrato"
     return {"messaggio": f"{messaggio}: {esito_testo}.", "pl": valutazione.pl, "pfh": valutazione.pfh, "ok": valutazione.esito}
+
+
+# ---------------------------------------------------------------------------
+# Validazione delle funzioni di sicurezza (EN ISO 13849-2): flusso proprio
+# ---------------------------------------------------------------------------
+
+ESITI_PROVA = ("", "ok", "ko", "na")
+
+
+def validazione_di(revisione):
+    """La validazione della revisione; se non è ancora stata compilata, una nuova non salvata."""
+    return getattr(revisione, "validazione", None) or ValidazioneSicurezza(revisione=revisione)
+
+
+def riepilogo_prove(prove_auto, dati):
+    """Conteggi come Validazione.riepilogo di validazione.js: prove standard ricavate dallo schema più quelle
+    aggiunte a mano. Completa quando ogni prova applicabile è OK."""
+    esiti = dati.get("esiti") or {}
+    chiavi = [p["key"] for p in prove_auto] + [f"extra:{x.get('id')}" for x in dati.get("extra") or []]
+    valori = [(esiti.get(k) or {}).get("esito") or "" for k in chiavi]
+    r = {"totali": len(chiavi), "ok": valori.count("ok"), "ko": valori.count("ko"), "na": valori.count("na"),
+         "aperte": valori.count("")}
+    r["completa"] = r["totali"] > 0 and r["ko"] == 0 and r["aperte"] == 0
+    return r
+
+
+def _aggiorna_conteggi(prove, prove_auto):
+    r = riepilogo_prove(prove_auto, prove.dati)
+    prove.validata, prove.da_eseguire, prove.non_ok = r["completa"], r["aperte"], r["ko"]
+    return r
+
+
+def _testo(valore, massimo=2000):
+    if valore is None:
+        return ""
+    if not isinstance(valore, str):
+        raise ValidationError("Dati non validi.")
+    return valore.strip()[:massimo]
+
+
+def _esiti_puliti(esiti):
+    if not isinstance(esiti, dict):
+        raise ValidationError("Esiti non validi.")
+    puliti = {}
+    for chiave, valore in esiti.items():
+        if not isinstance(valore, dict) or valore.get("esito", "") not in ESITI_PROVA:
+            raise ValidationError(f"Esito non valido per «{chiave}».")
+        voce = {k: _testo(valore.get(k)) for k in ("esito", "note") if valore.get(k)}
+        if voce:
+            puliti[str(chiave)[:100]] = voce
+    return puliti
+
+
+@transaction.atomic
+def salva_prove(funzione, dati, prove_pagina, utente):
+    """Esiti delle prove di validazione della funzione. Le prove standard vengono dallo schema a blocchi, ricalcolate
+    dal server con validazione.js; senza Node valgono quelle della pagina."""
+    richiedi_ruolo(utente, COMPILATORE)
+    validazione = validazione_di(funzione.revisione)
+    validazione.verifica_modificabile()
+    if not validazione.pk:
+        validazione.save()
+    extra = dati.get("extra") or []
+    if not isinstance(extra, list) or not all(isinstance(x, dict) and x.get("id") for x in extra):
+        raise ValidationError("Prove aggiunte non valide.")
+    data = _testo(dati.get("data"), 10)
+    if data and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", data):
+        raise ValidationError("Data non valida.")
+    prove = getattr(funzione, "prove", None) or ProveFunzione(validazione=validazione, funzione=funzione)
+    prove.dati = {
+        **prove.dati,
+        "esiti": _esiti_puliti(dati.get("esiti") or {}),
+        "extra": [{"id": _testo(x["id"], 20), "testo": _testo(x.get("testo")), "atteso": _testo(x.get("atteso"))} for x in extra],
+        "esecutore": _testo(dati.get("esecutore"), 200),
+        "data": data,
+    }
+    try:
+        dettaglio = funzione.valutazione.dettaglio if hasattr(funzione, "valutazione") else {}
+        prove_auto = calcolo.calcola(funzione, dettaglio)["prove"]
+        messaggio = "Prove salvate"
+    except calcolo.CalcoloNonRiuscito as errore:
+        prove_auto = [p for p in prove_pagina if isinstance(p, dict) and isinstance(p.get("key"), str)]
+        messaggio = f"Prove salvate con l'elenco della pagina ({errore})"
+    r = _aggiorna_conteggi(prove, prove_auto)
+    prove.save()
+    if r["completa"]:
+        stato = "funzione validata"
+    else:
+        parti = [f"{r['aperte']} da eseguire" if r["aperte"] else "", f"{r['ko']} non OK" if r["ko"] else ""]
+        stato = ", ".join(p for p in parti if p) or "nessuna prova"
+    return {"messaggio": f"{messaggio}: {stato}.", "riepilogo": r}
+
+
+@transaction.atomic
+def salva_sistematiche(revisione, dati, utente):
+    """Misure contro i guasti sistematici (EN ISO 13849-1, all. G), versione e firma del programma F."""
+    richiedi_ruolo(utente, COMPILATORE)
+    validazione = validazione_di(revisione)
+    validazione.verifica_modificabile()
+    validazione.sistematiche = {
+        **validazione.sistematiche,
+        "esiti": _esiti_puliti(dati.get("esiti") or {}),
+        "swVersione": _testo(dati.get("swVersione"), 200),
+        "swFirma": _testo(dati.get("swFirma"), 200),
+    }
+    validazione.save()
+    return {"messaggio": "Misure contro i guasti sistematici salvate."}
+
+
+def _verifica_stato_validazione(validazione, *stati):
+    if not validazione.pk or validazione.stato not in stati:
+        stato = validazione.get_stato_display().lower() if validazione.pk else "non ancora compilata"
+        raise ValidationError(f"Operazione non possibile: la validazione è {stato}.")
+
+
+def invia_validazione(revisione, utente):
+    richiedi_ruolo(utente, COMPILATORE)
+    validazione = validazione_di(revisione)
+    validazione.verifica_modificabile()
+    if not revisione.funzioni.exists():
+        raise ValidationError("La revisione non ha funzioni di sicurezza da validare.")
+    validazione.stato = ValidazioneSicurezza.Stato.IN_VERIFICA
+    validazione.inviata_da = utente
+    validazione.inviata_il = timezone.now()
+    validazione.verificata_da = None
+    validazione.verificata_il = None
+    validazione.save()
+
+
+def rimanda_validazione(revisione, utente, nota):
+    if not (ha_ruolo(utente, VERIFICATORE) or ha_ruolo(utente, APPROVATORE)):
+        raise PermissionDenied("Serve il ruolo Verificatore o Approvatore.")
+    validazione = validazione_di(revisione)
+    _verifica_stato_validazione(validazione, ValidazioneSicurezza.Stato.IN_VERIFICA)
+    if not nota.strip():
+        raise ValidationError("Scrivi cosa va corretto.")
+    validazione.stato = ValidazioneSicurezza.Stato.BOZZA
+    validazione.nota_verifica = nota
+    validazione.verificata_da = None
+    validazione.verificata_il = None
+    validazione.save()
+
+
+def verifica_validazione(revisione, utente):
+    richiedi_ruolo(utente, VERIFICATORE)
+    validazione = validazione_di(revisione)
+    _verifica_stato_validazione(validazione, ValidazioneSicurezza.Stato.IN_VERIFICA)
+    validazione.verificata_da = utente
+    validazione.verificata_il = timezone.now()
+    validazione.save()
+
+
+def approva_validazione(revisione, utente):
+    richiedi_ruolo(utente, APPROVATORE)
+    validazione = validazione_di(revisione)
+    _verifica_stato_validazione(validazione, ValidazioneSicurezza.Stato.IN_VERIFICA)
+    if not validazione.verificata_da_id:
+        raise ValidationError("La validazione deve essere prima verificata.")
+    if validazione.inviata_da_id == utente.pk:
+        raise PermissionDenied("Chi ha compilato la validazione non può approvarla.")
+    if revisione.stato != Revisione.Stato.APPROVATA:
+        raise ValidationError(
+            f"Approva prima la revisione {revisione.numero} dell'analisi: la validazione si riferisce alle funzioni "
+            "e ai calcoli approvati."
+        )
+    validazione.stato = ValidazioneSicurezza.Stato.APPROVATA
+    validazione.approvata_da = utente
+    validazione.approvata_il = timezone.now()
+    validazione.save()
+
+
+@dataclass
+class RigaValidazione:
+    funzione: FunzioneSicurezza
+    risultato: dict | None  # dal motore (None senza Node)
+    prove: list  # prove standard e aggiunte, con esito e note
+    riepilogo: dict
+
+    @property
+    def eseguite(self):
+        """"M. Rossi · 17/10/2026" dai dati delle prove."""
+        dati = self.funzione.prove.dati if hasattr(self.funzione, "prove") else {}
+        data = dati.get("data") or ""
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", data):
+            data = "/".join(reversed(data.split("-")))
+        return " · ".join(x for x in (dati.get("esecutore"), data) if x)
+
+
+def quadro_validazione(revisione):
+    """Funzioni con prove ed esiti, misure sistematiche e controlli, per la pagina della validazione e la relazione.
+    Prove e calcoli si ricavano dal motore (Node); senza Node restano i conteggi salvati e manca il dettaglio."""
+    validazione = validazione_di(revisione)
+    funzioni = list(revisione.funzioni.select_related("valutazione", "prove").prefetch_related("misure__scheda"))
+    try:
+        risultati, sistematiche = calcolo.analizza(funzioni)
+    except calcolo.CalcoloNonRiuscito:
+        risultati, sistematiche = None, None
+    righe = []
+    for funzione in funzioni:
+        prove = getattr(funzione, "prove", None)
+        dati = prove.dati if prove else {}
+        risultato = risultati.get(funzione.pk) if risultati else None
+        esiti = dati.get("esiti") or {}
+        if risultato:
+            elenco = [{**p, **(esiti.get(p["key"]) or {})} for p in risultato["prove"]]
+            elenco += [
+                {"key": f"extra:{x['id']}", "testo": x.get("testo", ""), "atteso": x.get("atteso", ""), **(esiti.get(f"extra:{x['id']}") or {})}
+                for x in dati.get("extra") or []
+            ]
+            riepilogo = riepilogo_prove(risultato["prove"], dati)
+        else:
+            elenco = []
+            riepilogo = {
+                "totali": None, "ok": None, "na": None, "ko": prove.non_ok if prove else 0,
+                "aperte": prove.da_eseguire if prove else None, "completa": bool(prove and prove.validata),
+            }
+        righe.append(RigaValidazione(funzione, risultato, elenco, riepilogo))
+    return {
+        "validazione": validazione, "righe": righe, "sistematiche": sistematiche,
+        "anomalie": controlli_validazione(revisione, validazione, righe, sistematiche),
+    }
+
+
+def controlli_validazione(revisione, validazione, righe, sistematiche):
+    anomalie = []
+    if revisione.stato != Revisione.Stato.APPROVATA:
+        anomalie.append(Anomalia(
+            "revisione", f"La revisione {revisione.numero} dell'analisi non è approvata: la validazione si approva dopo."
+        ))
+    esiti = (validazione.sistematiche or {}).get("esiti") or {}
+    if sistematiche is not None:
+        chiavi = [m[0] for g in sistematiche for m in g["misure"]]
+        mancanti = sum(1 for k in chiavi if not (esiti.get(k) or {}).get("esito"))
+        if mancanti:
+            anomalie.append(Anomalia("sistematiche", f"Misure contro i guasti sistematici: {mancanti} senza esito."))
+    non_ok = sum(1 for e in esiti.values() if e.get("esito") == "ko")
+    if non_ok:
+        anomalie.append(Anomalia("sistematiche", f"Misure contro i guasti sistematici: {non_ok} non OK."))
+    for riga in righe:
+        nome, r = riga.funzione.nome, riga.riepilogo
+        if r["completa"]:
+            continue
+        if not hasattr(riga.funzione, "prove"):
+            anomalie.append(Anomalia("prove", f"Funzione «{nome}»: prove di validazione non ancora compilate."))
+            continue
+        if r["aperte"]:
+            anomalie.append(Anomalia("prove", f"Funzione «{nome}»: {r['aperte']} prove da eseguire."))
+        if r["ko"]:
+            anomalie.append(Anomalia("prove", f"Funzione «{nome}»: {r['ko']} prove non OK."))
+        if r["totali"] == 0:
+            anomalie.append(Anomalia("prove", f"Funzione «{nome}»: nessuna prova (schema a blocchi vuoto)."))
+    for riga in righe:
+        dati = riga.funzione.prove.dati if hasattr(riga.funzione, "prove") else {}
+        if dati and not (dati.get("esecutore") and dati.get("data")):
+            anomalie.append(Anomalia("prove", f"Funzione «{riga.funzione.nome}»: indicare chi ha eseguito le prove e quando."))
+    return anomalie
 
 
 # ---------------------------------------------------------------------------
@@ -546,6 +830,7 @@ def elimina_commessa(commessa, utente):
             documento.file.delete(save=False)
             documento.delete()
         with senza_registro_contenuti():
+            ValidazioneSicurezza.objects.filter(revisione=revisione).delete()
             ValutazioneFunzione.objects.filter(funzione__revisione=revisione).delete()
             revisione.funzioni.all().delete()
             MisuraAnalisi.objects.filter(scheda__revisione=revisione).delete()
@@ -619,9 +904,29 @@ def controlli(revisione):
             anomalie.append(
                 Anomalia("stima", "Esito finale non verde senza rischio residuo indicato per le istruzioni.", s)
             )
-    for funzione in revisione.funzioni.all():
+    chiavi = set()
+    for funzione in revisione.funzioni.select_related("valutazione"):
+        nome = f"Funzione di sicurezza «{funzione.nome}»"
         if not funzione.plr:
-            anomalie.append(
-                Anomalia("funzione", f"Funzione di sicurezza «{funzione.nome}»: completare S, F e P per il PLr.")
-            )
+            anomalie.append(Anomalia("funzione", f"{nome}: completare S, F e P per il PLr."))
+        valutazione = getattr(funzione, "valutazione", None)
+        if valutazione is None:
+            anomalie.append(Anomalia("calcolo", f"{nome}: PL non ancora calcolato."))
+            continue
+        if valutazione.esito is False:
+            pl = f"PL {valutazione.pl}" if valutazione.pl else "PL non calcolabile"
+            anomalie.append(Anomalia("calcolo", f"{nome}: {pl}, requisito PLr {funzione.plr or '–'} non dimostrato."))
+        elif valutazione.esito is None and funzione.plr:
+            anomalie.append(Anomalia("calcolo", f"{nome}: confronto con il PLr da rifare (apri e salva il calcolo)."))
+        chiavi |= {
+            c.get("articoloId") for ss in valutazione.dettaglio.get("sottosistemi", []) for c in ss.get("componenti", [])
+        }
+    da_verificare = list(
+        ArticoloSicurezza.objects.filter(chiave__in=chiavi - {None, ""}, verificato=False).values_list("codice", flat=True)
+    )
+    if da_verificare:
+        elenco = ", ".join(sorted(da_verificare)[:10]) + (" …" if len(da_verificare) > 10 else "")
+        anomalie.append(Anomalia(
+            "articoli", f"{len(da_verificare)} articoli di sicurezza usati nei calcoli sono ancora da verificare: {elenco}."
+        ))
     return anomalie

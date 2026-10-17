@@ -1037,7 +1037,7 @@ class FunzioneSicurezza(ContenutoRevisione):
 
 
 class ValutazioneFunzione(ContenutoRevisione):
-    """Calcolo del PL di una funzione. Il dettaglio (schema a blocchi, sottosistemi, componenti, prove) resta nel
+    """Calcolo del PL di una funzione. Il dettaglio (schema a blocchi, sottosistemi, componenti) resta nel
     JSON della safety evaluation, così il motore lo legge senza conversioni; i risultati stanno in campi propri
     per ricerche e controlli."""
 
@@ -1046,7 +1046,6 @@ class ValutazioneFunzione(ContenutoRevisione):
     pl = models.CharField("PL raggiunto", max_length=1, blank=True)
     pfh = models.FloatField("PFH (10⁻⁹/h)", null=True, blank=True)
     esito = models.BooleanField("PL ≥ PLr", null=True, blank=True)
-    validata = models.BooleanField(default=False, help_text="Tutte le prove di validazione applicabili sono OK.")
     calcolata_il = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -1060,11 +1059,91 @@ class ValutazioneFunzione(ContenutoRevisione):
         return self.funzione.revisione
 
 
+class ValidazioneSicurezza(models.Model):
+    """Validazione delle funzioni di sicurezza di una revisione (EN ISO 13849-2) e misure contro i guasti sistematici
+    (EN ISO 13849-1, all. G). Ha un flusso proprio: le prove si fanno a macchina finita, spesso dopo l'approvazione
+    dell'analisi, e si approvano senza riaprire la revisione. I dati JSON hanno la forma della safety evaluation."""
+
+    class Stato(models.TextChoices):
+        BOZZA = "BOZZA", "Bozza"
+        IN_VERIFICA = "IN_VERIFICA", "In verifica"
+        APPROVATA = "APPROVATA", "Approvata"
+
+    revisione = models.OneToOneField(Revisione, on_delete=models.CASCADE, related_name="validazione")
+    stato = models.CharField(max_length=12, choices=Stato.choices, default=Stato.BOZZA)
+    sistematiche = models.JSONField(
+        default=dict, blank=True, help_text="Esiti delle misure contro i guasti sistematici, versione e firma del programma F."
+    )
+    inviata_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    inviata_il = models.DateTimeField(null=True, blank=True)
+    verificata_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    verificata_il = models.DateTimeField(null=True, blank=True)
+    approvata_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    approvata_il = models.DateTimeField(null=True, blank=True)
+    nota_verifica = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "validazione delle funzioni di sicurezza"
+        verbose_name_plural = "validazioni delle funzioni di sicurezza"
+
+    def __str__(self):
+        return f"Validazione {self.revisione}"
+
+    @property
+    def superata(self):
+        """Esiste una revisione successiva dell'analisi: la validazione si porta avanti in quella."""
+        return self.revisione.analisi.revisioni.filter(numero__gt=self.revisione.numero).exists()
+
+    @property
+    def modificabile(self):
+        return self.stato == self.Stato.BOZZA and not self.superata
+
+    def verifica_modificabile(self):
+        if self.stato != self.Stato.BOZZA:
+            raise RevisioneBloccata(f"La validazione è {self.get_stato_display().lower()}: non è modificabile.")
+        if self.superata:
+            raise RevisioneBloccata("Esiste una revisione più recente dell'analisi: la validazione si compila in quella.")
+
+
+class ProveFunzione(models.Model):
+    """Prove di validazione di una funzione (EN ISO 13849-2). Le prove standard si ricavano dallo schema a blocchi
+    (validazione.js); qui restano esiti, prove aggiunte a mano, chi le ha eseguite e quando."""
+
+    validazione = models.ForeignKey(ValidazioneSicurezza, on_delete=models.CASCADE, related_name="prove")
+    funzione = models.OneToOneField(FunzioneSicurezza, on_delete=models.CASCADE, related_name="prove")
+    dati = models.JSONField(default=dict, blank=True, help_text="esiti, extra, esecutore, data")
+    validata = models.BooleanField(default=False, help_text="Tutte le prove applicabili sono OK.")
+    da_eseguire = models.PositiveSmallIntegerField(default=0)
+    non_ok = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "prove di validazione della funzione"
+        verbose_name_plural = "prove di validazione delle funzioni"
+
+    def __str__(self):
+        return f"Prove {self.funzione}"
+
+    def save(self, *args, **kwargs):
+        self.validazione.verifica_modificabile()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self.validazione.verifica_modificabile()
+        return super().delete(*args, **kwargs)
+
+
 class DocumentoGenerato(models.Model):
     class Tipo(models.TextChoices):
         VALUTAZIONE = "VALUTAZIONE", "Valutazione dei rischi"
         RESIDUI = "RESIDUI", "Elenco dei rischi residui"
         DICHIARAZIONE = "DICHIARAZIONE", "Dichiarazione UE di conformità"
+        FUNZIONI = "FUNZIONI", "Relazione funzioni di sicurezza"
 
     revisione = models.ForeignKey(Revisione, on_delete=models.PROTECT, related_name="documenti")
     tipo = models.CharField(max_length=15, choices=Tipo.choices)

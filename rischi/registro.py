@@ -27,6 +27,8 @@ MODELLI_REGISTRATI = (
     m.ApplicabilitaRequisito,
     m.FunzioneSicurezza,
     m.ValutazioneFunzione,
+    m.ValidazioneSicurezza,
+    m.ProveFunzione,
     m.ArticoloSicurezza,
     m.Modulo,
     m.Figura,
@@ -41,7 +43,10 @@ MODELLI_REGISTRATI = (
 )
 
 
-_CONTENUTI = (m.SchedaAnalisi, m.MisuraAnalisi, m.ApplicabilitaRequisito, m.FunzioneSicurezza, m.ValutazioneFunzione)
+_CONTENUTI = (
+    m.SchedaAnalisi, m.MisuraAnalisi, m.ApplicabilitaRequisito, m.FunzioneSicurezza, m.ValutazioneFunzione,
+    m.ValidazioneSicurezza, m.ProveFunzione,
+)
 
 
 class senza_registro_contenuti:

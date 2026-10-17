@@ -1595,7 +1595,7 @@ class FunzioniSicurezzaTest(BaseConLibreria):
         self.funzione.misure.add(self.misura)
         self.valutazione = ValutazioneFunzione.objects.create(
             funzione=self.funzione, dettaglio={"sottosistemi": [{"nome": "Interruttore"}], "validazione": {"esiti": {}}},
-            pl="d", pfh=42.9, esito=True, validata=True,
+            pl="d", pfh=42.9, esito=True,
         )
 
     def approva(self, rev):
@@ -1642,7 +1642,6 @@ class FunzioniSicurezzaTest(BaseConLibreria):
         self.assertEqual(misura.scheda.revisione, rev1)
         self.assertEqual(misura.testo, self.misura.testo)
         self.assertEqual(funzione.valutazione.dettaglio, self.valutazione.dettaglio)
-        self.assertTrue(funzione.valutazione.validata)
         # La revisione approvata resta com'era
         self.assertEqual(list(self.rev.funzioni.get().misure.all()), [self.misura])
 
@@ -1651,7 +1650,6 @@ class FunzioniSicurezzaTest(BaseConLibreria):
         copia = servizi.crea_analisi_da_copia(self.nuova_macchina("26-04"), self.rev, self.compilatore)
         funzione = copia.revisione_corrente.funzioni.get()
         self.assertEqual(funzione.misure.get().scheda.revisione, copia.revisione_corrente)
-        self.assertFalse(funzione.valutazione.validata)
         self.assertNotIn("validazione", funzione.valutazione.dettaglio)
         self.assertEqual(funzione.valutazione.pl, "d")
 
@@ -1903,3 +1901,199 @@ class CalcoloPLTest(BaseConLibreria):
         self.assertEqual(self.salva({"sottosistemi": "rotto"}).status_code, 400)
         self.client.force_login(self.verificatore)
         self.assertContains(self.client.get(self.url), "Sola lettura")
+
+
+class ValidazioneTest(BaseConLibreria):
+    """Fase 4: prove di validazione (EN ISO 13849-2), misure contro i guasti sistematici, flusso proprio e relazione."""
+
+    def setUp(self):
+        from .models import ArticoloSicurezza, FunzioneSicurezza
+
+        self.analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
+        self.rev = self.analisi.revisione_corrente
+        self.funzione = FunzioneSicurezza.objects.create(revisione=self.rev, nome="Porta di carico", s="S2", f="F1", p="P2")
+        for chiave, tipo in (("fdi", "sensore"), ("fcpu", "logica"), ("sto", "attuatore")):
+            ArticoloSicurezza.objects.create(
+                chiave=chiave, codice=chiave.upper(), descrizione=f"Articolo {chiave}", tipo=tipo, pfh=10,
+                fonte="Certificato", verificato=chiave != "sto",
+            )
+        blocco = lambda ruolo, chiave: {
+            "id": chiave, "nome": chiave.upper(), "ruolo": ruolo, "percorso": "", "metodo": "pfh", "categoria": None,
+            "componenti": [{"articoloId": chiave, "qty": 1}], "ccf": {}, "pfhK1": None,
+        }
+        self.dettaglio = {"sottosistemi": [blocco("rilevamento", "fdi"), blocco("logica", "fcpu"), blocco("attuazione", "sto")]}
+        servizi.salva_valutazione(self.funzione, self.dettaglio, {}, self.compilatore)
+        self.url_prove = reverse("prove_funzione", args=[self.funzione.pk])
+        self.url_validazione = reverse("validazione", args=[self.rev.pk])
+        # Prove standard ricavate dallo schema: funzionale, tempo, reset e i parametri dei tre blocchi "PFH da certificato"
+        self.chiavi = ["funz:", "tempo", "reset", "param:fdi", "param:fcpu", "param:sto"]
+
+    def post(self, url, corpo, utente=None):
+        import json
+
+        self.client.force_login(utente or self.compilatore)
+        return self.client.post(url, json.dumps(corpo), content_type="application/json")
+
+    def tutte_ok(self, **altro):
+        return {"esiti": {k: {"esito": "ok"} for k in self.chiavi}, "esecutore": "M. Rossi", "data": "2026-10-17", **altro}
+
+    def approva_analisi(self, rev=None):
+        rev = rev or self.rev
+        servizi.invia_in_verifica(rev, self.compilatore)
+        servizi.segna_verificata(rev, self.verificatore)
+        servizi.approva(rev, self.approvatore)
+        rev.refresh_from_db()
+
+    def test_prove_dallo_schema_e_funzione_validata(self):
+        parziale = {"esiti": {"funz:": {"esito": "ok"}, "tempo": {"esito": "ko", "note": "1,2 s"}}}
+        risposta = self.post(self.url_prove, {"dati": parziale, "prove": [{"key": "inventata"}]})
+        self.assertEqual(risposta.status_code, 200, risposta.content)
+        prove = self.funzione.__class__.objects.get(pk=self.funzione.pk).prove
+        # Il server ricava le prove dallo schema, non dall'elenco inviato dalla pagina
+        self.assertEqual((prove.validata, prove.da_eseguire, prove.non_ok), (False, 4, 1))
+        self.assertEqual(prove.dati["esiti"]["tempo"], {"esito": "ko", "note": "1,2 s"})
+        risposta = self.post(self.url_prove, {"dati": self.tutte_ok(extra=[{"id": "x1", "testo": "Prova a mano", "atteso": "Stop"}])})
+        self.assertIn("1 da eseguire", risposta.json()["messaggio"])
+        prove.refresh_from_db()
+        self.assertEqual((prove.validata, prove.da_eseguire), (False, 1))  # la prova aggiunta non ha esito
+        dati = self.tutte_ok(extra=[{"id": "x1", "testo": "Prova a mano", "atteso": "Stop"}])
+        dati["esiti"]["extra:x1"] = {"esito": "na"}
+        self.assertIn("funzione validata", self.post(self.url_prove, {"dati": dati}).json()["messaggio"])
+        prove.refresh_from_db()
+        self.assertTrue(prove.validata)
+
+    def test_senza_node_vale_elenco_della_pagina(self):
+        from unittest import mock
+
+        with mock.patch("rischi.calcolo.shutil.which", return_value=None):
+            risposta = self.post(self.url_prove, {"dati": {"esiti": {"funz:": {"esito": "ok"}}}, "prove": [{"key": "funz:"}]})
+        self.assertIn("elenco della pagina", risposta.json()["messaggio"])
+        self.assertTrue(self.funzione.__class__.objects.get(pk=self.funzione.pk).prove.validata)
+
+    def test_dati_non_validi_e_ruoli(self):
+        self.assertEqual(self.post(self.url_prove, {"dati": {"esiti": {"funz:": {"esito": "forse"}}}}).status_code, 400)
+        self.assertEqual(self.post(self.url_prove, {"dati": {"data": "domani"}}).status_code, 400)
+        self.assertEqual(self.post(self.url_prove, {"dati": self.tutte_ok()}, self.verificatore).status_code, 403)
+        self.assertEqual(self.post(self.url_validazione, {"dati": {"esiti": {"deenergia": {"esito": "ok"}}}}, self.verificatore).status_code, 403)
+
+    def test_sistematiche(self):
+        risposta = self.post(self.url_validazione, {"dati": {"esiti": {"deenergia": {"esito": "ok"}, "vuota": {}}, "swFirma": "F-CRC 1A2B"}})
+        self.assertEqual(risposta.status_code, 200, risposta.content)
+        self.rev.validazione.refresh_from_db()
+        self.assertEqual(self.rev.validazione.sistematiche, {"esiti": {"deenergia": {"esito": "ok"}}, "swVersione": "", "swFirma": "F-CRC 1A2B"})
+
+    def test_flusso_dopo_l_approvazione_dell_analisi(self):
+        from .models import RevisioneBloccata, ValidazioneSicurezza
+
+        self.post(self.url_prove, {"dati": self.tutte_ok()})
+        servizi.invia_validazione(self.rev, self.compilatore)
+        servizi.verifica_validazione(self.rev, self.verificatore)
+        with self.assertRaisesMessage(ValidationError, "Approva prima la revisione 0"):
+            servizi.approva_validazione(self.rev, self.approvatore)
+        servizi.rimanda_validazione(self.rev, self.verificatore, "Manca la prova di reset")
+        self.approva_analisi()
+        # Analisi approvata e bloccata: le prove si compilano lo stesso
+        self.assertEqual(self.post(self.url_prove, {"dati": self.tutte_ok(esecutore="L. Bianchi")}).status_code, 200)
+        servizi.invia_validazione(self.rev, self.compilatore)
+        servizi.verifica_validazione(self.rev, self.verificatore)
+        doppio = crea_utente("doppio", servizi.COMPILATORE, servizi.APPROVATORE)
+        servizi.rimanda_validazione(self.rev, self.verificatore, "Ricontrolla")
+        servizi.invia_validazione(self.rev, doppio)
+        servizi.verifica_validazione(self.rev, self.verificatore)
+        with self.assertRaises(PermissionDenied):
+            servizi.approva_validazione(self.rev, doppio)
+        servizi.approva_validazione(self.rev, self.approvatore)
+        validazione = ValidazioneSicurezza.objects.get(revisione=self.rev)
+        self.assertEqual(validazione.stato, ValidazioneSicurezza.Stato.APPROVATA)
+        self.assertEqual(self.post(self.url_prove, {"dati": self.tutte_ok()}).status_code, 400)
+        with self.assertRaises(RevisioneBloccata):
+            validazione.prove.get().save()
+
+    def test_nuova_revisione_riparte_dalla_validazione(self):
+        self.post(self.url_prove, {"dati": self.tutte_ok()})
+        self.post(self.url_validazione, {"dati": {"swVersione": "Linea 3 v2"}})
+        self.approva_analisi()
+        rev1 = servizi.nuova_revisione(self.analisi, self.compilatore, "Seconda porta")
+        validazione = rev1.validazione
+        self.assertEqual(validazione.stato, "BOZZA")
+        self.assertEqual(validazione.sistematiche["swVersione"], "Linea 3 v2")
+        prove = rev1.funzioni.get().prove
+        self.assertTrue(prove.validata)
+        self.assertEqual(prove.dati["esecutore"], "M. Rossi")
+        # La validazione della revisione precedente non si tocca più
+        self.assertFalse(self.rev.validazione.modificabile)
+        self.assertEqual(self.post(self.url_prove, {"dati": self.tutte_ok()}).status_code, 400)
+
+    def test_schema_cambiato_ricalcola_i_conteggi(self):
+        self.post(self.url_prove, {"dati": self.tutte_ok()})
+        dettaglio = {"sottosistemi": self.dettaglio["sottosistemi"] + [{
+            "id": "rele", "nome": "Relè", "ruolo": "attuazione", "percorso": "", "metodo": "arch", "categoria": "3",
+            "componenti": [], "ccf": {},
+        }]}
+        servizi.salva_valutazione(self.funzione, dettaglio, {}, self.compilatore)
+        prove = self.funzione.__class__.objects.get(pk=self.funzione.pk).prove
+        self.assertEqual((prove.validata, prove.da_eseguire), (False, 2))  # guasto e cortocircuito del relè
+
+    def test_controlli(self):
+        from .models import FunzioneSicurezza
+
+        FunzioneSicurezza.objects.create(revisione=self.rev, nome="Arresto di emergenza", s="S2", f="F2", p="P1")
+        messaggi = [a.messaggio for a in servizi.controlli(self.rev)]
+        self.assertIn("Funzione di sicurezza «Arresto di emergenza»: PL non ancora calcolato.", messaggi)
+        self.assertIn("1 articoli di sicurezza usati nei calcoli sono ancora da verificare: STO.", messaggi)
+        quadro = servizi.quadro_validazione(self.rev)
+        messaggi = [a.messaggio for a in quadro["anomalie"]]
+        self.assertIn("La revisione 0 dell'analisi non è approvata: la validazione si approva dopo.", messaggi)
+        self.assertIn("Funzione «Porta di carico»: prove di validazione non ancora compilate.", messaggi)
+        self.assertTrue(any(m.startswith("Misure contro i guasti sistematici: 16 senza esito") for m in messaggi), messaggi)
+        self.post(self.url_prove, {"dati": {"esiti": {"funz:": {"esito": "ko"}}}})
+        messaggi = [a.messaggio for a in servizi.quadro_validazione(self.rev)["anomalie"]]
+        self.assertIn("Funzione «Porta di carico»: 5 prove da eseguire.", messaggi)
+        self.assertIn("Funzione «Porta di carico»: 1 prove non OK.", messaggi)
+        self.assertIn("Funzione «Porta di carico»: indicare chi ha eseguito le prove e quando.", messaggi)
+
+    def test_pagine(self):
+        self.client.force_login(self.compilatore)
+        pagina = self.client.get(self.url_validazione)
+        self.assertContains(pagina, 'id="dati-validazione"')
+        self.assertContains(pagina, "Compila le prove")
+        self.assertContains(self.client.get(self.url_prove), "rischi/safety/validazione-pagina.js")
+        self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Validazione e relazione PDF")
+        self.client.force_login(self.verificatore)
+        self.assertContains(self.client.get(self.url_prove), "Sola lettura")
+
+    def test_relazione_pdf(self):
+        import io as _io
+
+        from pypdf import PdfReader
+
+        from .models import DocumentoGenerato
+
+        self.post(self.url_prove, {"dati": self.tutte_ok()})
+        self.client.force_login(self.compilatore)
+        risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "funzioni"]))
+        self.assertEqual(risposta["Content-Type"], "application/pdf")
+        documento = DocumentoGenerato.objects.get(tipo="FUNZIONI")
+        self.assertFalse(documento.definitivo)
+        testo = " ".join(p.extract_text() for p in PdfReader(_io.BytesIO(b"".join(risposta.streaming_content))).pages)
+        for atteso in ("RELAZIONE SULLE FUNZIONI DI", "Porta di carico", "BOZZA", "requisito soddisfatto",
+                       "Funzione validata", "M. Rossi", "17/10/2026", "Articolo sto", "Da verificare", "Schema a blocchi"):
+            self.assertIn(atteso, testo)
+        # Senza Node la relazione non si genera
+        from unittest import mock
+
+        with mock.patch("rischi.calcolo.shutil.which", return_value=None):
+            risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "funzioni"]))
+        self.assertRedirects(risposta, self.url_validazione, fetch_redirect_response=False)
+        # Validazione approvata: documento definitivo
+        self.approva_analisi()
+        servizi.invia_validazione(self.rev, self.compilatore)
+        servizi.verifica_validazione(self.rev, self.verificatore)
+        servizi.approva_validazione(self.rev, self.approvatore)
+        self.client.post(reverse("genera_documento", args=[self.rev.pk, "funzioni"]))
+        self.assertTrue(DocumentoGenerato.objects.filter(tipo="FUNZIONI").latest("generato_il").definitivo)
+        # La dichiarazione UE cita la EN ISO 13849 quando la validazione è approvata
+        from .documenti import norme_applicate
+
+        codici = {n.codice for gruppo in norme_applicate(self.rev) for n in gruppo}
+        self.assertTrue({"EN ISO 13849-1", "EN ISO 13849-2"} <= codici)

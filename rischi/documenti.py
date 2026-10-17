@@ -3,6 +3,7 @@
 - Dichiarazione UE di conformità (Regolamento (UE) 2023/1230, Allegato V parte A)
 - Valutazione dei rischi
 - Elenco dei rischi residui per il manuale
+- Relazione sulle funzioni di sicurezza (EN ISO 13849-1/-2), con flusso di approvazione della validazione
 
 I testi fissi della dichiarazione vanno confrontati con il testo ufficiale del
 Regolamento prima dell'uso: l'applicazione struttura il documento, la
@@ -40,7 +41,20 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from .models import CapitoloValutazione, Esito, Fabbricante, Norma, Revisione, SchedaAnalisi, SoluzioneProtezione
+from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
+
+from . import calcolo
+from .models import (
+    ArticoloSicurezza,
+    CapitoloValutazione,
+    Esito,
+    Fabbricante,
+    Norma,
+    Revisione,
+    SchedaAnalisi,
+    SoluzioneProtezione,
+    ValidazioneSicurezza,
+)
 from .testo import e_formattato, in_reportlab
 
 REGOLAMENTO = "Regolamento (UE) 2023/1230"
@@ -175,7 +189,8 @@ def _pulito(testo):
         return in_reportlab(testo)
     # **testo** scritto nelle schede prima dell'editor esce in grassetto
     testo = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", escape(testo), flags=re.S)
-    return testo.replace("\n", "<br/>")
+    # 10⁻⁹/h del PFH: l'esponente negativo non c'è in tutti i caratteri
+    return testo.replace("\n", "<br/>").replace("10⁻⁹", "10<super>-9</super>")
 
 
 # ---------------------------------------------------------------------------
@@ -442,6 +457,11 @@ def norme_applicate(revisione):
         for misura in scheda.misure.all():
             if misura.norma:
                 norme[misura.norma.pk] = misura.norma
+    # Funzioni di sicurezza calcolate e validate con la validazione approvata
+    validazione = getattr(revisione, "validazione", None)
+    if validazione and validazione.stato == ValidazioneSicurezza.Stato.APPROVATA:
+        for norma in Norma.objects.filter(codice__in=("EN ISO 13849-1", "EN ISO 13849-2")):
+            norme[norma.pk] = norma
     ordinate = sorted(norme.values(), key=lambda n: n.codice)
     return [n for n in ordinate if n.armonizzata], [n for n in ordinate if not n.armonizzata]
 
@@ -953,10 +973,286 @@ def rischi_residui(revisione):
     return doc.salva()
 
 
+# ---------------------------------------------------------------------------
+# Relazione sulle funzioni di sicurezza (EN ISO 13849-1, EN ISO 13849-2)
+# ---------------------------------------------------------------------------
+
+RUOLI = {"rilevamento": "Rilevamento", "comunicazione": "Comunicazione", "logica": "Logica", "attuazione": "Attuazione"}
+COLORI_RUOLO = {"rilevamento": "#0B6BCB", "comunicazione": "#7A5AF8", "logica": "#1A7F4B", "attuazione": "#C2410C"}
+ESITI_PROVA = {"ok": "OK", "ko": "Non OK", "na": "Non applicabile"}
+COLORI_PROVA = {"ok": "#E6F4E7", "ko": "#FDE8E6"}
+METODI = {"arch": "Architettura designata", "pfh": "PFH da certificato"}
+
+
+def _numero(valore, decimali=1):
+    if valore is None:
+        return "–"
+    return f"{valore:,.{decimali}f}".replace(",", " ").replace(".", ",").replace(" ", ".")
+
+
+def _data_testo(testo):
+    """'2026-10-17' → '17/10/2026'; il resto com'è."""
+    if testo and re.fullmatch(r"\d{4}-\d{2}-\d{2}", testo):
+        anno, mese, giorno = testo.split("-")
+        return f"{giorno}/{mese}/{anno}"
+    return testo or ""
+
+
+def _schema_a_blocchi(schema):
+    """Schema a blocchi come nella pagina: un percorso per riga, sottosistemi in serie; i blocchi comuni a tutti
+    i percorsi hanno il bordo tratteggiato."""
+    normale = _carattere_registrato()[0]
+    etichetta = 2.6 * cm if any(r["nome"] for r in schema) else 0
+    massimo = max((len(r["blocchi"]) for r in schema), default=1) or 1
+    freccia = 0.6 * cm
+    larghezza = min(3.6 * cm, (LARGHEZZA - etichetta - freccia * (massimo - 1)) / massimo)
+    altezza_blocco, passo = 1.15 * cm, 1.55 * cm
+    disegno = Drawing(LARGHEZZA, passo * len(schema))
+    caratteri = max(8, int(larghezza / (1.55 * mm)))
+    for i, riga in enumerate(schema):
+        y = passo * (len(schema) - 1 - i) + (passo - altezza_blocco) / 2
+        if riga["nome"]:
+            disegno.add(String(0, y + altezza_blocco / 2 - 3, riga["nome"][:18], fontName=normale, fontSize=8))
+        x = etichetta
+        for j, blocco in enumerate(riga["blocchi"]):
+            colore = colors.HexColor(COLORI_RUOLO.get(blocco["ruolo"], "#5F6B7A"))
+            disegno.add(Rect(x, y, larghezza, altezza_blocco, rx=3, ry=3, fillColor=colors.HexColor("#F7F8FA"),
+                             strokeColor=colors.HexColor("#5F6B7A"), strokeWidth=0.6,
+                             strokeDashArray=[3, 2] if blocco["comune"] else None))
+            disegno.add(Rect(x, y, 1.6 * mm, altezza_blocco, fillColor=colore, strokeColor=None))
+            nome = blocco["nome"] or "–"
+            disegno.add(String(x + 2.6 * mm, y + altezza_blocco - 4.2 * mm, nome[:caratteri] + ("…" if len(nome) > caratteri else ""),
+                               fontName=normale, fontSize=7.5))
+            disegno.add(String(x + 2.6 * mm, y + 2.2 * mm, RUOLI.get(blocco["ruolo"], blocco["ruolo"]).upper(),
+                               fontName=normale, fontSize=5.8, fillColor=colore))
+            x += larghezza
+            if j < len(riga["blocchi"]) - 1:
+                meta = y + altezza_blocco / 2
+                disegno.add(Line(x + 1 * mm, meta, x + freccia - 1.5 * mm, meta, strokeColor=colors.HexColor("#5F6B7A"), strokeWidth=0.8))
+                disegno.add(Polygon([x + freccia - 1.5 * mm, meta + 1.2 * mm, x + freccia - 0.5 * mm, meta, x + freccia - 1.5 * mm, meta - 1.2 * mm],
+                                    fillColor=colors.HexColor("#5F6B7A"), strokeColor=None))
+                x += freccia
+    return disegno
+
+
+def _firme_validazione(doc, validazione, revisione):
+    data = lambda d: f"{d:%d/%m/%Y}" if d else ""
+    doc.tabella(
+        ["", "Nome", "Data", "Firma"],
+        [
+            ["Redatta", _nome(validazione.inviata_da) if validazione.inviata_da else "", data(validazione.inviata_il), ""],
+            ["Verificata", _nome(validazione.verificata_da) if validazione.verificata_da else "", data(validazione.verificata_il), ""],
+            ["Approvata", _nome(validazione.approvata_da) if validazione.approvata_da else "", data(validazione.approvata_il), ""],
+        ],
+        [3, 6, 3, 5],
+    )
+    if revisione.approvata_da:
+        doc.p(
+            f"Funzioni, PLr e calcolo del PL fanno parte della valutazione dei rischi rev. {revisione.numero}, "
+            f"approvata da {_nome(revisione.approvata_da)} il {revisione.approvata_il:%d/%m/%Y}."
+        )
+    else:
+        doc.p(f"Funzioni, PLr e calcolo del PL: valutazione dei rischi rev. {revisione.numero}, non ancora approvata.")
+
+
+def _capitolo_funzione(doc, numero, riga, articoli):
+    funzione, r = riga.funzione, riga.risultato
+    valutazione = getattr(funzione, "valutazione", None)
+    doc.titoletto(f"{numero}. {funzione.nome}")
+    misure = [f"{m.scheda.codice or 'scheda'}: {m.testo}" for m in funzione.misure.all()]
+    doc.dettagli([
+        ("Descrizione", funzione.descrizione),
+        ("Misure di protezione delle schede", "\n".join(misure) or "Funzione non collegata a una scheda (inserita a mano)."),
+    ])
+
+    doc.titoletto(f"{numero}.1 PLr dal grafo del rischio (EN ISO 13849-1, allegato A)", 2)
+    doc.tabella(None, [
+        ["Gravità della lesione", funzione.get_s_display() or "–"],
+        ["Frequenza e/o durata dell'esposizione", funzione.get_f_display() or "–"],
+        ["Possibilità di evitare il pericolo", funzione.get_p_display() or "–"],
+        ["PLr", funzione.plr or "–"],
+    ], [6, 11])
+
+    doc.titoletto(f"{numero}.2 Schema a blocchi", 2)
+    if r["schema"] and any(riga_s["blocchi"] for riga_s in r["schema"]):
+        doc.storia.append(_schema_a_blocchi(r["schema"]))
+        doc.spazio(1)
+        doc.p("Ogni riga è un percorso; i sottosistemi sono in serie. Bordo tratteggiato: sottosistema comune a tutti i percorsi.")
+    else:
+        doc.p("Schema a blocchi non compilato.")
+
+    doc.titoletto(f"{numero}.3 Sottosistemi e componenti", 2)
+    if r["sottosistemi"]:
+        doc.tabella(
+            ["Sottosistema", "Ruolo", "Metodo", "Cat.", "MTTFd [anni]", "DCavg [%]", "CCF", "PFH [10⁻⁹/h]", "PL"],
+            [[
+                ss["nome"] + (f" ({ss['percorso']})" if ss["percorso"] else ""), RUOLI.get(ss["ruolo"], ss["ruolo"]),
+                METODI.get(ss["metodo"], ss["metodo"]), ss["categoria"] if ss["metodo"] == "arch" else "–",
+                _numero(ss["mttfd"]) if ss["metodo"] == "arch" else "–", _numero(ss["dcavg"]) if ss["metodo"] == "arch" else "–",
+                ss["ccf"] if ss["ccf"] is not None else "–",
+                _numero(ss["pfh"], 2) + (" (a mano)" if ss["pfhManuale"] else ""), ss["pl"] or "–",
+            ] for ss in r["sottosistemi"]],
+            [3.8, 2.3, 2.6, 1.2, 1.8, 1.6, 1.1, 2.2, 1],
+        )
+        componenti = []
+        for ss in r["sottosistemi"]:
+            for c in ss["componenti"]:
+                a = articoli.get(c["articoloId"])
+                componenti.append([
+                    ss["nome"], f"{a.codice} – {a.descrizione}" if a else f"{c['articoloId']} (non in libreria)",
+                    a.produttore if a else "", c["qty"], c["canale"] if ss["metodo"] == "arch" else "–",
+                    f"{_numero(c['dc'], 0)} %" if ss["metodo"] == "arch" and c["dc"] is not None else "–",
+                ])
+        if componenti:
+            doc.tabella(["Sottosistema", "Articolo", "Produttore", "Q.tà", "Canale", "DC"], componenti, [3.5, 6.6, 2.8, 1.1, 1.7, 1.3])
+        fonti_k1 = sorted({ss["fonteK1"] for ss in r["sottosistemi"] if ss["fonteK1"]})
+        if fonti_k1:
+            doc.p("PFH dei sottosistemi in architettura designata: " + "; ".join(fonti_k1) + ".")
+    else:
+        doc.p("Nessun sottosistema.")
+
+    doc.titoletto(f"{numero}.4 Verifica PL ≥ PLr", 2)
+    if len(r["percorsi"]) > 1:
+        doc.tabella(
+            ["Percorso", "PFH [10⁻⁹/h]", "PL"],
+            [[p["nome"] + (" (peggiore)" if p["peggiore"] else ""), _numero(p["pfh"], 2), p["pl"] or "–"] for p in r["percorsi"]],
+            [8, 4, 2],
+        )
+    pl = r["pl"] if r["pl"] in ("a", "b", "c", "d", "e") else None
+    if r["ok"]:
+        testo, colore = f"PL {pl} ≥ PLr {r['plr']}: requisito soddisfatto (PFH {_numero(r['pfh'], 2)} · 10⁻⁹/h).", "#E6F4E7"
+    else:
+        testo = f"PL {pl or 'non calcolabile'}, PLr {r['plr'] or '–'}: requisito non dimostrato."
+        colore = "#FDE8E6"
+    doc.riquadro(testo, colore)
+    doc.elenco([f"Errore: {e}" for e in r["errori"]] + [f"Avviso: {a}" for a in r["avvisi"]])
+    if valutazione and valutazione.calcolata_il:
+        doc.p(f"Calcolo salvato il {valutazione.calcolata_il:%d/%m/%Y}; mission time {valutazione.dettaglio.get('missionTime') or calcolo.MISSION_TIME} anni. "
+              "Risultati ricalcolati per questa relazione con lo stesso motore della pagina.")
+
+    doc.titoletto(f"{numero}.5 Validazione (EN ISO 13849-2)", 2)
+    dati = funzione.prove.dati if hasattr(funzione, "prove") else {}
+    righe, sfondi = [], {}
+    for indice, p in enumerate(riga.prove, start=1):
+        esito = p.get("esito", "")
+        righe.append([indice, p.get("testo") or "–", p.get("atteso", ""), ESITI_PROVA.get(esito, ""), p.get("note", "")])
+        if esito in COLORI_PROVA:
+            sfondi[(3, indice)] = COLORI_PROVA[esito]
+    doc.tabella(["N.", "Prova", "Risultato atteso", "Esito", "Note"], righe, [0.8, 6, 5, 2, 3.5], sfondi)
+    esito = "Funzione validata: tutte le prove applicabili sono OK." if riga.riepilogo["completa"] else (
+        f"Validazione non completa: {riga.riepilogo['aperte']} prove da eseguire, {riga.riepilogo['ko']} non OK."
+    )
+    doc.p(esito)
+    doc.spazio(2)
+    doc.tabella(None, [[
+        f"Prove eseguite da: {dati.get('esecutore') or ''}\n\n", f"Data: {_data_testo(dati.get('data'))}", "Firma:",
+    ]], [7, 4, 6])
+
+
+def relazione_funzioni(revisione):
+    from .servizi import quadro_validazione
+
+    quadro = quadro_validazione(revisione)
+    if quadro["sistematiche"] is None:
+        raise calcolo.CalcoloNonRiuscito("Node non è installato sul server.")
+    validazione, righe = quadro["validazione"], quadro["righe"]
+    macchina = revisione.analisi.macchina
+    commessa = macchina.commessa
+    approvata = validazione.stato == ValidazioneSicurezza.Stato.APPROVATA
+    doc = Pdf(
+        f"Relazione funzioni di sicurezza – commessa {commessa.numero} rev. {revisione.numero}",
+        "" if approvata else "BOZZA – validazione non approvata, documento non valido",
+    )
+
+    fabbricante = Fabbricante.objects.first()
+    logo = _logo(fabbricante)
+    if logo:
+        doc.storia.append(logo)
+    elif fabbricante:
+        doc.p(fabbricante.ragione_sociale, "titolo")
+    doc.spazio(24)
+    doc.p("RELAZIONE SULLE FUNZIONI DI SICUREZZA", "copertina")
+    doc.p("EN ISO 13849-1 (progettazione e calcolo del PL) – EN ISO 13849-2 (validazione)", "centro")
+    doc.spazio(12)
+    doc.tabella(None, [
+        ["Commessa", commessa.numero],
+        ["Cliente", str(commessa.cliente)],
+        ["Macchina", macchina.denominazione],
+        ["Modello", macchina.modello or "–"],
+        ["Matricola", macchina.matricola or "–"],
+        ["Valutazione dei rischi", f"rev. {revisione.numero} – {revisione.get_stato_display().lower()}"],
+    ], [5, 13])
+    doc.spazio(8)
+    _firme_validazione(doc, validazione, revisione)
+    doc.nuova_pagina()
+
+    doc.titoletto("Metodo")
+    doc.p(
+        "Per ogni funzione di sicurezza: PLr dal grafo del rischio (EN ISO 13849-1, allegato A); schema a blocchi dei "
+        "sottosistemi in serie, con i percorsi alternativi; PL di ogni sottosistema in architettura designata (MTTFd, "
+        "allegati C e D; DCavg, allegato E; CCF, allegato F; PFH dalla tabella K.1) oppure dal PFH del certificato del "
+        "costruttore; PL della funzione dal percorso peggiore e confronto con il PLr. La validazione (EN ISO 13849-2) "
+        "comprende le prove sulla macchina e le misure contro i guasti sistematici (EN ISO 13849-1, allegato G)."
+    )
+    doc.titoletto("Riepilogo delle funzioni")
+    righe_riepilogo, sfondi = [], {}
+    for indice, riga in enumerate(righe, start=1):
+        f, r = riga.funzione, riga.risultato
+        pl = r["pl"] if r["pl"] in ("a", "b", "c", "d", "e") else "–"
+        misure = ", ".join(sorted({m.scheda.codice for m in f.misure.all() if m.scheda.codice})) or "–"
+        validata = "Validata" if riga.riepilogo["completa"] else "Non completa"
+        righe_riepilogo.append([indice, f.nome, misure, f.plr or "–", pl, _numero(r["pfh"], 2), "Sì" if r["ok"] else "No", validata])
+        sfondi[(6, indice)] = "#E6F4E7" if r["ok"] else "#FDE8E6"
+        sfondi[(7, indice)] = "#E6F4E7" if riga.riepilogo["completa"] else "#FFF6D6"
+    if righe_riepilogo:
+        doc.tabella(["N.", "Funzione", "Schede", "PLr", "PL", "PFH [10⁻⁹/h]", "PL ≥ PLr", "Validazione"],
+                    righe_riepilogo, [0.8, 5.5, 2.5, 1, 1, 2.2, 1.6, 2.4], sfondi)
+    else:
+        doc.p("La revisione non ha funzioni di sicurezza.")
+
+    chiavi = {c["articoloId"] for riga in righe for ss in riga.risultato["sottosistemi"] for c in ss["componenti"]}
+    articoli = {a.chiave: a for a in ArticoloSicurezza.objects.filter(chiave__in=chiavi - {None, ""})}
+    for indice, riga in enumerate(righe, start=1):
+        doc.nuova_pagina()
+        _capitolo_funzione(doc, indice, riga, articoli)
+
+    doc.nuova_pagina()
+    doc.titoletto("Misure contro i guasti sistematici (EN ISO 13849-1, allegato G)")
+    sis = validazione.sistematiche or {}
+    esiti = sis.get("esiti") or {}
+    for gruppo in quadro["sistematiche"]:
+        doc.titoletto(gruppo["gruppo"], 3)
+        sfondi, righe_m = {}, []
+        for indice, (chiave, testo) in enumerate(gruppo["misure"], start=1):
+            e = esiti.get(chiave) or {}
+            righe_m.append([testo, ESITI_PROVA.get(e.get("esito", ""), ""), e.get("note", "")])
+            if e.get("esito") in COLORI_PROVA:
+                sfondi[(1, indice)] = COLORI_PROVA[e["esito"]]
+        doc.tabella(["Misura", "Esito", "Note / riferimento"], righe_m, [9, 2.2, 5.8], sfondi)
+    doc.coppia("Progetto software / versione", sis.get("swVersione"))
+    doc.coppia("Firma del programma F", sis.get("swFirma"))
+
+    doc.titoletto("Componenti e fonti dei dati")
+    if articoli:
+        doc.tabella(
+            ["Articolo", "Produttore", "PFH [10⁻⁹/h]", "B10d", "MTTFd [anni]", "Fonte", "Verificato"],
+            [[
+                f"{a.codice} – {a.descrizione}", a.produttore, _numero(a.pfh, 2) if a.pfh is not None else "–",
+                _numero(a.b10d, 0) if a.b10d is not None else "–", _numero(a.mttfd) if a.mttfd is not None else "–",
+                a.fonte or "manca la fonte", "Sì" if a.verificato else "Da verificare",
+            ] for a in sorted(articoli.values(), key=lambda a: (a.produttore, a.codice))],
+            [4.6, 2.4, 1.8, 1.6, 1.8, 3.9, 2.3],
+        )
+    else:
+        doc.p("Nessun componente scelto.")
+    return doc.salva()
+
+
 GENERATORI = {
     "DICHIARAZIONE": dichiarazione,
     "VALUTAZIONE": valutazione,
     "RESIDUI": rischi_residui,
+    "FUNZIONI": relazione_funzioni,
 }
 
 

@@ -1,0 +1,97 @@
+{% extends "rischi/base.html" %}
+{% load static %}
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'rischi/safety/valutazione.css' %}">{% endblock %}
+{% block titolo %}Validazione · {{ analisi.macchina.commessa.numero }} rev. {{ revisione.numero }}{% endblock %}
+{% block contenuto %}
+{% with c=analisi.macchina.commessa v=validazione %}
+<p><a href="{% url 'analisi_revisione' analisi.pk revisione.numero %}#funzioni">← Commessa {{ c.numero }}, revisione {{ revisione.numero }}</a></p>
+<div class="intestazione">
+  <div>
+    <h1>Validazione delle funzioni di sicurezza</h1>
+    <p class="sotto">EN ISO 13849-2 e misure contro i guasti sistematici (EN ISO 13849-1, all. G) · commessa {{ c.numero }} · {{ analisi.macchina.modello|default:analisi.macchina.denominazione }} · analisi rev. {{ revisione.numero }} ({{ revisione.get_stato_display|lower }})</p>
+  </div>
+  <span class="stato grande {{ v.stato|lower }}">{% if v.pk %}{{ v.get_stato_display }}{% else %}Da compilare{% endif %}</span>
+</div>
+
+<section class="riquadro griglia-2">
+  <div>
+    <h2>Flusso</h2>
+    <p class="sotto">Le prove si fanno a macchina finita: la validazione si approva per conto suo, dopo l'analisi, senza riaprire la revisione.</p>
+    <dl class="dati">
+      <dt>Compilata da</dt><dd>{% if v.inviata_da %}{{ v.inviata_da.get_full_name|default:v.inviata_da.username }} · {{ v.inviata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      <dt>Verificata da</dt><dd>{% if v.verificata_da %}{{ v.verificata_da.get_full_name|default:v.verificata_da.username }} · {{ v.verificata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      <dt>Approvata da</dt><dd>{% if v.approvata_da %}{{ v.approvata_da.get_full_name|default:v.approvata_da.username }} · {{ v.approvata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+    </dl>
+    {% if v.nota_verifica and v.stato == "BOZZA" %}<div class="messaggio warning"><strong>Da correggere:</strong> {{ v.nota_verifica|linebreaksbr }}</div>{% endif %}
+    {% if v.pk and v.superata %}<div class="messaggio info">Esiste una revisione più recente dell'analisi: la validazione prosegue in quella.</div>{% endif %}
+  </div>
+  <div class="azioni">
+    <h2>Azioni</h2>
+    {% if v.stato == "BOZZA" and v.modificabile and puo.compilare %}
+      <form method="post" action="{% url 'azione_validazione' revisione.pk 'invia' %}">{% csrf_token %}<button class="primario">Invia in verifica</button></form>
+    {% elif v.stato == "IN_VERIFICA" %}
+      {% if puo.verificare and not v.verificata_da %}
+      <form method="post" action="{% url 'azione_validazione' revisione.pk 'verifica' %}">{% csrf_token %}<button class="primario">Segna come verificata</button></form>
+      {% endif %}
+      {% if puo.approvare and v.verificata_da %}
+      <form method="post" action="{% url 'azione_validazione' revisione.pk 'approva' %}">{% csrf_token %}<button class="primario">Approva</button></form>
+      {% endif %}
+      {% if puo.verificare or puo.approvare %}
+      <form method="post" action="{% url 'azione_validazione' revisione.pk 'rimanda' %}">{% csrf_token %}
+        <textarea name="nota" rows="2" placeholder="Cosa va corretto"></textarea>
+        <button>Rimanda in bozza</button></form>
+      {% endif %}
+    {% elif v.stato == "APPROVATA" %}
+      <p class="sotto">Validazione approvata: sola lettura.</p>
+    {% else %}
+      <p class="sotto">Nessuna azione disponibile per il tuo ruolo.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if anomalie and v.stato != "APPROVATA" %}
+<details class="riquadro anomalie" {% if v.stato == "IN_VERIFICA" %}open{% endif %}>
+  <summary>Controlli: {{ anomalie|length }} segnalazioni</summary>
+  <ul>{% for a in anomalie %}<li>{{ a.messaggio }}</li>{% endfor %}</ul>
+</details>
+{% endif %}
+
+<section class="riquadro" id="prove">
+  <h2>Prove di validazione per funzione (EN ISO 13849-2)</h2>
+  {% if senza_motore %}<p class="messaggio warning">Node non è installato sul server: l'elenco aggiornato delle prove si vede solo nella pagina di ogni funzione e la relazione non si può generare.</p>{% endif %}
+  {% if righe %}
+  <table class="tabella"><thead><tr><th>Funzione</th><th>PLr</th><th>PL</th><th>Prove</th><th>Eseguite da</th><th></th></tr></thead><tbody>
+  {% for r in righe %}{% with f=r.funzione p=r.riepilogo %}<tr>
+    <td><a href="{% url 'funzione' f.pk %}">{{ f.nome }}</a></td>
+    <td>{{ f.plr|default:"–" }}</td>
+    <td>{% if f.valutazione.pl %}PL {{ f.valutazione.pl }}{% if f.valutazione.esito %} ✓{% elif f.valutazione.esito is False %} ✗{% endif %}{% else %}–{% endif %}</td>
+    <td>{% if p.completa %}<span class="etichetta ok">validata</span>{% elif not f.prove %}<span class="sotto">da compilare</span>{% else %}{% if p.totali is not None %}{{ p.ok }} OK su {{ p.totali }}{% endif %}{% if p.ko %} · <strong>{{ p.ko }} non OK</strong>{% endif %}{% if p.aperte %} · {{ p.aperte }} da eseguire{% endif %}{% endif %}</td>
+    <td>{{ r.eseguite|default:"–" }}</td>
+    <td><a class="bottone" href="{% url 'prove_funzione' f.pk %}">{% if modificabile %}Compila le prove{% else %}Vedi le prove{% endif %}</a></td>
+  </tr>{% endwith %}{% endfor %}
+  </tbody></table>
+  {% else %}<p class="sotto">La revisione non ha funzioni di sicurezza.</p>{% endif %}
+</section>
+
+<section class="riquadro">
+  <h2>Misure contro i guasti sistematici (EN ISO 13849-1, allegato G)</h2>
+  {% if not modificabile %}<p class="sotto">Sola lettura: la validazione è {% if v.pk %}{{ v.get_stato_display|lower }}{% else %}da compilare{% endif %} o non hai il ruolo di compilatore.</p>{% endif %}
+  {{ dati|json_script:"dati-validazione" }}
+  <div id="validazione" class="valutazione"></div>
+</section>
+
+<section class="riquadro">
+  <h2>Relazione funzioni di sicurezza</h2>
+  <p class="sotto">Riepilogo, un capitolo per funzione (PLr, schema a blocchi, sottosistemi, verifica PL ≥ PLr, prove di validazione), misure contro i guasti sistematici, componenti e fonti. Calcoli e prove sono rifatti dal server con lo stesso motore della pagina.{% if v.stato != "APPROVATA" %} La validazione non è approvata: il documento esce con la scritta BOZZA.{% endif %}</p>
+  <form method="post" action="{% url 'genera_documento' revisione.pk 'funzioni' %}">{% csrf_token %}<button>Genera la relazione PDF</button></form>
+  {% if documenti %}
+  <table class="tabella"><thead><tr><th>Documento</th><th>Generato</th><th></th></tr></thead><tbody>
+  {% for d in documenti %}<tr><td>{{ d.get_tipo_display }}{% if not d.definitivo %} <span class="etichetta">bozza</span>{% endif %}</td><td>{{ d.generato_il|date:"d/m/Y H:i" }} · {{ d.generato_da.get_full_name|default:d.generato_da.username }}</td><td><a href="{% url 'scarica_documento' d.pk %}">Scarica</a></td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+</section>
+{% endwith %}
+<script src="{% static 'rischi/safety/schema.js' %}"></script>
+<script src="{% static 'rischi/safety/validazione.js' %}"></script>
+<script src="{% static 'rischi/safety/validazione-pagina.js' %}"></script>
+{% endblock %}
