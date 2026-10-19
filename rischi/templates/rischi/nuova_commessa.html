@@ -1,5 +1,6 @@
 {% extends "rischi/base.html" %}
 {% block titolo %}Nuova commessa{% endblock %}
+{% block percorso %} &rsaquo; Nuova commessa{% endblock %}
 {% block contenuto %}
 <h1>Nuova commessa</h1>
 <form method="post" class="modulo">{% csrf_token %}

@@ -1,6 +1,7 @@
 {% extends "rischi/base.html" %}
 {% load rischi_extra %}
 {% block titolo %}{{ analisi.macchina.commessa.numero }} rev. {{ revisione.numero }}{% endblock %}
+{% block percorso %} &rsaquo; Commessa {{ analisi.macchina.commessa.numero }} · rev. {{ revisione.numero }}{% endblock %}
 {% block contenuto %}
 {% with m=analisi.macchina c=analisi.macchina.commessa %}
 <div class="intestazione">

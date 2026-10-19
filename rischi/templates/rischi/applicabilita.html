@@ -1,7 +1,7 @@
 {% extends "rischi/base.html" %}
 {% block titolo %}Applicabilità requisiti{% endblock %}
+{% block percorso %}{% include "rischi/_percorso_commessa.html" with r=revisione %} &rsaquo; Applicabilità dei requisiti{% endblock %}
 {% block contenuto %}
-<p><a href="{% url 'analisi' revisione.analisi_id %}">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
 <h1>Applicabilità dei requisiti</h1>
 <p class="sotto">Ogni requisito deve avere almeno una scheda oppure essere segnato come non applicabile con la motivazione.</p>
 <form method="post">{% csrf_token %}

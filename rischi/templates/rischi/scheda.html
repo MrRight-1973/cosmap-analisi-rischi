@@ -2,8 +2,8 @@
 {% load rischi_extra static %}
 {% block extrahead %}{{ block.super }}<script src="{% static 'rischi/scheda.js' %}" defer></script>{% endblock %}
 {% block titolo %}Scheda {{ scheda.codice|default:"nuova" }}{% endblock %}
+{% block percorso %}{% include "rischi/_percorso_commessa.html" with r=revisione %} &rsaquo; Scheda {{ scheda.codice|default:"nuova" }}{% endblock %}
 {% block contenuto %}
-<p><a href="{% url 'analisi' revisione.analisi_id %}">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
 <h1>Scheda {{ scheda.codice|default:"nuova" }}{% if scheda.pk %} · {{ scheda.requisito.codice }} {{ scheda.requisito.titolo }}{% endif %}</h1>
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
 <form method="post" class="modulo" id="form-scheda">{% csrf_token %}

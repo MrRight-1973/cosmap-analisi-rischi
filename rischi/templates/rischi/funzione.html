@@ -2,8 +2,8 @@
 {% load rischi_extra static %}
 {% block extrahead %}{{ block.super }}<script src="{% static 'rischi/grafo.js' %}" defer></script>{% endblock %}
 {% block titolo %}{{ funzione.nome|default:"Nuova funzione di sicurezza" }}{% endblock %}
+{% block percorso %}{% include "rischi/_percorso_commessa.html" with r=revisione ancora="#funzioni" %} &rsaquo; {% if funzione.pk %}Funzione «{{ funzione.nome }}»{% else %}Nuova funzione{% endif %}{% endblock %}
 {% block contenuto %}
-<p><a href="{% url 'analisi' revisione.analisi_id %}#funzioni">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
 <h1>{% if funzione.pk %}Funzione di sicurezza · {{ funzione.nome }}{% else %}Nuova funzione di sicurezza{% endif %}</h1>
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
 <p class="comandi-sezioni"><button type="button" data-sezioni="apri">Apri tutte le sezioni</button> <button type="button" data-sezioni="chiudi">Chiudi tutte</button></p>

@@ -2,9 +2,9 @@
 {% load static %}
 {% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'rischi/safety/valutazione.css' %}">{% endblock %}
 {% block titolo %}Verifiche elettriche · {{ verifica.quadro }}{% endblock %}
+{% block percorso %}{% include "rischi/_percorso_commessa.html" with r=revisione ancora="#verifiche-elettriche" %} &rsaquo; Verifiche elettriche · {{ verifica.quadro }}{% endblock %}
 {% block contenuto %}
 {% with c=analisi.macchina.commessa v=verifica %}
-<p><a href="{% url 'analisi_revisione' analisi.pk revisione.numero %}#verifiche-elettriche">← Commessa {{ c.numero }}, revisione {{ revisione.numero }}</a></p>
 <div class="intestazione">
   <div>
     <h1>Verifiche elettriche · {{ v.quadro }}</h1>
