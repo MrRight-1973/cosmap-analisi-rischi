@@ -402,6 +402,7 @@ def _salva_funzione(request, funzione, revisione):
             messages.success(request, f"Funzione «{funzione.nome}» salvata" + (f", PLr {funzione.plr}." if funzione.plr else "."))
             return redirect(f"{reverse('analisi', args=[revisione.analisi_id])}#funzioni")
     schede = {m.scheda for m in funzione.misure.select_related("scheda__revisione__metodo")} if funzione.pk else set()
+    grafico = _grafico_pl(funzione) if funzione.pk and hasattr(funzione, "valutazione") else ""
     return render(
         request,
         "rischi/funzione.html",
@@ -410,9 +411,26 @@ def _salva_funzione(request, funzione, revisione):
             "schede": sorted(schede, key=lambda s: s.codice),
             "puo_funzione_tipo": funzione.pk and request.user.has_perm("rischi.add_funzionetipo"),
             "suggeriti": suggeriti,
+            "grafico_pl": grafico,
             "moduli_macchina": revisione.analisi.macchina.moduli.filter(attivo=True),
         },
     )
+
+
+def _grafico_pl(funzione):
+    """SVG del PL raggiunto: con il motore di calcolo anche percorsi e sottosistemi, altrimenti solo la funzione."""
+    from django.utils.safestring import mark_safe
+
+    from . import calcolo, grafico_pl
+
+    valutazione = funzione.valutazione
+    try:
+        r = calcolo.calcola(funzione, valutazione.dettaglio)
+        return mark_safe(grafico_pl.svg(r.get("pl"), r.get("pfh"), funzione.plr, r.get("percorsi") or [], r.get("sottosistemi") or []))
+    except Exception:  # senza Node o con uno schema incompleto resta il risultato salvato
+        if valutazione.pfh is None:
+            return ""
+        return mark_safe(grafico_pl.svg(valutazione.pl, valutazione.pfh, funzione.plr))
 
 
 @login_required

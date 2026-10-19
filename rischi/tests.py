@@ -2484,3 +2484,38 @@ class LibreriaSicurezzaTest(TestCase):
         # Rilanciare l'import non duplica
         call_command("importa_libreria", str(LIBRERIA.parent / "Libreria_nuova_Cosmap.xlsx"), stdout=io.StringIO())
         self.assertEqual(FunzioneTipo.objects.filter(nome=cabina.nome).count(), 1)
+
+
+class PaginaFunzioneTest(TestCase):
+    """Pagina della funzione: sezioni apribili e grafico del PL."""
+
+    def test_grafico_pl(self):
+        from . import grafico_pl
+
+        svg = grafico_pl.svg("d", 52.7, "d", [{"nome": "Barriere", "pfh": 31.9, "pl": "d"}, {"nome": "Ripari", "pfh": 28, "pl": "d"}],
+                             [{"nome": "Logica", "pfh": 1, "pl": "e"}])
+        self.assertIn("PL d (PLr)", svg)
+        self.assertIn("Percorso Barriere", svg)
+        self.assertIn("5,27·10⁻⁸/h", svg)
+        self.assertEqual(svg.count("<circle"), 4)
+
+    def test_sezioni_e_grafico_nella_pagina(self):
+        from .models import FunzioneSicurezza, ValutazioneFunzione
+
+        call_command("importa_libreria", str(LIBRERIA), stdout=io.StringIO())
+        compilatore = crea_utente("mario", servizi.COMPILATORE)
+        commessa = Commessa.objects.create(
+            numero="26-90", cliente=Cliente.objects.create(ragione_sociale="Prova"), anno=2026,
+            riferimento=RiferimentoNormativo.objects.get(),
+        )
+        macchina = Macchina.objects.create(commessa=commessa, denominazione="Cella")
+        macchina.moduli.set(servizi.moduli_proposti())
+        rev = servizi.crea_analisi_da_libreria(macchina, compilatore).revisione_corrente
+        funzione = FunzioneSicurezza.objects.create(revisione=rev, nome="Porte", s="S2", f="F1", p="P2")
+        self.client.force_login(compilatore)
+        pagina = self.client.get(reverse("funzione", args=[funzione.pk]))
+        self.assertContains(pagina, 'class="sezione"', count=5)
+        self.assertContains(pagina, "Apri tutte le sezioni")
+        self.assertNotContains(pagina, "grafico-pl")
+        ValutazioneFunzione.objects.create(funzione=funzione, dettaglio={}, pl="d", pfh=120.0, esito=True)
+        self.assertContains(self.client.get(reverse("funzione", args=[funzione.pk])), "grafico-pl")
