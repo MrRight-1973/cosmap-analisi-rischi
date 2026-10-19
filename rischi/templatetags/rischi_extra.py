@@ -45,3 +45,11 @@ def dati_soluzioni():
 
     dati = {str(s.pk): {"tipo": s.tipo, "testo": s.testo or s.nome} for s in SoluzioneProtezione.objects.all()}
     return json_script(dati, "dati-soluzioni")
+
+
+@register.simple_tag
+def grafo_plr(form):
+    """Grafo del rischio (EN ISO 13849-1, fig. A.1) con il percorso dei valori S, F, P del modulo."""
+    from ..grafico_pl import svg_grafo
+
+    return mark_safe(svg_grafo(form["s"].value(), form["f"].value(), form["p"].value()))

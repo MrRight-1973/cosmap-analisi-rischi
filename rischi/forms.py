@@ -393,6 +393,9 @@ class SchedaForm(NormeSchedaMixin, forms.ModelForm):
         )
         descrivi_fattori(self.fields, metodo)
         self._prepara_norme()
+        # La decisione sta in fondo alla pagina, dopo gli allegati (fuori dal form): i campi lo indicano col form=
+        for campo in ("decisione", "motivazione"):
+            self.fields[campo].widget.attrs["form"] = "form-scheda"
 
     def contenuto_cambiato(self):
         return any(campo in self.changed_data for campo in self.CAMPI_CONTENUTO)

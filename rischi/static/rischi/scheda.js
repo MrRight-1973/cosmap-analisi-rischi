@@ -249,7 +249,7 @@
     numeraMisure();
     document.addEventListener("formset:added", numeraMisure);
     document.addEventListener("formset:removed", numeraMisure);
-    document.querySelectorAll("form textarea").forEach(preparaEditor);
+    document.querySelectorAll("form textarea, textarea[form]").forEach(preparaEditor);
     // Righe aggiunte nell'amministrazione (es. "Aggiungi un'altra misura")
     document.addEventListener("formset:added", function (e) {
       e.target.querySelectorAll("textarea").forEach(preparaEditor);

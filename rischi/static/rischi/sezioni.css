@@ -1,0 +1,12 @@
+/* Sezioni apribili in tutte le pagine, commesse e libreria (sezioni.js): la fascia del titolo apre e chiude la sezione */
+.comandi-sezioni { margin: 0 0 10px; }
+.sezione-apribile > legend, .sezione-apribile > h2, .sezione-apribile > table > caption { cursor: pointer; user-select: none; }
+.sezione-apribile .segno-sezione { float: right; font-size: 0.75rem; font-weight: normal; opacity: 0.85; text-transform: none; letter-spacing: 0; }
+.sezione-apribile .segno-sezione::after { content: "▾ chiudi"; }
+.sezione-apribile.chiusa .segno-sezione::after { content: "▸ apri"; }
+.sezione-apribile.chiusa > :not(legend):not(h2):not(table) { display: none !important; }
+.sezione-apribile.chiusa > table > tbody { display: none; }
+.sezione-apribile.chiusa { padding-bottom: 0; }
+.modulo fieldset.sezione-apribile.chiusa, section.riquadro.sezione-apribile.chiusa, #content-main .sezione-apribile.chiusa { margin-bottom: 8px; }
+/* Pagina iniziale della libreria: gruppi tutti larghi uguali */
+.dashboard #content-main .module table { width: 100%; }

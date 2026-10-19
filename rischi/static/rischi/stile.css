@@ -184,7 +184,7 @@ small.errore { color: var(--error-fg); }
 .allegato span { flex: 1; }
 .anteprima-allegato { max-width: 160px; max-height: 110px; border: 1px solid var(--hairline-color); }
 .carica-allegato { margin-top: 10px; }
-.sezione-allegati { margin-top: 20px; }
+.sezione-allegati, .sezione-decisione { margin-top: 20px; }
 .carica-allegato > button { margin: 8px 0; }
 .pulsanti-scheda { display: flex; gap: 10px; flex-wrap: wrap; }
 
@@ -211,15 +211,26 @@ small.errore { color: var(--error-fg); }
 .modulo details.sezione[open] .apri-sezione::after { content: "▾ chiudi"; }
 .modulo details.sezione > :not(summary) { margin-left: 10px; margin-right: 10px; }
 .modulo details.sezione[open] { padding-bottom: 4px; }
-.comandi-sezioni { margin: 0 0 10px; }
 .grafico svg.grafico-pl { display: block; width: 100%; max-width: 820px; height: auto; margin: 8px 0 4px; }
 .grafico svg.grafico-pl text { fill: var(--body-fg); }
 
-/* Sezioni apribili in tutte le pagine (sezioni.js): la fascia del titolo apre e chiude la sezione */
-.sezione-apribile > legend, .sezione-apribile > h2 { cursor: pointer; user-select: none; }
-.sezione-apribile > legend .segno-sezione, .sezione-apribile > h2 .segno-sezione { float: right; font-size: 0.75rem; opacity: 0.85; text-transform: none; letter-spacing: 0; }
-.sezione-apribile > legend .segno-sezione::after, .sezione-apribile > h2 .segno-sezione::after { content: "▾ chiudi"; }
-.sezione-apribile.chiusa > legend .segno-sezione::after, .sezione-apribile.chiusa > h2 .segno-sezione::after { content: "▸ apri"; }
-.sezione-apribile.chiusa > :not(legend):not(h2) { display: none !important; }
-.sezione-apribile.chiusa { padding-bottom: 0; }
-.modulo fieldset.sezione-apribile.chiusa, section.riquadro.sezione-apribile.chiusa { margin-bottom: 8px; }
+/* Schede della commessa: colonne uguali in tutti i gruppi dei moduli, così le tabelle restano allineate */
+.tabella.schede { table-layout: fixed; }
+.tabella.schede td, .tabella.schede th { overflow-wrap: anywhere; }
+.tabella.schede .c-scheda { width: 7em; }
+.tabella.schede .c-zona { width: 16%; }
+.tabella.schede .c-stima { width: 11em; }
+.tabella.schede .c-decisione { width: 9em; }
+.tabella.schede .c-azione { width: 7em; }
+/* Grafo del rischio del PLr (pagina della funzione di sicurezza) */
+.grafo svg.grafo-plr { display: block; width: 100%; max-width: 760px; height: auto; margin: 8px 0 4px; }
+.grafo-plr text { fill: var(--body-fg); }
+.grafo-plr text.nota { fill: var(--body-quiet-color); }
+.grafo-plr .partenza { fill: var(--body-fg); }
+.grafo-plr .ramo polyline, .grafo-plr .foglia line { stroke: #9AA3AE; stroke-width: 1.5; }
+.grafo-plr .ramo.attivo polyline, .grafo-plr .foglia.attivo line { stroke: #1F4E79; stroke-width: 3.5; }
+.grafo-plr .ramo.attivo text { font-weight: bold; }
+.grafo-plr .foglia text.lettera { fill: #1b1b1b; }
+.grafo-plr .foglia.attivo rect { stroke: #1F4E79; stroke-width: 3; }
+.pulsanti-funzione { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
+.pulsanti-funzione form { margin: 0; }
