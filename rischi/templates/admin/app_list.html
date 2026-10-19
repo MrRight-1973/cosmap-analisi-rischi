@@ -3,7 +3,7 @@
 "Modifica": si apre l'elenco con il nome della voce e da lì si aggiunge o si modifica.{% endcomment %}
 {% if app_list %}
   {% for app in app_list %}
-    <div class="app-{{ app.app_label }} module{% if app.app_url in request.path|urlencode %} current-app{% endif %}">
+    <div class="app-{{ app.app_label }} module{% if app.corrente %} current-app{% endif %}">
       <table>
         <caption>
           <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>

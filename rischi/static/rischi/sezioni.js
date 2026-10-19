@@ -45,7 +45,7 @@
     }
     const sezioni = Array.from(document.querySelectorAll(SELETTORE)).filter(function (s) {
       const contenitore = s.parentElement && s.parentElement.closest(SELETTORE);
-      return titolo(s) && !s.querySelector("details.sezione, :scope > details") && !(contenitore && titolo(contenitore));
+      return titolo(s) && !s.querySelector("details.sezione") && !(contenitore && titolo(contenitore));
     });
     if (sezioni.length < 2) return;
 
@@ -54,6 +54,7 @@
     sezioni.forEach(function (sezione, i) {
       const t = titolo(sezione);
       sezione.classList.add("sezione-apribile");
+      if (t.tagName === "CAPTION") sezione.classList.add("titolo-in-tabella");
       t.setAttribute("role", "button");
       t.setAttribute("tabindex", "0");
       const segno = document.createElement("span");

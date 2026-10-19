@@ -698,6 +698,9 @@ def _gruppi_libreria(request, app_label=None):
         if modelli:  # voci nuove non ancora assegnate a un gruppo
             gruppi.append({**app, "name": "Altro", "models": list(modelli.values())})
         elenco = gruppi + elenco
+    # Gruppo evidenziato nella barra laterale: solo quello della voce aperta (i gruppi hanno lo stesso indirizzo)
+    for app in elenco:
+        app["corrente"] = any(v.get("admin_url") and v["admin_url"] in request.path for v in app["models"])
     return elenco
 
 
