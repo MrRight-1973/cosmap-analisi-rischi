@@ -80,6 +80,8 @@
     <form method="post" target="_blank" action="{% url 'genera_documento' revisione.pk 'residui' %}">{% csrf_token %}<button>Rischi residui per il manuale</button></form>
     <form method="post" target="_blank" action="{% url 'genera_documento' revisione.pk 'dichiarazione' %}">{% csrf_token %}<input type="hidden" name="lingua" value="it"><button>Dichiarazione UE (italiano)</button></form>
     <form method="post" target="_blank" action="{% url 'genera_documento' revisione.pk 'dichiarazione' %}">{% csrf_token %}<input type="hidden" name="lingua" value="en"><button>Dichiarazione UE (inglese)</button></form>
+    {% if funzioni %}<form method="post" target="_blank" action="{% url 'genera_documento' revisione.pk 'funzioni' %}">{% csrf_token %}<button>Relazione funzioni di sicurezza</button></form>{% endif %}
+    {% for v in verifiche_elettriche %}<form method="post" target="_blank" action="{% url 'genera_verifica_elettrica' v.pk %}">{% csrf_token %}<button>Verifiche elettriche (EN 60204-1){% if verifiche_elettriche|length > 1 %} · {{ v.quadro }}{% endif %}</button></form>{% endfor %}
   </div>
   {% if documenti %}
   <table class="tabella"><thead><tr><th>Documento</th><th>Lingua</th><th>Generato</th><th></th></tr></thead><tbody>

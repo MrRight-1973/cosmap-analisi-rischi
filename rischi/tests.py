@@ -2220,6 +2220,11 @@ class VerificheElettricheTest(BaseConLibreria):
         with self.assertRaises(RevisioneBloccata):
             servizi.elimina_verifica_elettrica(self.verifica, self.compilatore)
 
+    def test_documento_anche_dalla_commessa(self):
+        pagina = self.client.get(reverse("analisi", args=[self.analisi.pk])).content.decode()
+        self.assertIn(reverse("genera_verifica_elettrica", args=[self.verifica.pk]), pagina)
+        self.assertIn("Verifiche elettriche (EN 60204-1)</button>", pagina)
+
     def test_nuova_revisione_copia_le_verifiche(self):
         self.salva()
         servizi.invia_in_verifica(self.rev, self.compilatore)

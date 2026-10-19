@@ -6,13 +6,14 @@
   "use strict";
 
   const CHIAVE = "sezioni:" + location.pathname;
+  const CHIAVE_GRUPPI = "sezioni:gruppi-libreria"; // pagina iniziale della libreria e barra delle pagine interne
 
-  function leggiStato() {
-    try { return JSON.parse(localStorage.getItem(CHIAVE) || "null"); } catch (e) { return null; }
+  function leggiStato(chiave) {
+    try { return JSON.parse(localStorage.getItem(chiave) || "null"); } catch (e) { return null; }
   }
 
-  function salvaStato(sezioni) {
-    try { localStorage.setItem(CHIAVE, JSON.stringify(sezioni.map((s) => !s.classList.contains("chiusa")))); } catch (e) { /* senza memoria */ }
+  function salvaStato(chiave, sezioni) {
+    try { localStorage.setItem(chiave, JSON.stringify(sezioni.map((s) => !s.classList.contains("chiusa")))); } catch (e) { /* senza memoria */ }
   }
 
   function titolo(sezione) {
@@ -49,7 +50,23 @@
     });
     if (sezioni.length < 2) return;
 
-    const ricordato = leggiStato();
+    const chiave = document.body.classList.contains("dashboard") ? CHIAVE_GRUPPI : CHIAVE;
+    rendiApribili(sezioni, chiave, libreria, sezioni[0].closest("form.modulo, .modulo") || sezioni[0], function () { return libreria; });
+  }
+
+  // Elenco dei gruppi della libreria a sinistra nelle pagine interne: uguale alla pagina iniziale (stessi pulsanti,
+  // stessi gruppi richiudibili, stato condiviso), con evidenziata la voce aperta e il suo gruppo sempre aperto
+  function preparaBarra() {
+    const barra = document.getElementById("nav-sidebar");
+    if (!barra) return;
+    const gruppi = Array.from(barra.querySelectorAll("div.module")).filter((g) => titolo(g));
+    if (!gruppi.length) return;
+    rendiApribili(gruppi, CHIAVE_GRUPPI, true, gruppi[0], function () { return true; },
+      function (g) { return g.classList.contains("current-app"); });
+  }
+
+  function rendiApribili(sezioni, chiave, libreria, primo, apertaDiBase, forzaAperta) {
+    const ricordato = leggiStato(chiave);
     const bersaglio = location.hash ? document.getElementById(location.hash.slice(1)) : null;
     sezioni.forEach(function (sezione, i) {
       const t = titolo(sezione);
@@ -60,14 +77,15 @@
       const segno = document.createElement("span");
       segno.className = "segno-sezione";
       t.appendChild(segno);
-      let aperta = ricordato && ricordato.length === sezioni.length ? ricordato[i] : libreria || i === 0;
+      let aperta = ricordato && ricordato.length === sezioni.length ? ricordato[i] : apertaDiBase(sezione) || i === 0;
       if (sezione.querySelector(".errorlist, .errore, .errors")) aperta = true;
       if (bersaglio && (sezione === bersaglio || sezione.contains(bersaglio))) aperta = true;
+      if (forzaAperta && forzaAperta(sezione)) aperta = true;
       imposta(sezione, aperta);
       const cambia = function (e) {
         if (e && e.target.closest && e.target.closest("a")) return; // il nome del gruppo nella libreria resta un collegamento
         imposta(sezione, sezione.classList.contains("chiusa"));
-        salvaStato(sezioni);
+        salvaStato(chiave, sezioni);
       };
       t.addEventListener("click", cambia);
       t.addEventListener("keydown", function (e) {
@@ -85,15 +103,19 @@
       b.textContent = testo;
       b.addEventListener("click", function () {
         sezioni.forEach((s) => imposta(s, azione === "apri"));
-        salvaStato(sezioni);
+        salvaStato(chiave, sezioni);
       });
       comandi.appendChild(b);
       comandi.appendChild(document.createTextNode(" "));
     });
-    const primo = sezioni[0].closest("form.modulo, .modulo") || sezioni[0];
     primo.parentNode.insertBefore(comandi, primo);
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", prepara);
-  else prepara();
+  function avvia() {
+    prepara();
+    preparaBarra();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", avvia);
+  else avvia();
 })();
