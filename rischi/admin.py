@@ -6,7 +6,7 @@ from django.contrib.admin.widgets import RelatedFieldWidgetWrapper
 from django.contrib.auth import admin as _admin_utenti  # noqa: F401 (registra Gruppi prima di aggiungere Duplica)
 from django.contrib.auth.models import Group
 from django.db import models
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Max
 from django.http import JsonResponse
 from django.template.response import TemplateResponse
@@ -18,6 +18,7 @@ from django.utils.safestring import mark_safe
 from . import models as m
 from .articoli import importa as importa_articoli
 from .duplica import duplica
+from .servizi import importa_funzioni_tipo
 from .forms import (
     CAMPI_CONSIDERAZIONI,
     CAMPI_NORME,
@@ -434,11 +435,75 @@ class ArticoloSicurezzaAdmin(admin.ModelAdmin):
 
 @admin.register(m.FunzioneTipo)
 class FunzioneTipoAdmin(admin.ModelAdmin):
+    """Funzione tipo compilata come la funzione in commessa: S, F, P con il grafo del rischio, schema a blocchi e
+    componenti con il calcolo del PL (stessa pagina della commessa). Si importano anche dalla safety evaluation."""
+
     list_display = ("nome", "modulo", "parametri", "componenti", "attiva")
     list_filter = ("attiva", "modulo")
     search_fields = ("nome", "descrizione")
-    fields = ("nome", "descrizione", "modulo", ("s", "f", "p"), "schema", "note", "attiva", "ordine")
-    readonly_fields = ("schema",)
+    fieldsets = (
+        ("1. Funzione", {"fields": ("nome", "descrizione", "modulo")}),
+        ("2. PLr dal grafo del rischio (EN ISO 13849-1, allegato A)", {"fields": (("s", "f", "p"), "grafo_rischio")}),
+        ("3. Calcolo del PL (EN ISO 13849-1)", {"fields": ("calcolo_pl", "schema")}),
+        ("Libreria", {"fields": ("note", "attiva", "ordine")}),
+    )
+    readonly_fields = ("grafo_rischio", "calcolo_pl", "schema")
+
+    class Media:
+        js = ("rischi/grafo.js",)
+
+    def get_urls(self):
+        return [
+            path("importa/", self.admin_site.admin_view(self.importa), name="rischi_funzionetipo_importa"),
+            *super().get_urls(),
+        ]
+
+    def importa(self, request):
+        """Valutazione esportata dalla safety evaluation ("Esporta valutazione", .json): funzioni tipo e articoli."""
+        if not (self.has_add_permission(request) and self.has_change_permission(request)):
+            raise PermissionDenied
+        if request.method == "POST":
+            file = request.FILES.get("file")
+            try:
+                if file is None:
+                    raise ValidationError("Scegli il file .json esportato dalla safety evaluation.")
+                try:
+                    dati = json.loads(file.read().decode("utf-8-sig"))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    raise ValidationError(f"{file.name} non è un file JSON leggibile.")
+                messages.success(request, importa_funzioni_tipo(dati, request.user))
+                return redirect("admin:rischi_funzionetipo_changelist")
+            except ValidationError as errore:
+                messages.error(request, "; ".join(errore.messages))
+        contesto = {**self.admin_site.each_context(request), "opts": self.opts, "title": "Importa dalla safety evaluation"}
+        return TemplateResponse(request, "admin/rischi/funzionetipo/importa.html", contesto)
+
+    @admin.display(description="grafo del rischio")
+    def grafo_rischio(self, obj):
+        from .grafico_pl import svg_grafo
+
+        return format_html('<p>PLr: <strong id="plr">{}</strong></p><div class="grafo">{}</div>',
+                           obj.plr or "–", mark_safe(svg_grafo(obj.s, obj.f, obj.p)))
+
+    @admin.display(description="PL raggiunto")
+    def calcolo_pl(self, obj):
+        if not obj.pk:
+            return "Salva la funzione tipo, poi compila schema a blocchi e componenti con il calcolo del PL."
+        from . import calcolo, grafico_pl
+
+        pulsante = format_html('<p><a class="button" href="{}">Apri il calcolo del PL</a> '
+                               '<span class="help">schema a blocchi, componenti, calcolo e verifica PL ≥ PLr, come nella commessa</span></p>',
+                               reverse("valutazione_funzione_tipo", args=[obj.pk]))
+        if not obj.dettaglio.get("sottosistemi"):
+            return format_html("<p>Schema a blocchi e componenti non ancora compilati.</p>{}", pulsante)
+        try:
+            r = calcolo.calcola(obj, obj.dettaglio)
+        except calcolo.CalcoloNonRiuscito as errore:
+            return format_html("<p>PL non calcolato qui ({}).</p>{}", errore, pulsante)
+        esito = "requisito soddisfatto" if r["ok"] else "requisito non dimostrato"
+        grafico = grafico_pl.svg(r.get("pl"), r.get("pfh"), obj.plr, r.get("percorsi") or [], r.get("sottosistemi") or [])
+        return format_html("<p><strong>PL {}</strong>{} · {}</p><div class='grafico'>{}</div>{}", r.get("pl") or "non calcolabile",
+                           f" (PLr {obj.plr})" if obj.plr else "", esito, mark_safe(grafico), pulsante)
 
     @admin.display(description="S F P")
     def parametri(self, obj):
@@ -448,13 +513,12 @@ class FunzioneTipoAdmin(admin.ModelAdmin):
     def componenti(self, obj):
         return sum(len(ss.get("componenti") or []) for ss in obj.dettaglio.get("sottosistemi") or [])
 
-    @admin.display(description="schema a blocchi")
+    @admin.display(description="sottosistemi e componenti")
     def schema(self, obj):
-        """Sottosistemi e articoli salvati dalla funzione di partenza: si cambiano rifacendo il calcolo in un'analisi
-        e salvandolo di nuovo come funzione tipo."""
+        """Sottosistemi e articoli della funzione tipo: si cambiano con il calcolo del PL."""
         sottosistemi = obj.dettaglio.get("sottosistemi") or []
         if not sottosistemi:
-            return "Nessuno: la funzione tipo dà solo nome, descrizione e PLr."
+            return "Nessuno."
         articoli = {a.chiave: a for a in m.ArticoloSicurezza.objects.filter(
             chiave__in={c.get("articoloId") for ss in sottosistemi for c in ss.get("componenti") or []})}
         righe = []

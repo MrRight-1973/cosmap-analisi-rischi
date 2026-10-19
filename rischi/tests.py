@@ -1743,10 +1743,10 @@ class ArticoliSicurezzaTest(TestCase):
 
 
 class PagineFunzioniTest(BaseConLibreria):
-    """Fase 2: la funzione di sicurezza si crea dalla misura della scheda o a mano dalla pagina dell'analisi."""
+    """La funzione di sicurezza si aggiunge da una funzione tipo della libreria e si collega alle misure delle schede."""
 
     def setUp(self):
-        from .models import MisuraAnalisi
+        from .models import FunzioneTipo, MisuraAnalisi
 
         self.analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
         self.rev = self.analisi.revisione_corrente
@@ -1754,29 +1754,38 @@ class PagineFunzioniTest(BaseConLibreria):
         self.misura = MisuraAnalisi.objects.create(
             scheda=self.scheda, ordine=99, tipo="PROT", testo="Riparo interbloccato sulla porta di carico"
         )
+        self.tipo = FunzioneTipo.objects.create(nome="Apertura porta di carico", s="S2", f="F1", p="P2")
 
-    def test_crea_dalla_misura_della_scheda(self):
+    def test_collega_la_misura_della_scheda(self):
+        from .models import MisuraAnalisi
+
         self.client.force_login(self.compilatore)
-        url = f"{reverse('nuova_funzione', args=[self.rev.pk])}?misura={self.misura.pk}"
-        self.assertContains(self.client.get(reverse("scheda", args=[self.scheda.pk])), url.replace("&", "&amp;"))
-        pagina = self.client.get(url)
-        self.assertRegex(pagina.content.decode(), rf'value="{self.misura.pk}" id="id_misure_\d+" checked')
-        risposta = self.client.post(url, {
-            "nome": "Apertura porta di carico", "descrizione": "Apertura porta → STO", "s": "S2", "f": "F1", "p": "P2",
-            "misure": [self.misura.pk],
-        })
-        self.assertRedirects(risposta, reverse("analisi", args=[self.analisi.pk]) + "#funzioni")
+        pagina = self.client.get(reverse("scheda", args=[self.scheda.pk]))
+        self.assertContains(pagina, f'name="funzione_tipo_{self.misura.pk}"')
+        self.assertContains(pagina, "Collega funzione tipo")
+        self.assertNotContains(pagina, "Crea funzione di sicurezza")
+        url = reverse("aggiungi_funzione_tipo", args=[self.rev.pk])
+        risposta = self.client.post(url, {"misura": self.misura.pk, f"funzione_tipo_{self.misura.pk}": self.tipo.pk, "da": "scheda"})
+        self.assertRedirects(risposta, reverse("scheda", args=[self.scheda.pk]), fetch_redirect_response=False)
         funzione = self.rev.funzioni.get()
-        self.assertEqual((funzione.plr, list(funzione.misure.all())), ("d", [self.misura]))
-        analisi = self.client.get(reverse("analisi", args=[self.analisi.pk]))
-        self.assertContains(analisi, "Apertura porta di carico")
+        self.assertEqual((funzione.plr, funzione.funzione_tipo, list(funzione.misure.all())), ("d", self.tipo, [self.misura]))
         self.assertContains(self.client.get(reverse("scheda", args=[self.scheda.pk])), "(PLr d)")
+        # Una seconda misura con la stessa funzione tipo va sulla funzione che c'è già
+        altra = MisuraAnalisi.objects.create(scheda=self.scheda, ordine=100, tipo="PROT", testo="Secondo riparo")
+        risposta = self.client.post(url, {"misura": altra.pk, "funzione_tipo": self.tipo.pk})
+        self.assertRedirects(risposta, reverse("analisi_revisione", args=[self.analisi.pk, self.rev.numero]) + "#funzioni",
+                             fetch_redirect_response=False)
+        self.assertEqual(self.rev.funzioni.count(), 1)
+        self.assertEqual(funzione.misure.count(), 2)
 
-    def test_a_mano_e_controllo_plr(self):
+    def test_niente_funzioni_a_mano_e_controllo_plr(self):
+        from .models import FunzioneSicurezza
+
         self.client.force_login(self.compilatore)
-        self.client.post(reverse("nuova_funzione", args=[self.rev.pk]), {"nome": "Arresto di emergenza generale"})
-        funzione = self.rev.funzioni.get()
-        self.assertFalse(funzione.misure.exists())
+        pagina = self.client.get(reverse("analisi", args=[self.analisi.pk]))
+        self.assertNotContains(pagina, "Aggiungi funzione di sicurezza")
+        self.assertContains(pagina, "Aggiungi dalla funzione tipo")
+        funzione = FunzioneSicurezza.objects.create(revisione=self.rev, nome="Arresto di emergenza generale")
         self.assertIn("funzione", {a.tipo for a in servizi.controlli(self.rev)})
         self.client.post(reverse("funzione", args=[funzione.pk]), {
             "nome": "Arresto di emergenza generale", "s": "S2", "f": "F2", "p": "P1",
@@ -1786,23 +1795,27 @@ class PagineFunzioniTest(BaseConLibreria):
         self.assertNotIn("funzione", {a.tipo for a in servizi.controlli(self.rev)})
 
     def test_misure_solo_della_stessa_revisione(self):
-        from .models import MisuraAnalisi
+        from .models import FunzioneSicurezza, MisuraAnalisi
 
         altra = servizi.crea_analisi_da_libreria(self.nuova_macchina("26-05"), self.compilatore)
         estranea = MisuraAnalisi.objects.create(
             scheda=altra.revisione_corrente.schede.first(), tipo="PROT", testo="Misura di un'altra commessa"
         )
         informazione = MisuraAnalisi.objects.create(scheda=self.scheda, tipo="INFO", testo="Cartello")
+        funzione = FunzioneSicurezza.objects.create(revisione=self.rev, nome="Prova")
         self.client.force_login(self.compilatore)
-        pagina = self.client.get(reverse("nuova_funzione", args=[self.rev.pk]))
+        pagina = self.client.get(reverse("funzione", args=[funzione.pk]))
         self.assertContains(pagina, "Riparo interbloccato")
         self.assertNotContains(pagina, "Misura di un&#x27;altra commessa")
         self.assertNotContains(pagina, "Cartello")
-        risposta = self.client.post(reverse("nuova_funzione", args=[self.rev.pk]), {
+        risposta = self.client.post(reverse("funzione", args=[funzione.pk]), {
             "nome": "Prova", "misure": [estranea.pk, informazione.pk],
         })
         self.assertEqual(risposta.status_code, 200)
-        self.assertFalse(self.rev.funzioni.exists())
+        self.assertFalse(funzione.misure.exists())
+        # Né dal collegamento con la funzione tipo
+        risposta = self.client.post(reverse("aggiungi_funzione_tipo", args=[self.rev.pk]), {"misura": estranea.pk, "funzione_tipo": self.tipo.pk})
+        self.assertEqual(risposta.status_code, 404)
 
     def test_sola_lettura_e_eliminazione(self):
         from .models import FunzioneSicurezza
@@ -2307,64 +2320,68 @@ class ChiusuraIntegrazioneTest(BaseConLibreria):
 
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        self.client.force_login(utente or self.compilatore)
+        self.client.force_login(utente or self.capo)
         contenuto = dati if isinstance(dati, bytes) else json.dumps(dati).encode()
-        return self.client.post(reverse("importa_safety_evaluation", args=[self.rev.pk]),
+        return self.client.post(reverse("admin:rischi_funzionetipo_importa"),
                                 {"file": SimpleUploadedFile("valutazione.json", contenuto, "application/json")}, follow=True)
 
-    def test_importa_valutazione_della_safety_evaluation(self):
-        from .models import ArticoloSicurezza
+    @property
+    def capo(self):
+        return User.objects.get_or_create(username="capo", defaults={"is_staff": True, "is_superuser": True})[0]
 
-        risposta = self.importa(self.esportata)
-        testo = risposta.content.decode()
-        self.assertIn("Importato SE-25-20 rev. 1: 2 funzioni di sicurezza; articoli di sicurezza 3 nuovi", testo)
-        self.assertIn("prove di validazione di 1 funzioni", testo)
-        self.assertIn("verifica elettrica «QE1»", testo)
-        emergenza, porta = self.rev.funzioni.order_by("ordine")
-        self.assertEqual((emergenza.nome, emergenza.descrizione, emergenza.plr), ("Arresto di emergenza", "Fungo: STO sugli assi", "d"))
-        self.assertEqual((emergenza.valutazione.pl, emergenza.valutazione.pfh, emergenza.valutazione.esito), ("e", 30, True))
-        self.assertNotIn("validazione", emergenza.valutazione.dettaglio)
-        self.assertEqual(emergenza.valutazione.dettaglio["missionTime"], 20)
-        self.assertEqual(emergenza.prove.dati["esecutore"], "M. Rossi")
-        self.assertEqual(emergenza.prove.dati["extra"][0]["testo"], "Fungo da quadro")
-        # S non valido: resta vuoto; senza sottosistemi niente calcolo
-        self.assertEqual((porta.s, porta.f, porta.p), ("", "F2", "P1"))
-        self.assertFalse(hasattr(porta, "valutazione"))
-        self.assertEqual(self.rev.validazione.sistematiche["swFirma"], "F-CRC 3A9C")
-        verifica = self.rev.verifiche_elettriche.get()
-        self.assertEqual((verifica.quadro, verifica.isolamento_non_ok), ("QE1", 1))
-        self.assertFalse(ArticoloSicurezza.objects.get(chiave="sto").verificato)
-        # Un secondo import non sovrascrive: nomi distinti, misure sistematiche già compilate restano
+    def test_importa_valutazione_nella_libreria(self):
+        from .models import ArticoloSicurezza, FunzioneTipo
+
+        self.client.force_login(self.capo)
+        self.assertContains(self.client.get(reverse("admin:rischi_funzionetipo_changelist")), "Importa dalla safety evaluation")
         testo = self.importa(self.esportata).content.decode()
-        self.assertIn("misure contro i guasti sistematici non importate perché già compilate", testo)
-        self.assertTrue(self.rev.funzioni.filter(nome="Arresto di emergenza (2)").exists())
+        self.assertIn("Importato SE-25-20 rev. 1: funzioni tipo 1 nuove e 1 aggiornate; articoli di sicurezza 3 nuovi", testo)
+        emergenza = FunzioneTipo.objects.get(nome="Arresto di emergenza")
+        self.assertEqual((emergenza.descrizione, emergenza.plr, len(emergenza.dettaglio["sottosistemi"])), ("Fungo: STO sugli assi", "d", 3))
+        self.assertNotIn("validazione", emergenza.dettaglio)
+        self.assertEqual(emergenza.dettaglio["missionTime"], 20)
+        porta = FunzioneTipo.objects.get(nome="Porta di carico")
+        self.assertEqual((porta.s, porta.f, porta.p), ("", "F2", "P1"))  # S non valido: resta vuoto
+        self.assertFalse(ArticoloSicurezza.objects.get(chiave="sto").verificato)
+        # Niente nella commessa: prove e verifiche elettriche del file riguardano una macchina
+        self.assertFalse(self.rev.funzioni.exists())
+        self.assertFalse(self.rev.verifiche_elettriche.exists())
+        # "Arresto di emergenza" c'era già tra le funzioni tipo Cosmap: si aggiorna. Modulo e stato restano
+        modulo = self.macchina.moduli.first()
+        FunzioneTipo.objects.filter(pk=emergenza.pk).update(modulo=modulo, attiva=False)
+        self.assertIn("funzioni tipo 0 nuove e 2 aggiornate", self.importa(self.esportata).content.decode())
+        emergenza.refresh_from_db()
+        self.assertEqual((emergenza.modulo, emergenza.attiva), (modulo, False))
+        # La commessa non ha più l'import
+        self.client.force_login(self.compilatore)
+        self.assertNotContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Importa dalla safety evaluation")
 
     def test_import_non_valido_o_non_permesso(self):
-        self.assertIn("non è un file JSON leggibile", self.importa(b"\x00non json").content.decode())
-        self.assertIn("manca l&#x27;elenco delle funzioni", self.importa({"articoli": []}).content.decode())
-        # Componente senza articolo nel file né in libreria: si segnala
-        dati = dict(self.esportata, articoli=[], elettriche={}, sistematiche={})
-        self.assertIn("3 componenti senza articolo nella libreria", self.importa(dati).content.decode())
-        # Solo il compilatore, solo in bozza
-        self.importa(self.esportata, utente=self.verificatore)
-        self.assertEqual(self.rev.funzioni.count(), 2)
-        self.rev.stato = Revisione.Stato.APPROVATA
-        self.rev.save()
-        self.assertContains(self.importa(self.esportata), "è approvata: non è modificabile")
-        self.assertEqual(self.rev.funzioni.count(), 2)
-
-    def test_funzioni_tipo(self):
         from .models import FunzioneTipo
 
+        self.assertIn("non è un file JSON leggibile", self.importa(b"\x00non json").content.decode())
+        self.assertIn("manca l&#x27;elenco delle funzioni", self.importa({"articoli": []}).content.decode())
+        dati = dict(self.esportata, articoli=[])
+        self.assertIn("3 componenti senza articolo nella libreria", self.importa(dati).content.decode())
+        FunzioneTipo.objects.all().delete()
+        # Il compilatore delle commesse non entra nella libreria
+        self.importa(self.esportata, utente=self.compilatore)
+        self.assertFalse(FunzioneTipo.objects.exists())
+
+    def test_funzioni_tipo(self):
+        from .models import FunzioneSicurezza, FunzioneTipo
+
         self.importa(self.esportata)
-        emergenza = self.rev.funzioni.get(nome="Arresto di emergenza")
+        tipo = FunzioneTipo.objects.get(nome="Arresto di emergenza")
+        emergenza = servizi.aggiungi_funzione_tipo(self.rev, tipo, self.compilatore)
+        self.assertEqual((emergenza.funzione_tipo, emergenza.valutazione.pl), (tipo, "e"))
         modulo = self.macchina.moduli.first()
         url = reverse("salva_come_funzione_tipo", args=[emergenza.pk])
         # Serve il permesso sulla libreria
+        self.client.force_login(self.compilatore)
         self.client.post(url, {"nome": "Arresto di emergenza Cosmap", "modulo": modulo.pk})
         self.assertFalse(FunzioneTipo.objects.filter(nome="Arresto di emergenza Cosmap").exists())
-        capo = User.objects.create_superuser("capo", password="prova-prova-123")
-        self.client.force_login(capo)
+        self.client.force_login(self.capo)
         self.assertContains(self.client.get(reverse("funzione", args=[emergenza.pk])), "Salva come funzione tipo")
         self.client.post(url, {"nome": "Arresto di emergenza Cosmap", "modulo": modulo.pk})
         tipo = FunzioneTipo.objects.get(nome="Arresto di emergenza Cosmap")
@@ -2373,13 +2390,16 @@ class ChiusuraIntegrazioneTest(BaseConLibreria):
         # Stesso nome: rifiutata
         risposta = self.client.post(url, {"nome": "Arresto di emergenza Cosmap"}, follow=True)
         self.assertContains(risposta, "Esiste già una funzione tipo")
-        # Libreria: elenco con lo schema a blocchi
-        self.assertContains(self.client.get(reverse("admin:rischi_funzionetipo_change", args=[tipo.pk])), "FDI")
+        # Libreria: grafo del rischio, PL calcolato e sottosistemi
+        pagina = self.client.get(reverse("admin:rischi_funzionetipo_change", args=[tipo.pk]))
+        for atteso in ("grafo-plr", "grafico-pl", "FDI", reverse("valutazione_funzione_tipo", args=[tipo.pk]), "rischi/grafo.js"):
+            self.assertContains(pagina, atteso)
         # In un'altra macchina con lo stesso modulo si propone e si aggiunge
         altra = servizi.crea_analisi_da_libreria(self.nuova_macchina("25-21"), self.compilatore).revisione_corrente
         self.client.force_login(self.compilatore)
         pagina = self.client.get(reverse("analisi", args=[altra.analisi_id]))
         self.assertContains(pagina, "Funzioni tipo dei moduli della macchina non ancora aggiunte")
+        self.assertNotContains(pagina, "Aggiungi funzione di sicurezza")
         risposta = self.client.post(reverse("aggiungi_funzione_tipo", args=[altra.pk]), {"funzione_tipo": tipo.pk})
         nuova = altra.funzioni.get()
         self.assertRedirects(risposta, reverse("funzione", args=[nuova.pk]), fetch_redirect_response=False)
@@ -2390,6 +2410,29 @@ class ChiusuraIntegrazioneTest(BaseConLibreria):
         tipo.save()
         risposta = self.client.post(reverse("aggiungi_funzione_tipo", args=[altra.pk]), {"funzione_tipo": tipo.pk})
         self.assertEqual(risposta.status_code, 404)
+        self.assertEqual(FunzioneSicurezza.objects.filter(revisione=altra).count(), 1)
+
+    def test_calcolo_della_funzione_tipo(self):
+        import json
+
+        from .models import FunzioneTipo
+
+        self.importa(self.esportata)
+        tipo = FunzioneTipo.objects.get(nome="Porta di carico")
+        url = reverse("valutazione_funzione_tipo", args=[tipo.pk])
+        self.client.force_login(self.capo)
+        pagina = self.client.get(url)
+        self.assertContains(pagina, "funzione tipo della libreria")
+        self.assertContains(pagina, "rischi/safety/valutazione.js")
+        dettaglio = {"sottosistemi": FunzioneTipo.objects.get(nome="Arresto di emergenza").dettaglio["sottosistemi"]}
+        risposta = self.client.post(url, json.dumps({"dettaglio": dettaglio, "risultato": {}}), content_type="application/json")
+        self.assertEqual(risposta.status_code, 200, risposta.content)
+        self.assertIn("ricalcolata dal server", risposta.json()["messaggio"])
+        tipo.refresh_from_db()
+        self.assertEqual(len(tipo.dettaglio["sottosistemi"]), 3)
+        # Il compilatore delle commesse non modifica la libreria
+        self.client.force_login(self.compilatore)
+        self.assertEqual(self.client.get(url).status_code, 403)
 
     def test_importa_libreria_del_costruttore(self):
         import json
@@ -2491,10 +2534,9 @@ class LibreriaSicurezzaTest(TestCase):
         self.assertEqual(s, "S2")  # Se iniziale 4
 
         self.client.force_login(self.compilatore)
-        self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "possono diventare funzioni di sicurezza")
-        pagina = self.client.get(reverse("nuova_funzione", args=[rev.pk]) + f"?misura={misura.pk}")
-        self.assertContains(pagina, "suggeriti dalla stima iniziale")
-        self.assertEqual(pagina.context["form"].initial["s"], "S2")
+        pagina = self.client.get(reverse("analisi", args=[self.analisi.pk]))
+        self.assertContains(pagina, "possono diventare funzioni di sicurezza")
+        self.assertContains(pagina, f'name="misura" value="{misura.pk}"')
 
         funzione = FunzioneSicurezza.objects.create(revisione=rev, nome="Porte", s=s, f=f, p=p)
         funzione.misure.add(misura)

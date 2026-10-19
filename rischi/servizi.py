@@ -139,7 +139,7 @@ def _copia_funzioni(sorgente, revisione, mappa_misure, stessa_macchina):
     for funzione in sorgente.funzioni.all():
         nuova = FunzioneSicurezza.objects.create(
             revisione=revisione, ordine=funzione.ordine, nome=funzione.nome, descrizione=funzione.descrizione,
-            s=funzione.s, f=funzione.f, p=funzione.p,
+            s=funzione.s, f=funzione.f, p=funzione.p, funzione_tipo_id=funzione.funzione_tipo_id,
         )
         mappa[funzione.pk] = nuova
         nuova.misure.set([mappa_misure[mi.pk] for mi in funzione.misure.all() if mi.pk in mappa_misure])
@@ -1152,10 +1152,10 @@ def _componenti(dettaglio):
     } - {None, ""}
 
 
-def _nuova_funzione_calcolata(revisione, utente, nome, descrizione, s, f, p, dettaglio):
+def _nuova_funzione_calcolata(revisione, utente, nome, descrizione, s, f, p, dettaglio, funzione_tipo=None):
     """Crea la funzione nella revisione e ne salva il calcolo (ricalcolato dal server come dalla pagina)."""
     funzione = FunzioneSicurezza.objects.create(
-        revisione=revisione,
+        revisione=revisione, funzione_tipo=funzione_tipo,
         ordine=(revisione.funzioni.aggregate(m=models_Max("ordine"))["m"] or 0) + 10,
         nome=_nome_libero(revisione, nome),
         descrizione=descrizione,
@@ -1215,15 +1215,45 @@ def funzioni_tipo_per(macchina):
 
 
 @transaction.atomic
-def aggiungi_funzione_tipo(revisione, funzione_tipo, utente):
-    """Nuova funzione della revisione con nome, S, F, P, schema a blocchi e componenti della funzione tipo.
-    Le misure delle schede si collegano poi nella pagina della funzione."""
+def aggiungi_funzione_tipo(revisione, funzione_tipo, utente, misura=None):
+    """Funzione della revisione dalla funzione tipo: nome, S, F, P, schema a blocchi e componenti già compilati.
+    Con una misura di protezione la funzione si collega alla misura; se la revisione ha già la funzione di quella
+    funzione tipo, la misura si collega a quella invece di crearne un'altra."""
     richiedi_ruolo(utente, COMPILATORE)
     revisione.verifica_modificabile()
-    return _nuova_funzione_calcolata(
-        revisione, utente, funzione_tipo.nome, funzione_tipo.descrizione,
-        funzione_tipo.s, funzione_tipo.f, funzione_tipo.p, dict(funzione_tipo.dettaglio),
-    )
+    if misura is not None and misura.scheda.revisione_id != revisione.pk:
+        raise ValidationError("La misura non è di questa revisione.")
+    funzione = revisione.funzioni.filter(funzione_tipo=funzione_tipo).first() if misura is not None else None
+    if funzione is None:
+        funzione = _nuova_funzione_calcolata(
+            revisione, utente, funzione_tipo.nome, funzione_tipo.descrizione,
+            funzione_tipo.s, funzione_tipo.f, funzione_tipo.p, dict(funzione_tipo.dettaglio), funzione_tipo,
+        )
+    if misura is not None:
+        funzione.misure.add(misura)
+    return funzione
+
+
+def salva_calcolo_funzione_tipo(tipo, dettaglio, risultato_pagina, utente):
+    """Salva schema a blocchi e componenti della funzione tipo (calcolo del PL dalla libreria) e restituisce il
+    risultato ricalcolato dal server, o quello della pagina senza Node."""
+    if not utente.has_perm("rischi.change_funzionetipo"):
+        raise PermissionDenied("Serve il permesso di modificare le funzioni tipo della libreria.")
+    tipo.dettaglio = {**tipo.dettaglio, **{k: v for k, v in dettaglio.items() if k not in FUORI_DETTAGLIO}}
+    tipo.save(update_fields=["dettaglio"])
+    try:
+        r = calcolo.calcola(tipo, tipo.dettaglio)
+        pl, pfh, esito, messaggio = r["pl"], r["pfh"], r["ok"], "Funzione tipo salvata e ricalcolata dal server"
+    except calcolo.CalcoloNonRiuscito as errore:
+        pl, pfh, esito = risultato_pagina.get("pl"), risultato_pagina.get("pfh"), risultato_pagina.get("ok")
+        messaggio = f"Funzione tipo salvata con il calcolo della pagina ({errore})"
+    pl = pl if pl in ("a", "b", "c", "d", "e") else ""
+    testo = "PL " + pl if pl else "PL non ancora calcolabile"
+    if esito:
+        testo += f" ≥ PLr {tipo.plr}"
+    elif pl and tipo.plr:
+        testo += f", requisito PLr {tipo.plr} non dimostrato"
+    return {"messaggio": f"{messaggio}: {testo}.", "pl": pl, "pfh": pfh, "ok": bool(esito) if esito is not None else None}
 
 
 def salva_come_funzione_tipo(funzione, nome, modulo, utente):
@@ -1247,17 +1277,14 @@ def _stringa(valore, massimo):
     return _testo(str(valore), massimo) if isinstance(valore, (str, int, float)) else ""
 
 
-def _con_contenuto(dati, chiavi):
-    return isinstance(dati, dict) and any(dati.get(k) for k in chiavi)
-
-
 @transaction.atomic
-def importa_safety_evaluation(revisione, dati, utente):
-    """Importa nella revisione una valutazione esportata dalla safety evaluation ("Esporta valutazione"): gli
-    articoli usati nella libreria (stesse regole di importa_articoli), le funzioni con il calcolo, le prove di
-    validazione, le misure contro i guasti sistematici e le verifiche elettriche. Restituisce il messaggio."""
-    richiedi_ruolo(utente, COMPILATORE)
-    revisione.verifica_modificabile()
+def importa_funzioni_tipo(dati, utente):
+    """Importa nella libreria una valutazione esportata dalla safety evaluation ("Esporta valutazione"): gli
+    articoli (stesse regole di importa_articoli) e le funzioni come funzioni tipo complete di schema a blocchi e
+    componenti. Una funzione tipo con lo stesso nome si aggiorna (modulo, note e stato restano); prove,
+    misure sistematiche e verifiche elettriche del file riguardano una macchina e non si importano."""
+    if not (utente.has_perm("rischi.add_funzionetipo") and utente.has_perm("rischi.change_funzionetipo")):
+        raise PermissionDenied("Serve il permesso di aggiungere e modificare le funzioni tipo della libreria.")
     if not isinstance(dati, dict) or not isinstance(dati.get("funzioni"), list):
         raise ValidationError("Il file non è una valutazione esportata dalla safety evaluation: manca l'elenco delle funzioni.")
     progetto = dati.get("progetto") if isinstance(dati.get("progetto"), dict) else {}
@@ -1271,56 +1298,27 @@ def importa_safety_evaluation(revisione, dati, utente):
         mission_time = float(progetto.get("missionTime"))
     except (TypeError, ValueError):
         mission_time = None
-    importate = []
+    nuove, aggiornate, chiavi = 0, 0, set()
     for voce in dati["funzioni"]:
         if not isinstance(voce, dict) or not isinstance(voce.get("sottosistemi", []), list):
             raise ValidationError("Funzione non valida nel file.")
         dettaglio = {k: v for k, v in voce.items() if k not in FUORI_DETTAGLIO}
         if mission_time and mission_time > 0:
             dettaglio["missionTime"] = mission_time
-        funzione = _nuova_funzione_calcolata(
-            revisione, utente, _stringa(voce.get("nome"), 200) or "Funzione importata", _stringa(voce.get("descrizione"), 5000),
-            voce.get("S"), voce.get("F"), voce.get("P"), dettaglio,
+        chiavi |= _componenti(dettaglio)
+        _, creata = FunzioneTipo.objects.update_or_create(
+            nome=_stringa(voce.get("nome"), 200) or "Funzione importata",
+            defaults={
+                "descrizione": _stringa(voce.get("descrizione"), 5000), "dettaglio": dettaglio,
+                "s": _parametro(voce.get("S"), Gravita), "f": _parametro(voce.get("F"), Frequenza),
+                "p": _parametro(voce.get("P"), Evitabilita),
+            },
         )
-        importate.append((funzione, voce.get("validazione")))
-    parti.insert(0, f"{len(importate)} funzioni di sicurezza")
-
-    chiavi = set().union(*(_componenti(getattr(f, "valutazione", None).dettaglio) for f, _ in importate if hasattr(f, "valutazione")))
+        nuove, aggiornate = nuove + creata, aggiornate + (not creata)
+    parti.insert(0, f"funzioni tipo {nuove} nuove e {aggiornate} aggiornate")
     mancanti = chiavi - set(ArticoloSicurezza.objects.filter(chiave__in=chiavi).values_list("chiave", flat=True))
     if mancanti:
         parti.append(f"{len(mancanti)} componenti senza articolo nella libreria (da scegliere di nuovo nel calcolo)")
-
-    con_prove = [(f, v) for f, v in importate if _con_contenuto(v, ("esiti", "extra", "esecutore"))]
-    sistematiche = dati.get("sistematiche")
-    if con_prove or _con_contenuto(sistematiche, ("esiti", "swVersione", "swFirma")):
-        validazione = validazione_di(revisione)
-        if validazione.pk and not validazione.modificabile:
-            parti.append(f"prove di validazione non importate perché la validazione è {validazione.get_stato_display().lower()}")
-        else:
-            for funzione, prove in con_prove:
-                salva_prove(funzione, prove, [], utente)
-            if con_prove:
-                parti.append(f"prove di validazione di {len(con_prove)} funzioni")
-            if _con_contenuto(sistematiche, ("esiti", "swVersione", "swFirma")):
-                attuali = validazione_di(revisione).sistematiche or {}
-                if _con_contenuto(attuali, ("esiti", "swVersione", "swFirma")):
-                    parti.append("misure contro i guasti sistematici non importate perché già compilate")
-                else:
-                    salva_sistematiche(revisione, sistematiche, utente)
-                    parti.append("misure contro i guasti sistematici")
-
-    elettriche = dati.get("elettriche")
-    if _con_contenuto(elettriche, ("esiti", "extra", "equipotenziali", "cavi", "strumento", "esecutore")):
-        quadro = _stringa(elettriche.get("quadro"), 200) or _stringa(progetto.get("macchina"), 200) or "Equipaggiamento elettrico"
-        verifica = nuova_verifica_elettrica(revisione, quadro, utente)
-        try:
-            salva_verifica_elettrica(verifica, quadro, elettriche, None, utente)
-        except ValidationError as errore:
-            if "Riepilogo" in str(errore):  # senza Node non ci sono i conteggi della pagina
-                raise ValidationError("Per importare le verifiche elettriche serve Node sul server: niente è stato importato.")
-            raise
-        parti.append(f"verifica elettrica «{verifica.quadro}»")
-
     documento, numero = _stringa(progetto.get("documento"), 100), _stringa(progetto.get("revisione"), 20)
     origine = " ".join(x for x in (documento, f"rev. {numero}" if numero else "") if x)
     return f"Importato{' ' + origine if origine else ''}: " + "; ".join(parti) + "."

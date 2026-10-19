@@ -1009,8 +1009,8 @@ def plr(s, f, p):
 
 
 class FunzioneSicurezza(ContenutoRevisione):
-    """Funzione di sicurezza della revisione: nasce da una o più misure di protezione delle schede, oppure a mano
-    quando non viene da una scheda (es. arresto di emergenza generale)."""
+    """Funzione di sicurezza della revisione: si aggiunge da una funzione tipo della libreria e si collega alle misure
+    di protezione delle schede che realizza."""
 
     revisione = models.ForeignKey(Revisione, on_delete=models.CASCADE, related_name="funzioni")
     ordine = models.PositiveSmallIntegerField(default=0)
@@ -1023,6 +1023,10 @@ class FunzioneSicurezza(ContenutoRevisione):
     f = models.CharField("F", max_length=2, blank=True, choices=Frequenza.choices)
     p = models.CharField("P", max_length=2, blank=True, choices=Evitabilita.choices)
     plr = models.CharField("PLr", max_length=1, blank=True, editable=False)
+    funzione_tipo = models.ForeignKey(
+        "FunzioneTipo", on_delete=models.SET_NULL, null=True, blank=True, related_name="funzioni",
+        help_text="Funzione tipo della libreria da cui è stata aggiunta.",
+    )
 
     class Meta:
         verbose_name = "funzione di sicurezza"

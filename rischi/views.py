@@ -155,10 +155,10 @@ def analisi(request, pk, numero=None):
         "verifiche_elettriche": revisione.verifiche_elettriche.all(),
     }
     funzioni_tipo = list(servizi.funzioni_tipo_per(revisione.analisi.macchina))
-    nomi = {f.nome for f in contesto["funzioni"]}
+    presenti = {f.funzione_tipo_id for f in contesto["funzioni"]} | {f.nome for f in contesto["funzioni"]}
     contesto["funzioni_tipo"] = funzioni_tipo
     # Proposte: le funzioni tipo dei moduli della macchina che la revisione non ha ancora
-    contesto["funzioni_tipo_proposte"] = [t for t in funzioni_tipo if t.modulo_id and t.nome not in nomi]
+    contesto["funzioni_tipo_proposte"] = [t for t in funzioni_tipo if t.modulo_id and not {t.pk, t.nome} & presenti]
     contesto["misure_per_funzioni"] = servizi.misure_per_funzioni(revisione) if revisione.modificabile else []
     return render(request, "rischi/analisi.html", contesto)
 
@@ -263,6 +263,7 @@ def _salva_scheda(request, scheda, revisione, nuova):
         {
             "form": form, "misure": misure, "scheda": scheda, "revisione": revisione, "modificabile": modificabile,
             "form_allegato": AllegatoForm(),
+            "funzioni_tipo": servizi.funzioni_tipo_per(revisione.analisi.macchina) if modificabile else [],
         },
     )
 
@@ -372,16 +373,7 @@ def applicabilita(request, revisione_pk):
 
 def _salva_funzione(request, funzione, revisione):
     modificabile = revisione.modificabile and servizi.ha_ruolo(request.user, servizi.COMPILATORE)
-    iniziali = {}
-    suggeriti = False
-    if not funzione.pk and request.GET.get("misura", "").isdigit():
-        misura = MisuraAnalisi.objects.filter(pk=request.GET["misura"], scheda__revisione=revisione).select_related("scheda").first()
-        if misura:
-            iniziali["misure"] = [misura.pk]
-            iniziali["nome"] = misura.testo.split(".")[0].split(";")[0][:120]
-            iniziali["s"], iniziali["f"], iniziali["p"] = servizi.sfp_suggeriti(misura.scheda)
-            suggeriti = any((iniziali["s"], iniziali["f"], iniziali["p"]))
-    form = FunzioneForm(request.POST or None, instance=funzione, revisione=revisione, initial=iniziali)
+    form = FunzioneForm(request.POST or None, instance=funzione, revisione=revisione)
     if not modificabile:
         for campo in form.fields.values():
             campo.disabled = True
@@ -389,28 +381,21 @@ def _salva_funzione(request, funzione, revisione):
         if not modificabile:
             raise PermissionDenied("Funzione non modificabile.")
         if form.is_valid():
-            nuova = not funzione.pk
             with transaction.atomic():
-                funzione = form.save(commit=False)
-                if nuova:
-                    funzione.revisione = revisione
-                    funzione.ordine = (revisione.funzioni.aggregate(m=Max("ordine"))["m"] or 0) + 10
-                funzione.save()
-                form.save_m2m()
+                funzione = form.save()
                 if hasattr(funzione, "valutazione") and {"s", "f", "p"} & set(form.changed_data):
                     servizi.salva_valutazione(funzione, {}, {}, request.user)  # il PLr è cambiato: nuovo confronto
             messages.success(request, f"Funzione «{funzione.nome}» salvata" + (f", PLr {funzione.plr}." if funzione.plr else "."))
             return redirect(f"{reverse('analisi', args=[revisione.analisi_id])}#funzioni")
-    schede = {m.scheda for m in funzione.misure.select_related("scheda__revisione__metodo")} if funzione.pk else set()
-    grafico = _grafico_pl(funzione) if funzione.pk and hasattr(funzione, "valutazione") else ""
+    schede = {m.scheda for m in funzione.misure.select_related("scheda__revisione__metodo")}
+    grafico = _grafico_pl(funzione) if hasattr(funzione, "valutazione") else ""
     return render(
         request,
         "rischi/funzione.html",
         {
             "form": form, "funzione": funzione, "revisione": revisione, "modificabile": modificabile,
             "schede": sorted(schede, key=lambda s: s.codice),
-            "puo_funzione_tipo": funzione.pk and request.user.has_perm("rischi.add_funzionetipo"),
-            "suggeriti": suggeriti,
+            "puo_funzione_tipo": request.user.has_perm("rischi.add_funzionetipo"),
             "grafico_pl": grafico,
             "moduli_macchina": revisione.analisi.macchina.moduli.filter(attivo=True),
         },
@@ -439,12 +424,6 @@ def funzione(request, pk):
     return _salva_funzione(request, funzione, funzione.revisione)
 
 
-@login_required
-def nuova_funzione(request, revisione_pk):
-    revisione = get_object_or_404(Revisione, pk=revisione_pk)
-    return _salva_funzione(request, FunzioneSicurezza(revisione=revisione), revisione)
-
-
 def _vai_funzioni(revisione):
     return redirect(reverse("analisi_revisione", args=[revisione.analisi_id, revisione.numero]) + "#funzioni")
 
@@ -453,32 +432,24 @@ def _vai_funzioni(revisione):
 @require_POST
 def aggiungi_funzione_tipo(request, revisione_pk):
     revisione = get_object_or_404(Revisione.objects.select_related("analisi__macchina"), pk=revisione_pk)
-    funzione_tipo = get_object_or_404(servizi.funzioni_tipo_per(revisione.analisi.macchina), pk=request.POST.get("funzione_tipo") or 0)
+    # Dalla scheda ogni misura ha il suo menu: funzione_tipo_<misura>
+    scelta = request.POST.get(f"funzione_tipo_{request.POST.get('misura')}") or request.POST.get("funzione_tipo")
+    funzione_tipo = get_object_or_404(servizi.funzioni_tipo_per(revisione.analisi.macchina), pk=scelta if (scelta or "").isdigit() else 0)
+    misura = None
+    if (request.POST.get("misura") or "").isdigit():
+        misura = get_object_or_404(MisuraAnalisi.objects.select_related("scheda"), pk=request.POST["misura"], scheda__revisione=revisione)
     try:
-        funzione = servizi.aggiungi_funzione_tipo(revisione, funzione_tipo, request.user)
+        funzione = servizi.aggiungi_funzione_tipo(revisione, funzione_tipo, request.user, misura)
     except (PermissionDenied, ValidationError) as e:
         _errore(request, e)
         return _vai_funzioni(revisione)
-    messages.success(request, f"Funzione «{funzione.nome}» aggiunta dalla funzione tipo: collega le misure delle schede.")
-    return redirect("funzione", pk=funzione.pk)
-
-
-@login_required
-@require_POST
-def importa_safety_evaluation(request, revisione_pk):
-    """Valutazione esportata dalla safety evaluation (pulsante "Esporta valutazione", file .json)."""
-    revisione = get_object_or_404(Revisione, pk=revisione_pk)
-    file = request.FILES.get("file")
-    try:
-        if file is None:
-            raise ValidationError("Scegli il file .json esportato dalla safety evaluation.")
-        try:
-            dati = json.loads(file.read().decode("utf-8-sig"))
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            raise ValidationError(f"{file.name} non è un file JSON leggibile.")
-        messages.success(request, servizi.importa_safety_evaluation(revisione, dati, request.user))
-    except (PermissionDenied, ValidationError) as e:
-        _errore(request, e)
+    if misura is None:
+        messages.success(request, f"Funzione «{funzione.nome}» aggiunta dalla funzione tipo: collega le misure delle schede.")
+        return redirect("funzione", pk=funzione.pk)
+    # Dalla scheda o dall'elenco delle proposte si resta dove si era
+    messages.success(request, f"Misura della scheda {misura.scheda.codice} collegata alla funzione «{funzione.nome}».")
+    if request.POST.get("da") == "scheda":
+        return redirect("scheda", pk=misura.scheda_id)
     return _vai_funzioni(revisione)
 
 
@@ -539,6 +510,39 @@ def valutazione_funzione(request, pk):
             "nome": funzione.nome, "S": funzione.s or None, "F": funzione.f or None, "P": funzione.p or None,
             "modificabile": modificabile,
             "salva_url": reverse("valutazione_funzione", args=[funzione.pk]),
+            "articoli_url": reverse("articoli_sicurezza"),
+            "csrf": get_token(request),
+        },
+    }
+    return render(request, "rischi/valutazione.html", contesto)
+
+
+@login_required
+def valutazione_funzione_tipo(request, pk):
+    """Calcolo del PL della funzione tipo della libreria, con la stessa pagina della funzione in commessa: lo schema
+    a blocchi e i componenti salvati qui arrivano già compilati in ogni commessa che aggiunge la funzione tipo."""
+    tipo = get_object_or_404(FunzioneTipo, pk=pk)
+    if not request.user.is_staff or not request.user.has_perm("rischi.view_funzionetipo"):
+        raise PermissionDenied
+    modificabile = request.user.has_perm("rischi.change_funzionetipo")
+    if request.method == "POST":
+        if not modificabile:
+            return JsonResponse({"errore": "Serve il permesso di modificare le funzioni tipo della libreria."}, status=403)
+        try:
+            dati = json.loads(request.body)
+            dettaglio = dati["dettaglio"]
+            if not isinstance(dettaglio, dict) or not isinstance(dettaglio.get("sottosistemi", []), list):
+                raise ValueError
+        except (ValueError, KeyError, TypeError):
+            return JsonResponse({"errore": "Dati della valutazione non validi."}, status=400)
+        return JsonResponse(servizi.salva_calcolo_funzione_tipo(tipo, dettaglio, dati.get("risultato") or {}, request.user))
+    contesto = {
+        "funzione": tipo, "tipo": tipo, "modificabile": modificabile,
+        "dati": {
+            "dettaglio": tipo.dettaglio,
+            "nome": tipo.nome, "S": tipo.s or None, "F": tipo.f or None, "P": tipo.p or None,
+            "modificabile": modificabile,
+            "salva_url": reverse("valutazione_funzione_tipo", args=[tipo.pk]),
             "articoli_url": reverse("articoli_sicurezza"),
             "csrf": get_token(request),
         },

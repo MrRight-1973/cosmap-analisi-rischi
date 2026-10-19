@@ -211,8 +211,6 @@ small.errore { color: var(--error-fg); }
 .modulo details.sezione[open] .apri-sezione::after { content: "▾ chiudi"; }
 .modulo details.sezione > :not(summary) { margin-left: 10px; margin-right: 10px; }
 .modulo details.sezione[open] { padding-bottom: 4px; }
-.grafico svg.grafico-pl { display: block; width: 100%; max-width: 820px; height: auto; margin: 8px 0 4px; }
-.grafico svg.grafico-pl text { fill: var(--body-fg); }
 
 /* Schede della commessa: colonne uguali in tutti i gruppi dei moduli, così le tabelle restano allineate */
 .tabella.schede { table-layout: fixed; }
@@ -222,15 +220,5 @@ small.errore { color: var(--error-fg); }
 .tabella.schede .c-stima { width: 11em; }
 .tabella.schede .c-decisione { width: 9em; }
 .tabella.schede .c-azione { width: 7em; }
-/* Grafo del rischio del PLr (pagina della funzione di sicurezza) */
-.grafo svg.grafo-plr { display: block; width: 100%; max-width: 760px; height: auto; margin: 8px 0 4px; }
-.grafo-plr text { fill: var(--body-fg); }
-.grafo-plr text.nota { fill: var(--body-quiet-color); }
-.grafo-plr .partenza { fill: var(--body-fg); }
-.grafo-plr .ramo polyline, .grafo-plr .foglia line { stroke: #9AA3AE; stroke-width: 1.5; }
-.grafo-plr .ramo.attivo polyline, .grafo-plr .foglia.attivo line { stroke: #1F4E79; stroke-width: 3.5; }
-.grafo-plr .ramo.attivo text { font-weight: bold; }
-.grafo-plr .foglia text.lettera { fill: #1b1b1b; }
-.grafo-plr .foglia.attivo rect { stroke: #1F4E79; stroke-width: 3; }
 .pulsanti-funzione { display: flex; gap: 12px; align-items: center; margin: 16px 0; }
 .pulsanti-funzione form { margin: 0; }

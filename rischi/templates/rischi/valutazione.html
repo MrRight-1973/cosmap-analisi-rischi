@@ -3,11 +3,19 @@
 {% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'rischi/safety/valutazione.css' %}">{% endblock %}
 {% block titolo %}Calcolo PL · {{ funzione.nome }}{% endblock %}
 {% block contenuto %}
+{% if tipo %}
+<p><a href="{% url 'admin:rischi_funzionetipo_change' tipo.pk %}">← Funzione tipo {{ tipo.nome }}</a> · <a href="{% url 'admin:rischi_funzionetipo_changelist' %}">Funzioni tipo della libreria</a></p>
+<h1>Calcolo PL · {{ tipo.nome }} <span class="sotto">(funzione tipo della libreria)</span></h1>
+{% if not modificabile %}<div class="messaggio info">Sola lettura: serve il permesso di modificare le funzioni tipo.</div>{% endif %}
+{% if not tipo.plr %}<div class="messaggio warning">PLr non definito: scegli S, F e P nella <a href="{% url 'admin:rischi_funzionetipo_change' tipo.pk %}">funzione tipo</a>.</div>{% endif %}
+<p class="sotto">Schema a blocchi e componenti salvati qui arrivano già compilati in ogni commessa che aggiunge questa funzione tipo; le funzioni già aggiunte alle commesse non cambiano.</p>
+{% else %}
 <p><a href="{% url 'funzione' funzione.pk %}">← Funzione {{ funzione.nome }}</a> · <a href="{% url 'analisi' revisione.analisi_id %}#funzioni">Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
 <h1>Calcolo PL · {{ funzione.nome }}</h1>
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
 {% if not funzione.plr %}<div class="messaggio warning">PLr non definito: scegli S, F e P nella <a href="{% url 'funzione' funzione.pk %}">pagina della funzione</a>.</div>{% endif %}
 {% if valutazione.calcolata_il %}<p class="sotto">Ultimo salvataggio {{ valutazione.calcolata_il|date:"d/m/Y H:i" }}: {% if valutazione.pl %}PL {{ valutazione.pl }}{% else %}PL non calcolabile{% endif %}{% if valutazione.esito %} ≥ PLr {{ funzione.plr }}{% elif valutazione.esito is None %}, confronto con il PLr da rifare{% else %}, requisito non dimostrato{% endif %}.</p>{% endif %}
+{% endif %}
 {{ dati|json_script:"dati-valutazione" }}
 <div id="valutazione" class="valutazione"></div>
 <script src="{% static 'rischi/safety/engine.js' %}"></script>

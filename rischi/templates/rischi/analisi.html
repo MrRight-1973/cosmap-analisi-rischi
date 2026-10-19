@@ -101,18 +101,21 @@
     <td><a href="{% url 'prove_funzione' f.pk %}">{% if f.prove.validata %}validata ✓{% elif f.prove.non_ok %}{{ f.prove.non_ok }} prove non OK{% elif f.prove %}{{ f.prove.da_eseguire }} prove da eseguire{% else %}da eseguire{% endif %}</a></td>
   </tr>{% endfor %}
   </tbody></table>
-  {% else %}<p class="sotto">Nessuna funzione di sicurezza. Si crea dalla misura di protezione di una scheda, oppure qui per le funzioni che non nascono da una scheda.</p>{% endif %}
+  {% else %}<p class="sotto">Nessuna funzione di sicurezza. Si aggiunge da una funzione tipo della libreria e si collega alle misure di protezione delle schede; una funzione nuova si crea prima nella libreria (Funzioni tipo).</p>{% endif %}
   {% if misure_per_funzioni and ultima and puo.compilare %}
   <details class="proposte-funzioni" open>
     <summary>Misure delle schede che possono diventare funzioni di sicurezza ({{ misure_per_funzioni|length }})</summary>
-    <p class="sotto">Misure di protezione realizzate dal sistema di comando (interblocchi, barriere, emergenze, consensi…) non ancora collegate a una funzione. S, F e P sono suggeriti dalla stima iniziale della scheda.</p>
+    <p class="sotto">Misure di protezione realizzate dal sistema di comando (interblocchi, barriere, emergenze, consensi…) non ancora collegate a una funzione. Scegli la funzione tipo che la realizza: se la commessa ha già quella funzione la misura si collega lì, altrimenti la funzione si aggiunge. S, F e P suggeriti dalla stima iniziale della scheda servono da confronto con quelli della funzione tipo.</p>
     <table class="tabella"><thead><tr><th>Scheda</th><th>Misura</th><th>S F P suggeriti</th><th>PLr</th><th></th></tr></thead><tbody>
     {% for misura, s, f, p, plr in misure_per_funzioni %}<tr>
       <td><a href="{% url 'scheda' misura.scheda_id %}">{{ misura.scheda.codice }}</a></td>
       <td>{{ misura.testo|truncatechars:140 }}</td>
       <td>{{ s|default:"–" }} {{ f|default:"–" }} {{ p|default:"–" }}</td>
       <td>{{ plr|default:"–" }}</td>
-      <td><a class="bottone" href="{% url 'nuova_funzione' revisione.pk %}?misura={{ misura.pk }}">Crea funzione</a></td>
+      <td>{% if funzioni_tipo %}<form method="post" action="{% url 'aggiungi_funzione_tipo' revisione.pk %}" class="riga-form">{% csrf_token %}
+        <input type="hidden" name="misura" value="{{ misura.pk }}">
+        <select name="funzione_tipo" required aria-label="Funzione tipo">{% for t in funzioni_tipo %}<option value="{{ t.pk }}">{{ t.nome }}{% if t.plr %} · PLr {{ t.plr }}{% endif %}</option>{% endfor %}</select>
+        <button>Collega</button></form>{% endif %}</td>
     </tr>{% endfor %}
     </tbody></table>
   </details>
@@ -125,14 +128,8 @@
     <button>Aggiungi dalla funzione tipo</button>
   </form>
   {% endif %}
-  <form method="post" action="{% url 'importa_safety_evaluation' revisione.pk %}" enctype="multipart/form-data" class="riga-form"
-        title="File .json salvato con «Esporta valutazione» nella safety evaluation: articoli, funzioni con il calcolo, prove, misure contro i guasti sistematici e verifiche elettriche.">{% csrf_token %}
-    <input type="file" name="file" accept=".json,application/json" required>
-    <button>Importa dalla safety evaluation</button>
-  </form>
   {% endif %}
-  <p>{% if ultima and revisione.stato == "BOZZA" and puo.compilare %}<a class="bottone" href="{% url 'nuova_funzione' revisione.pk %}">Aggiungi funzione di sicurezza</a> {% endif %}
-  {% if funzioni %}<a class="bottone" href="{% url 'validazione' revisione.pk %}">Validazione e relazione PDF</a> <span class="sotto">Validazione {% if revisione.validazione %}{{ revisione.validazione.get_stato_display|lower }}{% else %}da compilare{% endif %}: prove ISO 13849-2, misure contro i guasti sistematici, relazione da firmare.</span>{% endif %}</p>
+  <p>{% if funzioni %}<a class="bottone" href="{% url 'validazione' revisione.pk %}">Validazione e relazione PDF</a> <span class="sotto">Validazione {% if revisione.validazione %}{{ revisione.validazione.get_stato_display|lower }}{% else %}da compilare{% endif %}: prove ISO 13849-2, misure contro i guasti sistematici, relazione da firmare.</span>{% endif %}</p>
 </section>
 
 <section class="riquadro" id="verifiche-elettriche">

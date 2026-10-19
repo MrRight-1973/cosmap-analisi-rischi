@@ -1,0 +1,15 @@
+/* Grafo del rischio del PLr e grafico del PL: pagine delle funzioni e funzioni tipo della libreria */
+.grafico svg.grafico-pl { display: block; width: 100%; max-width: 820px; height: auto; margin: 8px 0 4px; }
+.grafico svg.grafico-pl text { fill: var(--body-fg); }
+.grafo svg.grafo-plr { display: block; width: 100%; max-width: 760px; height: auto; margin: 8px 0 4px; }
+.grafo-plr text { fill: var(--body-fg); }
+.grafo-plr text.nota { fill: var(--body-quiet-color); }
+.grafo-plr .partenza { fill: var(--body-fg); }
+.grafo-plr .ramo polyline, .grafo-plr .foglia line { stroke: #9AA3AE; stroke-width: 1.5; }
+.grafo-plr .ramo.attivo polyline, .grafo-plr .foglia.attivo line { stroke: #1F4E79; stroke-width: 3.5; }
+.grafo-plr .ramo.attivo text { font-weight: bold; }
+.grafo-plr .foglia text.lettera { fill: #1b1b1b; }
+.grafo-plr .foglia.attivo rect { stroke: #1F4E79; stroke-width: 3; }
+/* Nella libreria (campi in sola lettura della funzione tipo) i grafici hanno una larghezza propria */
+.readonly .grafo svg.grafo-plr { width: 680px; max-width: 100%; }
+.readonly .grafico svg.grafico-pl { width: 820px; max-width: 100%; }

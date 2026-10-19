@@ -46,7 +46,8 @@
     {% if mf.instance.pk %}{% with funzioni=mf.instance.funzioni.all %}{% if funzioni or modificabile and mf.instance.tipo in "PROT DACL" %}
     <p class="funzioni-misura">Funzioni di sicurezza:
       {% for fz in funzioni %}<a href="{% url 'funzione' fz.pk %}">{{ fz.nome }}</a>{% if fz.plr %} (PLr {{ fz.plr }}){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}<span class="sotto">nessuna</span>{% endfor %}
-      {% if modificabile and mf.instance.tipo in "PROT DACL" %} · <a href="{% url 'nuova_funzione' revisione.pk %}?misura={{ mf.instance.pk }}">Crea funzione di sicurezza</a>{% endif %}
+      {% if modificabile and funzioni_tipo and mf.instance.tipo in "PROT DACL" %} · <select name="funzione_tipo_{{ mf.instance.pk }}" form="collega-funzione" aria-label="Funzione tipo">{% for t in funzioni_tipo %}<option value="{{ t.pk }}">{{ t.nome }}{% if t.plr %} · PLr {{ t.plr }}{% endif %}</option>{% endfor %}</select>
+      <button type="submit" form="collega-funzione" name="misura" value="{{ mf.instance.pk }}">Collega funzione tipo</button>{% endif %}
     </p>{% endif %}{% endwith %}{% endif %}
   </div>
   {% endfor %}
@@ -62,6 +63,10 @@
 </fieldset>
 {# Con la scheda modello di origine il pulsante sta in fondo, accanto ad "Aggiorna dalla scheda modello" #}
 </form>
+{% if scheda.pk and modificabile and funzioni_tipo %}
+{# Collegamento di una misura a una funzione tipo: i menu e i pulsanti stanno nelle misure (attributo form=) #}
+<form method="post" action="{% url 'aggiungi_funzione_tipo' revisione.pk %}" id="collega-funzione" hidden>{% csrf_token %}<input type="hidden" name="da" value="scheda"></form>
+{% endif %}
 {% if scheda.pk %}
 <div class="modulo sezione-allegati">
 <fieldset id="allegati"><legend>9. IMMAGINI ALLEGATE</legend>
