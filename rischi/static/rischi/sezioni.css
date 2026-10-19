@@ -11,18 +11,18 @@
 .sezione-apribile.chiusa { padding-bottom: 0; }
 .sezione-apribile.chiusa > legend, .sezione-apribile.chiusa > h2, .sezione-apribile.chiusa > table > caption { margin-bottom: 0; }
 .modulo fieldset.sezione-apribile.chiusa, section.riquadro.sezione-apribile.chiusa, #content-main .sezione-apribile.chiusa { margin-bottom: 8px; }
-/* Pagina iniziale della libreria: gruppi tutti larghi uguali */
+/* Pagina iniziale della libreria: gruppi larghi quanto il pannello a sinistra delle pagine interne */
 .dashboard #content-main .module table { width: 100%; }
+.dashboard #content-main .module { width: 320px; max-width: 100%; }
 /* Libreria e utenti: nelle pagine interne resta a sinistra l'elenco dei gruppi della pagina iniziale,
    sempre aperto, con evidenziata solo la voce scelta */
-#main > #nav-sidebar { margin-left: 0; left: 0; visibility: visible; }
-#main > #nav-sidebar + .content { max-width: calc(100% - 276px); }
-#nav-sidebar .module caption .section:link, #nav-sidebar .module caption .section:visited { color: var(--header-link-color); font-weight: normal; }
-#nav-sidebar .current-app .section:link, #nav-sidebar .current-app .section:visited { font-weight: bold; }
-#nav-sidebar .current-model { background: var(--selected-row); }
-#nav-sidebar .current-model a { font-weight: bold; }
-#main > #nav-sidebar { flex-basis: 340px; padding: 20px 0 20px 20px; box-sizing: border-box; border-right: none; }
+#main > #nav-sidebar {
+  margin-left: 0; left: 0; visibility: visible; flex: 0 0 340px; width: 340px; min-width: 340px;
+  padding: 20px 0 20px 20px; box-sizing: border-box; border-right: none;
+}
 #main > #nav-sidebar + .content { max-width: calc(100% - 340px); }
 #nav-sidebar .comandi-sezioni { margin: 0 0 10px; }
 #nav-sidebar .module { margin-bottom: 20px; }
+#nav-sidebar .current-model { background: var(--selected-row); }
+#nav-sidebar .current-model a { font-weight: bold; }
 @media (max-width: 767px) { #main > #nav-sidebar + .content { max-width: 100%; } }

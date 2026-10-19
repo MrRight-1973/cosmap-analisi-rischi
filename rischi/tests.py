@@ -1709,6 +1709,20 @@ class ArticoliSicurezzaTest(TestCase):
         Path(f.name).unlink()
         return uscita.getvalue()
 
+    def test_filtro_articoli_utilizzati(self):
+        from .models import ArticoloSicurezza, FunzioneTipo
+
+        self.importa(self.ARCHIVIO)
+        FunzioneTipo.objects.create(nome="Prova", dettaglio={"sottosistemi": [{"componenti": [{"articoloId": "pizzato-1"}]}]})
+        admin = User.objects.create_superuser("capo-articoli", password="x")
+        self.client.force_login(admin)
+        url = reverse("admin:rischi_articolosicurezza_changelist")
+        usati = self.client.get(url, {"utilizzati": "si"}).context["cl"].queryset
+        self.assertEqual([a.chiave for a in usati], ["pizzato-1"])
+        non_usati = self.client.get(url, {"utilizzati": "no"}).context["cl"].queryset
+        self.assertEqual([a.chiave for a in non_usati], ["s120-smm"])
+        self.assertEqual(ArticoloSicurezza.objects.count(), 2)
+
     def test_import_e_reimport(self):
         import datetime
 

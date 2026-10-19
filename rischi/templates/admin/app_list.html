@@ -1,12 +1,13 @@
 {% load i18n %}
 {% comment %}Elenco delle voci della libreria (pagina iniziale e barra laterale) senza i collegamenti "Aggiungi" e
-"Modifica": si apre l'elenco con il nome della voce e da lì si aggiunge o si modifica.{% endcomment %}
+"Modifica": si apre l'elenco con il nome della voce e da lì si aggiunge o si modifica. Il titolo del gruppo
+non è un collegamento: apre e chiude il gruppo.{% endcomment %}
 {% if app_list %}
   {% for app in app_list %}
     <div class="app-{{ app.app_label }} module{% if app.corrente %} current-app{% endif %}">
       <table>
         <caption>
-          <a href="{{ app.app_url }}" class="section" title="{% blocktranslate with name=app.name %}Models in the {{ name }} application{% endblocktranslate %}">{{ app.name }}</a>
+          <span class="section">{{ app.name }}</span>
         </caption>
         <thead class="visually-hidden">
           <tr><th scope="col">{% translate 'Model name' %}</th></tr>
