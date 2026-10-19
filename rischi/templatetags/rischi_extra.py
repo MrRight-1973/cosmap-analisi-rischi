@@ -53,3 +53,15 @@ def grafo_plr(form):
     from ..grafico_pl import svg_grafo
 
     return mark_safe(svg_grafo(form["s"].value(), form["f"].value(), form["p"].value()))
+
+
+@register.inclusion_tag("rischi/_proponi_testi.html")
+def proponi_testi(scheda=None, scheda_modello=None):
+    """Pulsante "Proponi testi" (vedi proposte.py): disattivato se sul server manca la chiave dell'API di Claude."""
+    import os
+
+    return {
+        "chiave": bool(os.environ.get("ANTHROPIC_API_KEY")),
+        "scheda": getattr(scheda, "pk", None),
+        "scheda_modello": getattr(scheda_modello, "pk", None),
+    }

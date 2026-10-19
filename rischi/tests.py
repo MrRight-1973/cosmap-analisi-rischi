@@ -2663,3 +2663,93 @@ class TavolaTrcTest(TestCase):
         migrazione.applica(apps, None)
         trc.refresh_from_db()
         self.assertEqual(trc.nome, "Tavola rotante in continuo")
+
+
+class ProponiTestiTest(BaseConLibreria):
+    """Pulsante "Proponi testi": la richiesta a Claude si costruisce dai dati della pagina, la risposta torna in JSON
+    con le regole del metodo applicate. L'API non si chiama davvero: proposte._chiama è sostituita."""
+
+    PROPOSTA = {
+        "zona_impianto": "Unità di lavoro", "zona_pericolosa": "Zona del disco",
+        "considerazioni_pericoli": "Pericoli", "considerazioni_limiti": "Limiti",
+        "considerazioni_soggetti": "Soggetti", "considerazioni_stima_iniziale": "Stima iniziale",
+        "considerazioni_riduzione": "Riduzione", "considerazioni_stima_finale": "Stima finale",
+        "testo_istruzioni": "<ul><li>Guanti</li></ul>",
+        "se_iniziale": 3, "fr_iniziale": 4, "pr_iniziale": 3, "av_iniziale": 3,
+        "se_finale": 4, "fr_finale": 2, "pr_finale": 1, "av_finale": 1,
+        "misure": [{"tipo": "PROT", "testo": "Riparo interbloccato"}],
+    }
+
+    def setUp(self):
+        from unittest import mock
+
+        from . import proposte
+
+        self.richieste = []
+
+        def finta(testo):
+            self.richieste.append(testo)
+            return dict(self.PROPOSTA)
+
+        patch = mock.patch.object(proposte, "_chiama", side_effect=finta)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.modello = SchedaModello.objects.exclude(considerazioni_riduzione="").first() or SchedaModello.objects.first()
+
+    def dati(self, **altri):
+        pericolo = Pericolo.objects.first()
+        return {
+            "modulo": self.modello.modulo_id, "requisito": self.modello.requisito_id, "pericoli": [pericolo.pk],
+            "considerazioni_pericoli": "Testo già scritto dal tecnico",
+            "misure-0-testo": "Misura esistente", "misure-1-testo": "Misura tolta", "misure-1-DELETE": "on",
+            "allegati-0-testo": "Didascalia", **altri,
+        }
+
+    def test_proposta_con_regole_del_metodo(self):
+        self.client.force_login(self.compilatore)
+        risposta = self.client.post(reverse("proponi_testi"), self.dati())
+        self.assertEqual(risposta.status_code, 200)
+        proposta = risposta.json()["proposta"]
+        self.assertEqual(proposta["fr_finale"], 4)  # Fr reale
+        self.assertEqual(proposta["se_finale"], 3)  # mai oltre la Se iniziale
+        richiesta = self.richieste[0]
+        self.assertIn(self.modello.requisito.codice, richiesta)
+        self.assertIn(str(Pericolo.objects.first()), richiesta)
+        self.assertIn("Testo già scritto dal tecnico", richiesta)
+        self.assertIn("Misura esistente", richiesta)
+        self.assertNotIn("Misura tolta", richiesta)
+        self.assertNotIn("Didascalia", richiesta)
+        self.assertIn("Matrice", richiesta)
+
+    def test_senza_requisito_o_senza_ruolo(self):
+        self.client.force_login(self.compilatore)
+        risposta = self.client.post(reverse("proponi_testi"), self.dati(requisito=""))
+        self.assertEqual(risposta.status_code, 400)
+        self.assertIn("requisito", risposta.json()["errore"])
+        self.client.force_login(self.verificatore)
+        self.assertEqual(self.client.post(reverse("proponi_testi"), self.dati()).status_code, 403)
+        self.assertEqual(self.richieste, [])
+
+    def test_manca_la_chiave(self):
+        from unittest import mock
+
+        from . import proposte
+
+        mock.patch.stopall()
+        with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
+            with self.assertRaisesMessage(proposte.PropostaNonDisponibile, "ANTHROPIC_API_KEY"):
+                proposte._chiama("prova")
+
+    def test_pulsante_nelle_schede(self):
+        from unittest import mock
+
+        admin_utente = User.objects.create_superuser("capo", password="prova-prova-123")
+        self.client.force_login(admin_utente)
+        url = reverse("admin:rischi_schedamodello_change", args=[self.modello.pk])
+        with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": "chiave"}):
+            pagina = self.client.get(url).content.decode()
+        self.assertIn("data-proponi", pagina)
+        self.assertIn(f'data-scheda-modello="{self.modello.pk}"', pagina)
+        self.assertNotIn("Manca la chiave", pagina)
+        with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
+            self.assertIn("Manca la chiave", self.client.get(url).content.decode())

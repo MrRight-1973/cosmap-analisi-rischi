@@ -1,7 +1,9 @@
 {% extends "admin/change_form.html" %}
 {% comment %}Sezioni EN ISO 12100, richiudibili: chiuse quando si apre una scheda esistente, aperte per una
 scheda nuova o con errori. La sezione 6 (riduzione del rischio) contiene anche le misure di protezione.{% endcomment %}
+{% load rischi_extra %}
 {% block field_sets %}
+{% if has_change_permission or add %}{% proponi_testi scheda_modello=original %}{% endif %}
 <div class="comandi-sezioni">
   <button type="button" class="button" data-sezioni="apri">Apri tutte le sezioni</button>
   <button type="button" class="button" data-sezioni="chiudi">Chiudi tutte</button>

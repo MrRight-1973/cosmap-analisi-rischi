@@ -244,6 +244,127 @@
     });
   }
 
+  // Pulsante "Proponi testi": Claude propone zona, considerazioni, stime, misure e istruzioni (vedi proposte.py)
+  // partendo dai dati della pagina, anche non salvati. I testi proposti si colorano; si salva con la scheda.
+  const TESTI_PROPOSTA = ["zona_pericolosa", "considerazioni_pericoli", "considerazioni_limiti", "considerazioni_soggetti",
+    "considerazioni_stima_iniziale", "considerazioni_riduzione", "considerazioni_stima_finale", "testo_istruzioni"];
+  const STIME_PROPOSTA = ["se_iniziale", "fr_iniziale", "pr_iniziale", "av_iniziale",
+    "se_finale", "fr_finale", "pr_finale", "av_finale"];
+
+  function editorDi(area) {
+    const contenitore = area.closest(".testo-ricco");
+    return contenitore && contenitore.querySelector(".editor-testo");
+  }
+  function testoVuoto(area) {
+    const editor = editorDi(area);
+    return !(editor ? editor.textContent : area.value).trim();
+  }
+  function scriviTesto(area, testo) {
+    const html = inEditor(testo || "");
+    const editor = editorDi(area);
+    if (editor) editor.innerHTML = html;
+    area.value = pulisci(html);
+    (area.closest(".testo-ricco") || area).classList.add("proposto");
+  }
+
+  function righeMisure(modulo) {
+    return Array.from(modulo.querySelectorAll(".misura, #misure-group .inline-related:not(.empty-form)"))
+      .filter((r) => !r.querySelector("input[name$='-DELETE']:checked") && r.querySelector("textarea[name$='-testo']"));
+  }
+  function nuovaMisura(modulo) {
+    const aggiungi = modulo.querySelector("#misure-group .add-row a");
+    if (aggiungi) {  // amministrazione: la riga la aggiunge Django (scatta formset:added e si prepara l'editor)
+      aggiungi.click();
+      const righe = righeMisure(modulo);
+      return righe[righe.length - 1];
+    }
+    const modello = document.getElementById("misura-vuota");
+    const totale = modulo.querySelector("input[name='misure-TOTAL_FORMS']");
+    if (!modello || !totale) return null;
+    const indice = parseInt(totale.value);
+    const contenitore = document.createElement("div");
+    contenitore.innerHTML = modello.innerHTML.replace(/__prefix__/g, indice);
+    const riga = contenitore.firstElementChild;
+    modello.parentNode.insertBefore(riga, modello);
+    totale.value = indice + 1;
+    const ordine = riga.querySelector("input[name$='-ordine']");
+    if (ordine) ordine.value = righeMisure(modulo).length;
+    riga.querySelectorAll("textarea").forEach(preparaEditor);
+    return riga;
+  }
+
+  function applicaProposta(modulo, proposta, sostituisci) {
+    const campo = (nome) => modulo.querySelector("[name='" + nome + "']");
+    const zona = campo("zona_impianto");
+    if (zona && (sostituisci || !zona.value.trim()) && proposta.zona_impianto) {
+      zona.value = proposta.zona_impianto;
+      zona.classList.add("proposto");
+    }
+    TESTI_PROPOSTA.forEach(function (nome) {
+      const area = campo(nome);
+      if (area && proposta[nome] && (sostituisci || testoVuoto(area))) scriviTesto(area, proposta[nome]);
+    });
+    STIME_PROPOSTA.forEach(function (nome) {
+      const scelta = campo(nome);
+      if (scelta && proposta[nome] != null && (sostituisci || !scelta.value)) {
+        scelta.value = String(proposta[nome]);
+        scelta.classList.add("proposto");
+      }
+    });
+    // Misure: con "sostituisci" si riscrivono nell'ordine; altrimenti si aggiungono solo se la scheda non ne ha.
+    let righe = righeMisure(modulo);
+    const scritte = righe.filter((r) => !testoVuoto(r.querySelector("textarea[name$='-testo']")));
+    if (!sostituisci && scritte.length) return;
+    if (!sostituisci) righe = righe.filter((r) => !scritte.includes(r));
+    (proposta.misure || []).forEach(function (misura, i) {
+      const riga = righe[i] || nuovaMisura(modulo);
+      if (!riga) return;
+      const tipo = riga.querySelector("select[name$='-tipo']");
+      if (tipo) { tipo.value = misura.tipo; tipo.classList.add("proposto"); }
+      scriviTesto(riga.querySelector("textarea[name$='-testo']"), misura.testo);
+    });
+    numeraMisure();
+  }
+
+  function preparaProposta() {
+    document.querySelectorAll("button[data-proponi]").forEach(function (pulsante) {
+      const modulo = pulsante.closest("form") || document.getElementById("form-scheda");
+      const esito = pulsante.parentNode.querySelector(".esito-proposta");
+      if (!modulo) return;
+      pulsante.addEventListener("click", function () {
+        const gia = TESTI_PROPOSTA.some((n) => { const a = modulo.querySelector("[name='" + n + "']"); return a && !testoVuoto(a); })
+          || righeMisure(modulo).some((r) => !testoVuoto(r.querySelector("textarea[name$='-testo']")));
+        const sostituisci = gia && confirm("Alcuni testi sono già scritti.\n\nOK: sostituisci anche quelli con la proposta di Claude.\n"
+          + "Annulla: completa solo i campi vuoti.");
+        const dati = new FormData(modulo);
+        if (pulsante.dataset.scheda) dati.append("scheda", pulsante.dataset.scheda);
+        if (pulsante.dataset.schedaModello) dati.append("scheda_modello", pulsante.dataset.schedaModello);
+        const testoPrima = pulsante.textContent;
+        pulsante.disabled = true;
+        pulsante.textContent = "Claude sta scrivendo…";
+        esito.classList.remove("errore");
+        esito.textContent = "Claude sta studiando requisito, pericoli ed esempi della libreria e scrive la proposta: "
+          + "di solito serve un minuto o due.";
+        fetch(pulsante.dataset.proponi, { method: "POST", body: dati, credentials: "same-origin" })
+          .then((r) => r.json().catch(() => ({ errore: "Risposta non valida dal server (" + r.status + ")." })))
+          .then(function (risposta) {
+            if (risposta.errore) throw new Error(risposta.errore);
+            applicaProposta(modulo, risposta.proposta, sostituisci);
+            document.querySelectorAll("details.sezione").forEach((d) => { d.open = true; });
+            esito.textContent = "Proposta inserita nei campi colorati: rileggi, correggi e salva la scheda.";
+          })
+          .catch(function (e) {
+            esito.classList.add("errore");
+            esito.textContent = e.message || "Proposta non disponibile.";
+          })
+          .finally(function () {
+            pulsante.disabled = false;
+            pulsante.textContent = testoPrima;
+          });
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     preparaSoluzioni();
     numeraMisure();
@@ -256,5 +377,6 @@
     });
     preparaNorme();
     preparaSezioni();
+    preparaProposta();
   });
 })();

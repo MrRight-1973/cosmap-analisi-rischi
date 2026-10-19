@@ -15,6 +15,7 @@ urlpatterns = [
     path("schede/<int:pk>/conferma/", views.decisione_rapida, name="conferma_scheda"),
     path("schede/<int:pk>/da-modello/", views.aggiorna_da_modello, name="aggiorna_da_modello"),
     path("schede/<int:pk>/allegati/", views.aggiungi_allegato, name="aggiungi_allegato"),
+    path("schede/proponi-testi/", views.proponi_testi, name="proponi_testi"),
     path("allegati/<int:pk>/elimina/", views.elimina_allegato, name="elimina_allegato"),
     path("revisioni/<int:revisione_pk>/funzione-tipo/", views.aggiungi_funzione_tipo, name="aggiungi_funzione_tipo"),
     path("funzioni/<int:pk>/", views.funzione, name="funzione"),
