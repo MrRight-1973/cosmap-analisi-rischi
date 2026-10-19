@@ -2068,6 +2068,27 @@ class ValidazioneTest(BaseConLibreria):
         self.client.force_login(self.verificatore)
         self.assertContains(self.client.get(self.url_prove), "Sola lettura")
 
+    def test_relazione_grafo_e_confluenza(self):
+        """Percorsi con rilevamento proprio e logica/attuazione comuni: nello schema i comuni si disegnano una volta."""
+        import io as _io
+
+        from pypdf import PdfReader
+
+        from . import calcolo
+
+        dettaglio = {"percorsi": ["Porta", "Emergenza"], "sottosistemi": [
+            {**ss, "percorso": percorso} for ss, percorso in zip(self.dettaglio["sottosistemi"], ("Porta", "", ""))
+        ] + [{**self.dettaglio["sottosistemi"][0], "id": "fdi2", "nome": "FUNGO", "percorso": "Emergenza"}]}
+        servizi.salva_valutazione(self.funzione, dettaglio, {}, self.compilatore)
+        confluenza = calcolo.calcola(self.funzione, dettaglio)["confluenza"]
+        self.assertEqual([r["nome"] for r in confluenza["propri"]], ["Porta", "Emergenza"])
+        self.assertEqual([b["nome"] for b in confluenza["comuni"]], ["FCPU", "STO"])
+        self.client.force_login(self.compilatore)
+        risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "funzioni"]))
+        testo = " ".join(p.extract_text() for p in PdfReader(_io.BytesIO(b"".join(risposta.streaming_content))).pages)
+        self.assertIn("figura A.1", testo)
+        self.assertIn("confluiscono nei sottosistemi comuni", testo)
+
     def test_relazione_pdf(self):
         import io as _io
 
@@ -2558,3 +2579,26 @@ class GrafoPLrTest(TestCase):
         self.assertIn('class="ramo" data-chiave="S1"', grafo)
         self.assertEqual(grafo.count(" attivo"), 4)  # 3 rami e la foglia d
         self.assertNotIn(" attivo", svg_grafo())
+
+
+class TavolaTrcTest(TestCase):
+    def test_trc_diventa_tavola_a_scatti(self):
+        import importlib
+
+        from django.apps import apps
+
+        migrazione = importlib.import_module("rischi.migrations.0042_trc_tavola_a_scatti")
+        Modulo.objects.filter(sigla__in=["TAV", "TRC"]).delete()
+        Modulo.objects.filter(nome__in=["Tavola rotante a scatti", "Tavola rotante in continuo"]).delete()
+        trc = Modulo.objects.create(sigla="TRC", nome="Tavola rotante in continuo", condizione="Base: macchine TRC")
+        migrazione.applica(apps, None)
+        trc.refresh_from_db()
+        self.assertEqual((trc.sigla, trc.nome), ("TRC", "Tavola rotante a scatti"))
+        self.assertTrue(trc.condizione.startswith("Base: macchine TR "))
+        # Con un modulo TAV che ha già il nome giusto non cambia nulla
+        trc.nome = "Tavola rotante in continuo"
+        trc.save()
+        Modulo.objects.create(sigla="TAV", nome="Tavola rotante a scatti")
+        migrazione.applica(apps, None)
+        trc.refresh_from_db()
+        self.assertEqual(trc.nome, "Tavola rotante in continuo")

@@ -41,7 +41,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
+from reportlab.graphics.shapes import Circle, Drawing, Line, Polygon, Rect, String
 
 from . import calcolo
 from .models import (
@@ -1009,40 +1009,125 @@ def _data_testo(testo):
     return testo or ""
 
 
-def _schema_a_blocchi(schema):
-    """Schema a blocchi come nella pagina: un percorso per riga, sottosistemi in serie; i blocchi comuni a tutti
-    i percorsi hanno il bordo tratteggiato."""
+GRIGIO_SCHEMA = "#5F6B7A"
+
+
+def _blocco_schema(disegno, x, y, larghezza, altezza, blocco, caratteri):
     normale = _carattere_registrato()[0]
-    etichetta = 2.6 * cm if any(r["nome"] for r in schema) else 0
-    massimo = max((len(r["blocchi"]) for r in schema), default=1) or 1
+    colore = colors.HexColor(COLORI_RUOLO.get(blocco["ruolo"], GRIGIO_SCHEMA))
+    disegno.add(Rect(x, y, larghezza, altezza, rx=3, ry=3, fillColor=colors.HexColor("#F7F8FA"),
+                     strokeColor=colors.HexColor(GRIGIO_SCHEMA), strokeWidth=0.6,
+                     strokeDashArray=[3, 2] if blocco["comune"] else None))
+    disegno.add(Rect(x, y, 1.6 * mm, altezza, fillColor=colore, strokeColor=None))
+    nome = blocco["nome"] or "–"
+    disegno.add(String(x + 2.6 * mm, y + altezza - 4.2 * mm, nome[:caratteri] + ("…" if len(nome) > caratteri else ""),
+                       fontName=normale, fontSize=7.5))
+    disegno.add(String(x + 2.6 * mm, y + 2.2 * mm, RUOLI.get(blocco["ruolo"], blocco["ruolo"]).upper(),
+                       fontName=normale, fontSize=5.8, fillColor=colore))
+
+
+def _freccia_schema(disegno, x1, x2, y):
+    """Freccia orizzontale da x1 a x2 (punta su x2)."""
+    grigio = colors.HexColor(GRIGIO_SCHEMA)
+    disegno.add(Line(x1, y, x2 - 1 * mm, y, strokeColor=grigio, strokeWidth=0.8))
+    disegno.add(Polygon([x2 - 1 * mm, y + 1.2 * mm, x2, y, x2 - 1 * mm, y - 1.2 * mm], fillColor=grigio, strokeColor=None))
+
+
+def _schema_a_blocchi(schema, confluenza=None):
+    """Schema a blocchi come nella pagina. Con la confluenza (blocchi comuni in coda a tutti i percorsi) ogni
+    percorso ha la sua riga con i blocchi propri e confluisce nei sottosistemi comuni, disegnati una volta sola;
+    altrimenti un percorso per riga con tutti i sottosistemi in serie (i comuni col bordo tratteggiato)."""
+    normale = _carattere_registrato()[0]
+    righe = confluenza["propri"] if confluenza else schema
+    comuni = confluenza["comuni"] if confluenza else []
+    etichetta = 2.6 * cm if any(r["nome"] for r in righe) else 0
+    propri = max((len(r["blocchi"]) for r in righe), default=1) or (0 if comuni else 1)
     freccia = 0.6 * cm
-    larghezza = min(3.6 * cm, (LARGHEZZA - etichetta - freccia * (massimo - 1)) / massimo)
+    blocchi = propri + len(comuni)
+    frecce = (propri + len(comuni)) if comuni else propri - 1  # con la confluenza c'è anche il tratto verso i comuni
+    larghezza = min(3.6 * cm, (LARGHEZZA - etichetta - freccia * frecce) / blocchi)
     altezza_blocco, passo = 1.15 * cm, 1.55 * cm
-    disegno = Drawing(LARGHEZZA, passo * len(schema))
+    disegno = Drawing(LARGHEZZA, passo * len(righe))
     caratteri = max(8, int(larghezza / (1.55 * mm)))
-    for i, riga in enumerate(schema):
-        y = passo * (len(schema) - 1 - i) + (passo - altezza_blocco) / 2
+    fine_propri = etichetta + propri * larghezza + max(propri - 1, 0) * freccia
+    bus = fine_propri + freccia / 2
+    centri = []
+    for i, riga in enumerate(righe):
+        y = passo * (len(righe) - 1 - i) + (passo - altezza_blocco) / 2
+        meta = y + altezza_blocco / 2
+        centri.append(meta)
         if riga["nome"]:
-            disegno.add(String(0, y + altezza_blocco / 2 - 3, riga["nome"][:18], fontName=normale, fontSize=8))
+            disegno.add(String(0, meta - 3, riga["nome"][:18], fontName=normale, fontSize=8))
         x = etichetta
         for j, blocco in enumerate(riga["blocchi"]):
-            colore = colors.HexColor(COLORI_RUOLO.get(blocco["ruolo"], "#5F6B7A"))
-            disegno.add(Rect(x, y, larghezza, altezza_blocco, rx=3, ry=3, fillColor=colors.HexColor("#F7F8FA"),
-                             strokeColor=colors.HexColor("#5F6B7A"), strokeWidth=0.6,
-                             strokeDashArray=[3, 2] if blocco["comune"] else None))
-            disegno.add(Rect(x, y, 1.6 * mm, altezza_blocco, fillColor=colore, strokeColor=None))
-            nome = blocco["nome"] or "–"
-            disegno.add(String(x + 2.6 * mm, y + altezza_blocco - 4.2 * mm, nome[:caratteri] + ("…" if len(nome) > caratteri else ""),
-                               fontName=normale, fontSize=7.5))
-            disegno.add(String(x + 2.6 * mm, y + 2.2 * mm, RUOLI.get(blocco["ruolo"], blocco["ruolo"]).upper(),
-                               fontName=normale, fontSize=5.8, fillColor=colore))
+            _blocco_schema(disegno, x, y, larghezza, altezza_blocco, blocco, caratteri)
             x += larghezza
             if j < len(riga["blocchi"]) - 1:
-                meta = y + altezza_blocco / 2
-                disegno.add(Line(x + 1 * mm, meta, x + freccia - 1.5 * mm, meta, strokeColor=colors.HexColor("#5F6B7A"), strokeWidth=0.8))
-                disegno.add(Polygon([x + freccia - 1.5 * mm, meta + 1.2 * mm, x + freccia - 0.5 * mm, meta, x + freccia - 1.5 * mm, meta - 1.2 * mm],
-                                    fillColor=colors.HexColor("#5F6B7A"), strokeColor=None))
+                _freccia_schema(disegno, x + 1 * mm, x + freccia - 0.5 * mm, meta)
                 x += freccia
+        if comuni:  # tratto fino alla linea di confluenza
+            disegno.add(Line(x + (1 * mm if riga["blocchi"] else 0), meta, bus, meta, strokeColor=colors.HexColor(GRIGIO_SCHEMA), strokeWidth=0.8))
+    if comuni:
+        grigio = colors.HexColor(GRIGIO_SCHEMA)
+        if len(centri) > 1:
+            disegno.add(Line(bus, min(centri), bus, max(centri), strokeColor=grigio, strokeWidth=0.8))
+        meta = (min(centri) + max(centri)) / 2
+        x = bus + freccia / 2
+        _freccia_schema(disegno, bus, x - 0.5 * mm, meta)
+        for j, blocco in enumerate(comuni):
+            _blocco_schema(disegno, x, meta - altezza_blocco / 2, larghezza, altezza_blocco, blocco, caratteri)
+            x += larghezza
+            if j < len(comuni) - 1:
+                _freccia_schema(disegno, x + 1 * mm, x + freccia - 0.5 * mm, meta)
+                x += freccia
+    return disegno
+
+
+def _grafo_rischio(s, f, p):
+    """Grafo del rischio (EN ISO 13849-1, fig. A.1) con il percorso della funzione evidenziato, come nella pagina."""
+    from .grafico_pl import COLORI, FOGLIE
+
+    normale, grassetto = _carattere_registrato()[0], _carattere_registrato()[1]
+    scelta = (s or "") + ((f or "") + ((p or "") if f else "") if s else "")
+    riga_h, sopra = 0.55 * cm, 0.5 * cm
+    altezza = sopra + 8 * riga_h + 0.2 * cm
+    x0, xs, xf, xp, xl = 0.3 * cm, 2.6 * cm, 5.1 * cm, 7.6 * cm, 8.6 * cm
+    disegno = Drawing(LARGHEZZA, altezza)
+    blu, grigio = colors.HexColor("#1F4E79"), colors.HexColor("#9AA3AE")
+
+    def y(primo, quanti):  # dall'alto: centro di un gruppo di foglie
+        return altezza - sopra - (primo + (quanti - 1) / 2 + 0.5) * riga_h
+
+    def ramo(chiave, x1, y1, x2, y2, etichetta):
+        attivo = scelta.startswith(chiave)
+        tratto = dict(strokeColor=blu if attivo else grigio, strokeWidth=2.2 if attivo else 0.8)
+        disegno.add(Line(x1, y1, x1 + 0.3 * cm, y2, **tratto))
+        disegno.add(Line(x1 + 0.3 * cm, y2, x2, y2, **tratto))
+        disegno.add(String(x1 + 0.4 * cm, y2 + 1.2 * mm, etichetta, fontName=grassetto if attivo else normale, fontSize=7.5))
+
+    disegno.add(String(xl, altezza - 0.35 * cm, "PLr", fontName=normale, fontSize=7.5, fillColor=colors.HexColor(GRIGIO_SCHEMA)))
+    for i, sv in enumerate(("S1", "S2")):
+        ys = y(i * 4, 4)
+        ramo(sv, x0, y(0, 8), xs, ys, sv)
+        for j, fv in enumerate(("F1", "F2")):
+            yf = y(i * 4 + j * 2, 2)
+            ramo(sv + fv, xs, ys, xf, yf, fv)
+            for k, pv in enumerate(("P1", "P2")):
+                n = i * 4 + j * 2 + k
+                yp = y(n, 1)
+                chiave = sv + fv + pv
+                ramo(chiave, xf, yf, xp, yp, pv)
+                attivo = scelta == chiave
+                disegno.add(Line(xp, yp, xl, yp, strokeColor=blu if attivo else grigio, strokeWidth=2.2 if attivo else 0.8))
+                lettera = FOGLIE[n]
+                disegno.add(Rect(xl, yp - 0.22 * cm, 0.8 * cm, 0.44 * cm, rx=2, ry=2, fillColor=colors.HexColor(COLORI[lettera]),
+                                 strokeColor=blu if attivo else None, strokeWidth=1.6))
+                disegno.add(String(xl + 0.4 * cm, yp - 0.1 * cm, lettera, fontName=grassetto, fontSize=8.5, textAnchor="middle"))
+    disegno.add(Circle(x0, y(0, 8), 1.2 * mm, fillColor=colors.black, strokeColor=None))
+    legenda = ["S1 lesione lieve · S2 lesione grave", "F1 esposizione rara o breve · F2 frequente o lunga",
+               "P1 evitabile · P2 difficilmente evitabile"]
+    for n, testo in enumerate(legenda):
+        disegno.add(String(xl + 1.4 * cm, y(2 + n, 1), testo, fontName=normale, fontSize=7.5, fillColor=colors.HexColor(GRIGIO_SCHEMA)))
     return disegno
 
 
@@ -1083,12 +1168,17 @@ def _capitolo_funzione(doc, numero, riga, articoli):
         ["Possibilità di evitare il pericolo", funzione.get_p_display() or "–"],
         ["PLr", funzione.plr or "–"],
     ], [6, 11])
+    doc.storia.append(_grafo_rischio(funzione.s, funzione.f, funzione.p))
+    doc.p("Grafo del rischio (EN ISO 13849-1, figura A.1): il percorso evidenziato porta al PLr della funzione.")
 
     doc.titoletto(f"{numero}.2 Schema a blocchi", 2)
     if r["schema"] and any(riga_s["blocchi"] for riga_s in r["schema"]):
-        doc.storia.append(_schema_a_blocchi(r["schema"]))
+        confluenza = r.get("confluenza")
+        doc.storia.append(_schema_a_blocchi(r["schema"], confluenza))
         doc.spazio(1)
-        doc.p("Ogni riga è un percorso; i sottosistemi sono in serie. Bordo tratteggiato: sottosistema comune a tutti i percorsi.")
+        doc.p("Ogni riga è un percorso; i sottosistemi sono in serie. "
+              + ("I percorsi confluiscono nei sottosistemi comuni (bordo tratteggiato), disegnati una volta sola."
+                 if confluenza else "Bordo tratteggiato: sottosistema comune a tutti i percorsi."))
     else:
         doc.p("Schema a blocchi non compilato.")
 

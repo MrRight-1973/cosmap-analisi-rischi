@@ -8,6 +8,7 @@ const E = require(path.join(__dirname, 'engine.js'));
 const Schema = require(path.join(__dirname, 'schema.js'));
 const V = require(path.join(__dirname, 'validazione.js'));
 
+const blocco = ss => ({ nome: ss.nome || '', ruolo: ss.ruolo || '', comune: !(ss.percorso || '').trim() });
 const numero = v => (v == null || Number.isNaN(v) ? null : v);
 
 function risultato(funzione, articoli, missionTime) {
@@ -22,9 +23,12 @@ function risultato(funzione, articoli, missionTime) {
     avvisi: r.warns,
     percorsi: r.paths.map(p => ({ nome: p.nome, pfh: p.complete ? p.nano : null, pl: p.pl, completo: p.complete, peggiore: p === r.worst })),
     // Schema a blocchi: un percorso per riga con i blocchi in serie, come nella pagina
-    schema: Schema.percorsi(f).map(nome => ({
-      nome, blocchi: Schema.catena(f, nome).map(ss => ({ nome: ss.nome || '', ruolo: ss.ruolo || '', comune: !(ss.percorso || '').trim() })),
-    })),
+    schema: Schema.percorsi(f).map(nome => ({ nome, blocchi: Schema.catena(f, nome).map(blocco) })),
+    // Come nella pagina: con i blocchi comuni in coda, i percorsi confluiscono nei comuni disegnati una volta sola
+    confluenza: (c => c && {
+      propri: [...c.propri].map(([nome, blocchi]) => ({ nome, blocchi: blocchi.map(blocco) })),
+      comuni: c.comuni.map(blocco),
+    })(Schema.confluenza(f)),
     sottosistemi: Schema.gruppi(f).flatMap(g => g.blocchi).map(ss => {
       const x = r.subs.find(s => s.ss === ss).r;
       return {
