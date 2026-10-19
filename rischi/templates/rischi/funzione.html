@@ -5,20 +5,21 @@
 <p><a href="{% url 'analisi' revisione.analisi_id %}#funzioni">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
 <h1>{% if funzione.pk %}Funzione di sicurezza · {{ funzione.nome }}{% else %}Nuova funzione di sicurezza{% endif %}</h1>
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
+<p class="comandi-sezioni"><button type="button" data-sezioni="apri">Apri tutte le sezioni</button> <button type="button" data-sezioni="chiudi">Chiudi tutte</button></p>
 <form method="post" class="modulo" id="form-funzione">{% csrf_token %}
 {{ form.non_field_errors }}
-<fieldset><legend>1. FUNZIONE</legend>
+<fieldset class="sezione-pagina"><details class="sezione"{% if not funzione.pk %} open{% endif %}><summary><span class="titolo-sezione">1. FUNZIONE</span><span class="riepilogo-sezione">{{ funzione.nome }}</span><span class="apri-sezione"></span></summary>
   {% include "rischi/_campo.html" with f=form.nome %}
   {% include "rischi/_campo.html" with f=form.descrizione %}
-</fieldset>
-<fieldset><legend>2. MISURE DI PROTEZIONE DELLE SCHEDE</legend>
+</details></fieldset>
+<fieldset class="sezione-pagina"><details class="sezione"{% if not funzione.pk %} open{% endif %}><summary><span class="titolo-sezione">2. MISURE DI PROTEZIONE DELLE SCHEDE</span><span class="riepilogo-sezione">{% if funzione.pk %}{{ funzione.misure.count }} misure collegate{% endif %}</span><span class="apri-sezione"></span></summary>
   {% include "rischi/_campo.html" with f=form.misure %}
   {% if schede %}
   <p class="sotto">Stima del rischio nelle schede collegate, come riferimento per S, F e P:
   {% for s in schede %}<br><a href="{% url 'scheda' s.pk %}">{{ s.codice }}</a> · iniziale Se {{ s.se_iniziale|default:"–" }}, Fr {{ s.fr_iniziale|default:"–" }}, Pr {{ s.pr_iniziale|default:"–" }}, Av {{ s.av_iniziale|default:"–" }} ({% esito s.se_iniziale s.cl_iniziale s.esito_iniziale %}){% endfor %}</p>
   {% endif %}
-</fieldset>
-<fieldset><legend>3. PLr DAL GRAFO DEL RISCHIO (EN ISO 13849-1, ALLEGATO A)</legend>
+</details></fieldset>
+<fieldset class="sezione-pagina"><details class="sezione"{% if not funzione.pk %} open{% endif %}><summary><span class="titolo-sezione">3. PLr DAL GRAFO DEL RISCHIO (EN ISO 13849-1, ALLEGATO A)</span><span class="riepilogo-sezione">{% if funzione.plr %}{{ funzione.s }} {{ funzione.f }} {{ funzione.p }} · PLr {{ funzione.plr }}{% endif %}</span><span class="apri-sezione"></span></summary>
   <p class="sotto">I parametri del grafo non coincidono con quelli del metodo di stima della scheda: si scelgono qui, guardando la stima della scheda come riferimento.</p>
   {% if suggeriti %}<p class="messaggio info">S, F e P sono suggeriti dalla stima iniziale della scheda (Se 3-4 → S2, Fr 5 → F2, Av 5 → P2): controllali prima di salvare.</p>{% endif %}
   <div class="grafo-rischio">
@@ -27,31 +28,33 @@
     {% include "rischi/_campo.html" with f=form.p %}
   </div>
   <p class="plr">PLr: <strong id="plr">{{ funzione.plr|default:"–" }}</strong></p>
-</fieldset>
+</details></fieldset>
 {% if modificabile %}<button class="primario">Salva funzione</button>{% endif %}
 </form>
 {% if funzione.pk %}
 <div class="modulo">
-<fieldset><legend>4. CALCOLO DEL PL (EN ISO 13849-1)</legend>
+<fieldset class="sezione-pagina"><details class="sezione" open><summary><span class="titolo-sezione">4. CALCOLO DEL PL (EN ISO 13849-1)</span><span class="riepilogo-sezione">{% if funzione.valutazione.pl %}PL {{ funzione.valutazione.pl }}{% if funzione.valutazione.esito %} ✓{% elif funzione.valutazione.esito is False %} ✗{% endif %}{% elif funzione.valutazione %}incompleto{% else %}da calcolare{% endif %}</span><span class="apri-sezione"></span></summary>
   <p class="sotto">{% if funzione.valutazione %}{% if funzione.valutazione.pl %}PL {{ funzione.valutazione.pl }}{% else %}PL non ancora calcolabile{% endif %}{% if funzione.valutazione.esito %} ≥ PLr {{ funzione.plr }}: requisito soddisfatto{% elif funzione.valutazione.esito is None %}: confronto con il PLr da rifare{% else %}: requisito non dimostrato{% endif %}.{% else %}Schema a blocchi, componenti e calcolo non ancora compilati.{% endif %}</p>
+  {% if grafico_pl %}<div class="grafico">{{ grafico_pl }}</div>
+  <p class="sotto">Fasce di PFH dei livelli di prestazione (EN ISO 13849-1, tab. 2). La linea tratteggiata è il limite del PLr: il punto della funzione deve stare alla sua destra. Il PL può essere più basso della fascia in cui cade il PFH quando lo limitano categoria, DC o MTTFd dei sottosistemi.</p>{% endif %}
   <p><a class="bottone" href="{% url 'valutazione_funzione' funzione.pk %}">{% if modificabile %}Apri il calcolo del PL{% else %}Vedi il calcolo del PL{% endif %}</a></p>
-</fieldset>
-<fieldset><legend>5. VALIDAZIONE (EN ISO 13849-2)</legend>
+</details></fieldset>
+<fieldset class="sezione-pagina"><details class="sezione"{% if not funzione.pk %} open{% endif %}><summary><span class="titolo-sezione">5. VALIDAZIONE (EN ISO 13849-2)</span><span class="riepilogo-sezione">{% if funzione.prove.validata %}validata ✓{% elif funzione.prove.non_ok %}{{ funzione.prove.non_ok }} prove non OK{% elif funzione.prove %}{{ funzione.prove.da_eseguire }} prove da eseguire{% else %}da eseguire{% endif %}</span><span class="apri-sezione"></span></summary>
   <p class="sotto">{% if funzione.prove.validata %}Funzione validata: tutte le prove applicabili sono OK{% elif funzione.prove %}{{ funzione.prove.da_eseguire }} prove da eseguire{% if funzione.prove.non_ok %}, {{ funzione.prove.non_ok }} non OK{% endif %}{% else %}Prove non ancora compilate{% endif %}. Le prove si fanno sulla macchina finita e si approvano con la validazione, anche dopo l'approvazione dell'analisi.</p>
   <p><a class="bottone" href="{% url 'prove_funzione' funzione.pk %}">Prove di validazione</a></p>
-</fieldset>
+</details></fieldset>
 </div>
 {% endif %}
 {% if puo_funzione_tipo %}
 <form method="post" action="{% url 'salva_come_funzione_tipo' funzione.pk %}" class="modulo">{% csrf_token %}
-<fieldset><legend>FUNZIONE TIPO DELLA LIBRERIA</legend>
+<fieldset class="sezione-pagina"><details class="sezione"><summary><span class="titolo-sezione">FUNZIONE TIPO DELLA LIBRERIA</span><span class="riepilogo-sezione"></span><span class="apri-sezione"></span></summary>
   <p class="sotto">Salva nome, descrizione, S, F, P, schema a blocchi e componenti come funzione tipo, da riprendere nelle altre analisi. Le prove di validazione restano a questa macchina.</p>
   <div class="riga-form">
     <input name="nome" value="{{ funzione.nome }}" maxlength="200" required aria-label="Nome della funzione tipo">
     <select name="modulo" aria-label="Modulo"><option value="">Per tutte le macchine</option>{% for m in moduli_macchina %}<option value="{{ m.pk }}">Modulo {{ m }}</option>{% endfor %}</select>
     <button>Salva come funzione tipo</button>
   </div>
-</fieldset>
+</details></fieldset>
 </form>
 {% endif %}
 {% if funzione.pk and modificabile %}
@@ -60,6 +63,16 @@
   <p><button class="pericolo">Elimina funzione</button></p>
 </form>
 {% endif %}
+<script>
+// Sezioni: ognuna si apre e si chiude dal titolo; si aprono da sole quelle con errori.
+(function () {
+  const sezioni = document.querySelectorAll('details.sezione');
+  sezioni.forEach(d => { if (d.querySelector('.errorlist, .errore')) d.open = true; });
+  document.querySelectorAll('[data-sezioni]').forEach(b => b.addEventListener('click', () => {
+    sezioni.forEach(d => { d.open = b.dataset.sezioni === 'apri'; });
+  }));
+})();
+</script>
 <script>
 // Stessa tabella di models.plr e di engine.js (fig. A.1)
 (function () {
