@@ -1,0 +1,4 @@
+<div class="proponi-testi">
+  <button type="button" class="button" data-proponi="{% url 'proponi_testi' %}"{% if scheda %} data-scheda="{{ scheda }}"{% endif %}{% if scheda_modello %} data-scheda-modello="{{ scheda_modello }}"{% endif %}{% if not chiave %} disabled title="Manca la chiave dell'API di Claude (variabile d'ambiente ANTHROPIC_API_KEY sul server)"{% endif %}>Proponi testi</button>
+  <span class="esito-proposta">{% if chiave %}Claude scrive zona, considerazioni, stime, misure e istruzioni partendo da requisito, modulo e pericoli scelti. Niente viene salvato finché non salvi la scheda.{% else %}Non disponibile: manca la chiave dell'API di Claude sul server (ANTHROPIC_API_KEY).{% endif %}</span>
+</div>

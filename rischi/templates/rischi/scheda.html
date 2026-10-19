@@ -6,6 +6,7 @@
 {% block contenuto %}
 <h1>Scheda {{ scheda.codice|default:"nuova" }}{% if scheda.pk %} · {{ scheda.requisito.codice }} {{ scheda.requisito.titolo }}{% endif %}</h1>
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la revisione è {{ revisione.get_stato_display|lower }} o non hai il ruolo di compilatore.</div>{% endif %}
+{% if modificabile %}{% proponi_testi scheda=scheda %}{% endif %}
 <form method="post" class="modulo" id="form-scheda">{% csrf_token %}
 {{ form.non_field_errors }}
 <fieldset><legend>1. IDENTIFICAZIONE SCHEDA</legend>
@@ -51,6 +52,11 @@
     </p>{% endif %}{% endwith %}{% endif %}
   </div>
   {% endfor %}
+  {% if modificabile %}{% with mf=misure.empty_form %}{# Riga vuota per le misure in più del pulsante "Proponi testi" (scheda.js) #}
+  <template id="misura-vuota"><div class="misura">
+    <div class="stime">{% include "rischi/_campo.html" with f=mf.ordine %}{% include "rischi/_campo.html" with f=mf.soluzione %}{% include "rischi/_campo.html" with f=mf.tipo %}{% include "rischi/_campo.html" with f=mf.norma %}</div>
+    {% include "rischi/_campo.html" with f=mf.testo %}
+  </div></template>{% endwith %}{% endif %}
   {% dati_soluzioni %}
 </fieldset>
 <fieldset><legend>7. STIMA FINALE DEL RISCHIO (RESS 1.1.1 e)</legend>

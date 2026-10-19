@@ -1,4 +1,5 @@
 import json
+import re
 from itertools import groupby
 
 from django.contrib import messages
@@ -16,7 +17,7 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from . import servizi
-from . import calcolo, documenti
+from . import calcolo, documenti, proposte
 from .forms import (
     AllegatoForm,
     FunzioneForm,
@@ -33,12 +34,15 @@ from .models import (
     ArticoloSicurezza,
     Cliente,
     Commessa,
+    CondizioneOperativa,
     DocumentoGenerato,
+    Figura,
     FunzioneSicurezza,
     FunzioneTipo,
     MisuraAnalisi,
     Modulo,
     Macchina,
+    Pericolo,
     RegistroModifica,
     RequisitoRESS,
     Revisione,
@@ -304,6 +308,49 @@ def aggiorna_da_modello(request, pk):
     else:
         messages.success(request, f"Scheda aggiornata con il contenuto della scheda modello {modello.codice}.")
     return redirect("scheda", pk=scheda.pk)
+
+
+@login_required
+@require_POST
+def proponi_testi(request):
+    """Pulsante "Proponi testi" della scheda (modello o della commessa): riceve i dati della pagina, anche non
+    salvati, e restituisce la proposta di Claude. Non salva niente: i testi compaiono nella pagina da rileggere."""
+    if not (request.user.is_staff or servizi.ha_ruolo(request.user, servizi.COMPILATORE)):
+        return JsonResponse({"errore": "Solo chi compila le schede può chiedere una proposta."}, status=403)
+    dati = request.POST
+
+    def oggetti(modello, campo):
+        chiavi = [v for v in dati.getlist(campo) if v.isdigit()]
+        return list(modello.objects.filter(pk__in=chiavi)) if chiavi else []
+
+    def oggetto(modello, campo):
+        valore = dati.get(campo, "")
+        return modello.objects.filter(pk=valore).first() if valore.isdigit() else None
+
+    misure = [
+        valore for chiave, valore in dati.items()
+        if re.fullmatch(r"misure-\d+-testo", chiave) and not dati.get(chiave[: -len("testo")] + "DELETE")
+    ]
+    scheda = oggetto(SchedaAnalisi, "scheda")
+    macchina = None
+    if scheda:
+        macchina = scheda.revisione.analisi.macchina
+        macchina = f"{macchina} (commessa {macchina.commessa.numero})"
+    try:
+        proposta = proposte.proponi({
+            "modulo": oggetto(Modulo, "modulo"),
+            "requisito": oggetto(RequisitoRESS, "requisito"),
+            "pericoli": oggetti(Pericolo, "pericoli"),
+            "condizioni": oggetti(CondizioneOperativa, "condizioni"),
+            "soggetti": oggetti(Figura, "soggetti"),
+            "testi": {campo: dati.get(campo, "") for campo in ("zona_impianto", *proposte.CAMPI_TESTO)},
+            "misure": misure,
+            "macchina": macchina,
+            "escludi": dati.get("scheda_modello") if dati.get("scheda_modello", "").isdigit() else None,
+        })
+    except proposte.PropostaNonDisponibile as e:
+        return JsonResponse({"errore": str(e)}, status=400)
+    return JsonResponse({"proposta": proposta})
 
 
 def _scheda_modificabile(request, scheda):
