@@ -72,7 +72,7 @@
 <section class="riquadro">
   <h2>Documenti generati</h2>
   <table class="tabella"><thead><tr><th>Documento</th><th>Generato</th><th></th></tr></thead><tbody>
-  {% for d in documenti %}<tr><td>{{ d.get_tipo_display }}{% if not d.definitivo %} <span class="etichetta">bozza</span>{% endif %}</td><td>{{ d.generato_il|date:"d/m/Y H:i" }} · {{ d.generato_da.get_full_name|default:d.generato_da.username }}</td><td><a href="{% url 'scarica_documento' d.pk %}">Scarica</a></td></tr>{% endfor %}
+  {% for d in documenti %}<tr><td>{{ d.get_tipo_display }}{% if not d.definitivo %} <span class="etichetta">bozza</span>{% endif %}</td><td>{{ d.generato_il|date:"d/m/Y H:i" }} · {{ d.generato_da.get_full_name|default:d.generato_da.username }}</td><td><a href="{% url 'scarica_documento' d.pk %}" target="_blank">Apri</a></td></tr>{% endfor %}
   </tbody></table>
 </section>
 {% endif %}

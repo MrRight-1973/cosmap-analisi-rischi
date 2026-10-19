@@ -28,8 +28,8 @@
     {% include "rischi/_campo.html" with f=form.p %}
   </div>
   <p class="plr">PLr: <strong id="plr">{{ funzione.plr|default:"–" }}</strong></p>
+  <div class="grafo">{% grafo_plr form %}</div>
 </details></fieldset>
-{% if modificabile %}<button class="primario">Salva funzione</button>{% endif %}
 </form>
 {% if funzione.pk %}
 <div class="modulo">
@@ -57,11 +57,14 @@
 </details></fieldset>
 </form>
 {% endif %}
-{% if funzione.pk and modificabile %}
-<form method="post" action="{% url 'elimina_funzione' funzione.pk %}" class="modulo"
+{% if modificabile %}
+<div class="pulsanti-funzione">
+  <button class="primario" type="submit" form="form-funzione">Salva funzione</button>
+  {% if funzione.pk %}<form method="post" action="{% url 'elimina_funzione' funzione.pk %}"
       onsubmit="return confirm('Eliminare la funzione «{{ funzione.nome|escapejs }}» e la sua valutazione?');">{% csrf_token %}
-  <p><button class="pericolo">Elimina funzione</button></p>
-</form>
+    <button class="pericolo">Elimina funzione</button>
+  </form>{% endif %}
+</div>
 {% endif %}
 <script>
 // Sezioni: ognuna si apre e si chiude dal titolo; si aprono da sole quelle con errori.
@@ -83,6 +86,12 @@
     document.getElementById('plr').textContent = s && f && p
       ? ['a', 'b', 'b', 'c', 'c', 'd', 'd', 'e'][(s === 'S2' ? 4 : 0) + (f === 'F2' ? 2 : 0) + (p === 'P2' ? 1 : 0)]
       : '–';
+    // Percorso evidenziato nel grafo: i rami il cui codice è l'inizio della scelta (S, poi S+F, poi S+F+P)
+    const scelta = s ? s + (f ? f + (p || '') : '') : '';
+    document.querySelectorAll('.grafo-plr [data-chiave]').forEach(g => {
+      const k = g.dataset.chiave;
+      g.classList.toggle('attivo', g.classList.contains('foglia') ? k === scelta : scelta.startsWith(k));
+    });
   };
   modulo.addEventListener('change', aggiorna);
   aggiorna();

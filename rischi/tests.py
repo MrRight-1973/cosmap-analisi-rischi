@@ -266,6 +266,10 @@ class PagineTest(BaseConLibreria):
         analisi = servizi.crea_analisi_da_libreria(self.nuova_macchina(), self.compilatore)
         scheda = analisi.revisione_corrente.schede.filter(misure__isnull=False).first()
         pagina = self.client.get(reverse("scheda", args=[scheda.pk]))
+        html = pagina.content.decode()
+        # La decisione del tecnico sta dopo gli allegati, fuori dal form, collegata con form="form-scheda"
+        self.assertLess(html.index("9. IMMAGINI ALLEGATE"), html.index("DECISIONE DEL TECNICO"))
+        self.assertIn('form="form-scheda"', html[html.index("DECISIONE DEL TECNICO"):])
         dati = {}
         form = pagina.context["form"]
         for nome, campo in form.fields.items():
@@ -432,9 +436,11 @@ class DocumentiTest(BaseConLibreria):
         risposta.close()  # su Windows un file aperto non si può cancellare
         documento = DocumentoGenerato.objects.get()
         self.assertFalse(documento.definitivo)
-        self.assertContains(self.client.get(reverse("analisi", args=[self.analisi.pk])), "Scarica")
+        pagina = self.client.get(reverse("analisi", args=[self.analisi.pk]))
+        self.assertContains(pagina, 'target="_blank">Apri</a>')
         scaricato = self.client.get(reverse("scarica_documento", args=[documento.pk]))
         self.assertEqual(scaricato.status_code, 200)
+        self.assertTrue(scaricato["Content-Disposition"].startswith("inline"))  # si apre nella nuova scheda
         scaricato.close()
 
         self.approva()
@@ -2517,6 +2523,10 @@ class PaginaFunzioneTest(TestCase):
         self.assertContains(pagina, 'class="sezione"', count=5)
         self.assertContains(pagina, "Apri tutte le sezioni")
         self.assertNotContains(pagina, "grafico-pl")
+        self.assertContains(pagina, "grafo-plr")  # grafo del rischio nella sezione 3
+        html = pagina.content.decode()
+        self.assertLess(html.index("5. VALIDAZIONE"), html.index("Salva funzione"))
+        self.assertLess(html.index("Salva funzione"), html.index("Elimina funzione"))
         ValutazioneFunzione.objects.create(funzione=funzione, dettaglio={}, pl="d", pfh=120.0, esito=True)
         self.assertContains(self.client.get(reverse("funzione", args=[funzione.pk])), "grafico-pl")
 
@@ -2526,3 +2536,24 @@ class SezioniApribiliTest(TestCase):
         utente = crea_utente("mario", servizi.COMPILATORE)
         self.client.force_login(utente)
         self.assertContains(self.client.get(reverse("elenco_commesse")), "rischi/sezioni.js")
+
+    def test_sezioni_anche_nella_libreria(self):
+        admin = User.objects.create_superuser("capo", "c@example.com", "x")
+        self.client.force_login(admin)
+        for url in (reverse("admin:index"), reverse("admin:rischi_norma_add")):
+            pagina = self.client.get(url)
+            self.assertContains(pagina, "rischi/sezioni.js")
+            self.assertContains(pagina, "rischi/sezioni.css")
+
+
+class GrafoPLrTest(TestCase):
+    def test_percorso_evidenziato(self):
+        from .grafico_pl import svg_grafo
+
+        grafo = svg_grafo("S2", "F1", "P2")
+        self.assertIn('class="ramo attivo" data-chiave="S2"', grafo)
+        self.assertIn('class="ramo attivo" data-chiave="S2F1"', grafo)
+        self.assertIn('class="foglia attivo" data-chiave="S2F1P2"', grafo)
+        self.assertIn('class="ramo" data-chiave="S1"', grafo)
+        self.assertEqual(grafo.count(" attivo"), 4)  # 3 rami e la foglia d
+        self.assertNotIn(" attivo", svg_grafo())

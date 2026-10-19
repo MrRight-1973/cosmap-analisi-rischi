@@ -896,4 +896,5 @@ def genera_documento(request, pk, tipo):
 @login_required
 def scarica_documento(request, pk):
     documento = get_object_or_404(DocumentoGenerato, pk=pk)
-    return FileResponse(documento.file.open("rb"), as_attachment=True, filename=documento.file.name.rsplit("/", 1)[-1])
+    # Si apre nel browser (nuova scheda); da lì si salva o si stampa
+    return FileResponse(documento.file.open("rb"), as_attachment=False, filename=documento.file.name.rsplit("/", 1)[-1])

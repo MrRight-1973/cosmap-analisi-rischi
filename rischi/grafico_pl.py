@@ -94,3 +94,69 @@ def svg(pl, pfh, plr, percorsi=(), sottosistemi=()):
     )
     parti.append("</svg>")
     return "".join(parti)
+
+
+# Grafo del rischio per il PLr (EN ISO 13849-1, fig. A.1): S → F → P → PLr, dall'alto verso il basso a … e
+FOGLIE = ["a", "b", "b", "c", "c", "d", "d", "e"]
+GRAFO_X = (24, 130, 250, 370, 420)  # partenza, nodi S, nodi F, nodi P, colonna del PLr
+GRAFO_RIGA = 26
+GRAFO_SOPRA = 30
+
+
+def svg_grafo(s=None, f=None, p=None):
+    """SVG del grafo del rischio con il percorso scelto evidenziato. Ogni ramo ha data-chiave (es. "S2F1"):
+    la pagina della funzione lo riaccende in diretta quando cambiano S, F e P."""
+    scelta = (s or "") + ((f or "") + ((p or "") if f else "") if s else "")
+
+    def y(primo, quanti):  # centro di un gruppo di foglie
+        return GRAFO_SOPRA + (primo + (quanti - 1) / 2) * GRAFO_RIGA
+
+    def ramo(chiave, x1, y1, x2, y2, etichetta):
+        attivo = " attivo" if scelta.startswith(chiave) else ""
+        return (
+            f'<g class="ramo{attivo}" data-chiave="{chiave}">'
+            f'<polyline points="{x1:.1f},{y1:.1f} {x1 + 14:.1f},{y2:.1f} {x2:.1f},{y2:.1f}" fill="none"/>'
+            f'<text x="{x1 + 20:.1f}" y="{y2 - 4:.1f}" font-size="11">{etichetta}</text></g>'
+        )
+
+    altezza = GRAFO_SOPRA + 8 * GRAFO_RIGA + 34
+    x0, xs, xf, xp, xl = GRAFO_X
+    parti = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {xl + 340} {altezza}" class="grafo-plr" role="img" '
+        f'aria-label="Grafo del rischio: {escape(scelta) or "parametri da scegliere"}">',
+        f'<text x="{x0}" y="16" font-size="11" class="nota">Partenza</text>',
+        f'<text x="{xl}" y="16" font-size="11" class="nota">PLr</text>',
+    ]
+    for i, sv in enumerate(("S1", "S2")):
+        ys = y(i * 4, 4)
+        parti.append(ramo(sv, x0, y(0, 8), xs, ys, sv))
+        for j, fv in enumerate(("F1", "F2")):
+            yf = y(i * 4 + j * 2, 2)
+            parti.append(ramo(sv + fv, xs, ys, xf, yf, fv))
+            for k, pv in enumerate(("P1", "P2")):
+                riga = i * 4 + j * 2 + k
+                yp = y(riga, 1)
+                chiave = sv + fv + pv
+                parti.append(ramo(chiave, xf, yf, xp, yp, pv))
+                lettera = FOGLIE[riga]
+                attivo = " attivo" if scelta == chiave else ""
+                parti.append(
+                    f'<g class="foglia{attivo}" data-chiave="{chiave}">'
+                    f'<line x1="{xp}" y1="{yp:.1f}" x2="{xl}" y2="{yp:.1f}"/>'
+                    f'<rect x="{xl}" y="{yp - 10:.1f}" width="34" height="20" rx="3" fill="{COLORI[lettera]}"/>'
+                    f'<text x="{xl + 17}" y="{yp + 4:.1f}" text-anchor="middle" font-size="12" font-weight="bold" class="lettera">{lettera}</text></g>'
+                )
+    parti.append(f'<circle cx="{x0}" cy="{y(0, 8):.1f}" r="4" class="partenza"/>')
+    legenda = [
+        "S1 lesione lieve · S2 lesione grave",
+        "F1 esposizione rara o breve · F2 frequente o lunga",
+        "P1 evitabile · P2 difficilmente evitabile",
+    ]
+    for n, riga in enumerate(legenda):
+        parti.append(f'<text x="{xl + 48}" y="{GRAFO_SOPRA + 40 + n * 18}" font-size="10.5" class="nota">{riga}</text>')
+    parti.append(
+        f'<text x="{x0}" y="{altezza - 8}" font-size="10" class="nota">EN ISO 13849-1, figura A.1: '
+        "il percorso evidenziato porta al PLr della funzione</text>"
+    )
+    parti.append("</svg>")
+    return "".join(parti)
