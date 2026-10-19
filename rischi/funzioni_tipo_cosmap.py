@@ -7,7 +7,8 @@ calcolo del PL e, quando la funzione è collaudata, si salva di nuovo come funzi
 NOTA = "Funzione tipo Cosmap: S, F e P proposti; schema a blocchi e componenti da completare con il calcolo del PL."
 
 # (nome, sigle del modulo in ordine di preferenza o None per tutte le macchine, S, F, P, descrizione).
-# TAV è la sigla della tavola nella libreria NL originale; nella libreria Cosmap la tavola è TRC e il carico CSM.
+# TAV è la tavola rotante a scatti (macchine TR, le più comuni), TRC la tavola in continuo: le funzioni della tavola
+# vanno su TAV e, se la libreria non lo ha, su TRC. CSM resta per una libreria con un modulo della stazione di carico.
 FUNZIONI_TIPO = [
     ("Arresto di emergenza", None, "S2", "F1", "P2",
      "Evento: pressione di un pulsante di emergenza (pulpito, stazione di carico, porte). Reazione: arresto di "
@@ -22,10 +23,10 @@ FUNZIONI_TIPO = [
     ("Barriera di protezione della stazione di carico", ("CSM", "TAV"), "S2", "F2", "P1",
      "Evento: interruzione della barriera alla stazione di carico. Reazione: arresto della rotazione della tavola. "
      "Stato sicuro: tavola ferma con l'operatore nella zona di carico; ripristino manuale dall'esterno."),
-    ("Consenso alla rotazione della tavola", ("TRC", "TAV"), "S2", "F2", "P1",
+    ("Consenso alla rotazione della tavola", ("TAV", "TRC"), "S2", "F2", "P1",
      "Evento: comando di rotazione della tavola. Reazione: la rotazione parte solo con la barriera libera e il "
      "consenso di presenza operatore fuori zona dato da HMI. Stato sicuro: tavola ferma senza consenso."),
-    ("Arresto su perdita di vuoto delle attrezzature", ("TRC", "TAV"), "S2", "F2", "P1",
+    ("Arresto su perdita di vuoto delle attrezzature", ("TAV", "TRC"), "S2", "F2", "P1",
      "Evento: calo del vuoto su una stazione (vacuostato). Reazione: arresto delle unità di lavoro e della "
      "tavola. Stato sicuro: nessuna lavorazione su un pezzo non trattenuto."),
     ("Barriera della zona di carico pallet", "PAL", "S2", "F2", "P1",
