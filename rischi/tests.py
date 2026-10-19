@@ -2519,3 +2519,10 @@ class PaginaFunzioneTest(TestCase):
         self.assertNotContains(pagina, "grafico-pl")
         ValutazioneFunzione.objects.create(funzione=funzione, dettaglio={}, pl="d", pfh=120.0, esito=True)
         self.assertContains(self.client.get(reverse("funzione", args=[funzione.pk])), "grafico-pl")
+
+
+class SezioniApribiliTest(TestCase):
+    def test_script_delle_sezioni_in_tutte_le_pagine(self):
+        utente = crea_utente("mario", servizi.COMPILATORE)
+        self.client.force_login(utente)
+        self.assertContains(self.client.get(reverse("elenco_commesse")), "rischi/sezioni.js")

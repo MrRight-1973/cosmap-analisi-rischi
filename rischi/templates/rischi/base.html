@@ -3,6 +3,7 @@
 {% comment %}Pagine delle commesse con la stessa grafica della libreria (amministrazione di Django).{% endcomment %}
 {% block title %}{% block titolo %}Analisi dei rischi{% endblock %} · Cosmap{% endblock %}
 {% block extrastyle %}<link rel="stylesheet" href="{% static 'rischi/stile.css' %}">{% endblock %}
+{% block extrahead %}{{ block.super }}<script src="{% static 'rischi/sezioni.js' %}" defer></script>{% endblock %}
 {% block usertools %}
 {% if user.is_authenticated %}
 <div id="user-tools">
