@@ -21,4 +21,8 @@
 #nav-sidebar .current-app .section:link, #nav-sidebar .current-app .section:visited { font-weight: bold; }
 #nav-sidebar .current-model { background: var(--selected-row); }
 #nav-sidebar .current-model a { font-weight: bold; }
+#main > #nav-sidebar { flex-basis: 340px; padding: 20px 0 20px 20px; box-sizing: border-box; border-right: none; }
+#main > #nav-sidebar + .content { max-width: calc(100% - 340px); }
+#nav-sidebar .comandi-sezioni { margin: 0 0 10px; }
+#nav-sidebar .module { margin-bottom: 20px; }
 @media (max-width: 767px) { #main > #nav-sidebar + .content { max-width: 100%; } }
