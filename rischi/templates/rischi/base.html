@@ -11,5 +11,9 @@
 </div>
 {% endif %}
 {% endblock %}
-{% block nav-breadcrumbs %}{% endblock %}
+{% comment %}Percorso della pagina nella fascia blu scura sotto il titolo, come nella libreria: ogni voce
+riporta indietro, l'ultima è la pagina aperta. Le pagine aggiungono le loro voci nel blocco "percorso".{% endcomment %}
+{% block nav-breadcrumbs %}{% if user.is_authenticated %}
+<nav aria-label="Percorso"><div class="breadcrumbs">{% block percorso_radice %}<a href="{% url 'elenco_commesse' %}">Commesse</a>{% endblock %}{% block percorso %}{% endblock %}</div></nav>
+{% endif %}{% endblock %}
 {% block content %}{% block contenuto %}{% endblock %}{% endblock %}

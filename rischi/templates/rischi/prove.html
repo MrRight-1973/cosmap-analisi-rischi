@@ -2,8 +2,8 @@
 {% load static %}
 {% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'rischi/safety/valutazione.css' %}">{% endblock %}
 {% block titolo %}Prove · {{ funzione.nome }}{% endblock %}
+{% block percorso %}{% include "rischi/_percorso_commessa.html" with r=revisione ancora="#funzioni" %} &rsaquo; <a href="{% url 'validazione' revisione.pk %}#prove">Validazione</a> &rsaquo; <a href="{% url 'funzione' funzione.pk %}">Funzione «{{ funzione.nome }}»</a> &rsaquo; Prove di validazione{% endblock %}
 {% block contenuto %}
-<p><a href="{% url 'validazione' revisione.pk %}#prove">← Validazione, commessa {{ revisione.analisi.macchina.commessa.numero }} rev. {{ revisione.numero }}</a> · <a href="{% url 'funzione' funzione.pk %}">Funzione {{ funzione.nome }}</a></p>
 <h1>Prove di validazione · {{ funzione.nome }}</h1>
 <p class="sotto">EN ISO 13849-2. Le prove standard si ricavano dallo schema a blocchi del <a href="{% url 'valutazione_funzione' funzione.pk %}">calcolo del PL</a>: una prova funzionale per percorso, tempo di risposta, reset, poi guasti e cortocircuiti per i blocchi in categoria 2, 3 e 4 e il controllo dei parametri per quelli con PFH da certificato. La funzione è validata quando ogni prova applicabile è OK.</p>
 {% if not modificabile %}<div class="messaggio info">Sola lettura: la validazione è {% if validazione.pk %}{{ validazione.get_stato_display|lower }}{% else %}da compilare{% endif %}{% if validazione.pk and validazione.superata %} in una revisione superata{% endif %} o non hai il ruolo di compilatore.</div>{% endif %}

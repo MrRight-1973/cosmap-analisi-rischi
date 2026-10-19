@@ -2,9 +2,9 @@
 {% load static %}
 {% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'rischi/safety/valutazione.css' %}">{% endblock %}
 {% block titolo %}Validazione · {{ analisi.macchina.commessa.numero }} rev. {{ revisione.numero }}{% endblock %}
+{% block percorso %}{% include "rischi/_percorso_commessa.html" with r=revisione ancora="#funzioni" %} &rsaquo; Validazione delle funzioni di sicurezza{% endblock %}
 {% block contenuto %}
 {% with c=analisi.macchina.commessa v=validazione %}
-<p><a href="{% url 'analisi_revisione' analisi.pk revisione.numero %}#funzioni">← Commessa {{ c.numero }}, revisione {{ revisione.numero }}</a></p>
 <div class="intestazione">
   <div>
     <h1>Validazione delle funzioni di sicurezza</h1>
