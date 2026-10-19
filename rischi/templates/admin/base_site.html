@@ -6,6 +6,7 @@ delle commesse, che estendono questo modello tramite rischi/base.html.{% endcomm
 {% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:"Analisi dei rischi" }}{% endblock %}
 
 {% block extrahead %}{{ block.super }}<link rel="stylesheet" href="{% static 'rischi/sezioni.css' %}">
+<link rel="stylesheet" href="{% static 'rischi/grafici.css' %}">
 <script src="{% static 'rischi/sezioni.js' %}" defer></script>{% endblock %}
 
 {% block branding %}

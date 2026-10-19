@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Libreria</a> › <a href="{% url 'admin:rischi_funzionetipo_changelist' %}">Funzioni tipo</a> › Importa</div>
+{% endblock %}
+{% block content %}
+<div id="content-main">
+  <p>File <code>.json</code> salvato con «Esporta valutazione» nella safety evaluation. Ogni funzione del file diventa una
+  funzione tipo completa: S, F, P, schema a blocchi e componenti. Una funzione tipo con lo stesso nome si aggiorna
+  (modulo, note e stato restano come sono); gli articoli di sicurezza del file entrano nella libreria con le regole di sempre.</p>
+  <p>Prove di validazione, misure contro i guasti sistematici e verifiche elettriche del file riguardano una macchina
+  e non si importano: si compilano nella commessa.</p>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <p><input type="file" name="file" accept=".json,application/json" required></p>
+    <input type="submit" class="default" value="Importa">
+  </form>
+</div>
+{% endblock %}

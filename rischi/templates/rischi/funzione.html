@@ -1,5 +1,6 @@
 {% extends "rischi/base.html" %}
-{% load rischi_extra %}
+{% load rischi_extra static %}
+{% block extrahead %}{{ block.super }}<script src="{% static 'rischi/grafo.js' %}" defer></script>{% endblock %}
 {% block titolo %}{{ funzione.nome|default:"Nuova funzione di sicurezza" }}{% endblock %}
 {% block contenuto %}
 <p><a href="{% url 'analisi' revisione.analisi_id %}#funzioni">← Commessa {{ revisione.analisi.macchina.commessa.numero }}, revisione {{ revisione.numero }}</a></p>
@@ -11,6 +12,7 @@
 <fieldset class="sezione-pagina"><details class="sezione"{% if not funzione.pk %} open{% endif %}><summary><span class="titolo-sezione">1. FUNZIONE</span><span class="riepilogo-sezione">{{ funzione.nome }}</span><span class="apri-sezione"></span></summary>
   {% include "rischi/_campo.html" with f=form.nome %}
   {% include "rischi/_campo.html" with f=form.descrizione %}
+  {% if funzione.funzione_tipo %}<p class="sotto">Aggiunta dalla funzione tipo «{{ funzione.funzione_tipo.nome }}» della libreria.</p>{% endif %}
 </details></fieldset>
 <fieldset class="sezione-pagina"><details class="sezione"{% if not funzione.pk %} open{% endif %}><summary><span class="titolo-sezione">2. MISURE DI PROTEZIONE DELLE SCHEDE</span><span class="riepilogo-sezione">{% if funzione.pk %}{{ funzione.misure.count }} misure collegate{% endif %}</span><span class="apri-sezione"></span></summary>
   {% include "rischi/_campo.html" with f=form.misure %}
@@ -21,7 +23,6 @@
 </details></fieldset>
 <fieldset class="sezione-pagina"><details class="sezione"{% if not funzione.pk %} open{% endif %}><summary><span class="titolo-sezione">3. PLr DAL GRAFO DEL RISCHIO (EN ISO 13849-1, ALLEGATO A)</span><span class="riepilogo-sezione">{% if funzione.plr %}{{ funzione.s }} {{ funzione.f }} {{ funzione.p }} · PLr {{ funzione.plr }}{% endif %}</span><span class="apri-sezione"></span></summary>
   <p class="sotto">I parametri del grafo non coincidono con quelli del metodo di stima della scheda: si scelgono qui, guardando la stima della scheda come riferimento.</p>
-  {% if suggeriti %}<p class="messaggio info">S, F e P sono suggeriti dalla stima iniziale della scheda (Se 3-4 → S2, Fr 5 → F2, Av 5 → P2): controllali prima di salvare.</p>{% endif %}
   <div class="grafo-rischio">
     {% include "rischi/_campo.html" with f=form.s %}
     {% include "rischi/_campo.html" with f=form.f %}
@@ -74,27 +75,6 @@
   document.querySelectorAll('[data-sezioni]').forEach(b => b.addEventListener('click', () => {
     sezioni.forEach(d => { d.open = b.dataset.sezioni === 'apri'; });
   }));
-})();
-</script>
-<script>
-// Stessa tabella di models.plr e di engine.js (fig. A.1)
-(function () {
-  const modulo = document.getElementById('form-funzione');
-  const valore = n => (modulo.querySelector(`input[name="${n}"]:checked`) || {}).value;
-  const aggiorna = () => {
-    const s = valore('s'), f = valore('f'), p = valore('p');
-    document.getElementById('plr').textContent = s && f && p
-      ? ['a', 'b', 'b', 'c', 'c', 'd', 'd', 'e'][(s === 'S2' ? 4 : 0) + (f === 'F2' ? 2 : 0) + (p === 'P2' ? 1 : 0)]
-      : '–';
-    // Percorso evidenziato nel grafo: i rami il cui codice è l'inizio della scelta (S, poi S+F, poi S+F+P)
-    const scelta = s ? s + (f ? f + (p || '') : '') : '';
-    document.querySelectorAll('.grafo-plr [data-chiave]').forEach(g => {
-      const k = g.dataset.chiave;
-      g.classList.toggle('attivo', g.classList.contains('foglia') ? k === scelta : scelta.startsWith(k));
-    });
-  };
-  modulo.addEventListener('change', aggiorna);
-  aggiorna();
 })();
 </script>
 {% endblock %}
