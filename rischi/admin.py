@@ -18,7 +18,7 @@ from django.utils.safestring import mark_safe
 from . import models as m
 from .articoli import importa as importa_articoli
 from .duplica import duplica
-from .servizi import importa_funzioni_tipo
+from .servizi import _componenti, importa_funzioni_tipo
 from .forms import (
     CAMPI_CONSIDERAZIONI,
     CAMPI_NORME,
@@ -395,10 +395,32 @@ class NormaAdmin(admin.ModelAdmin):
     search_fields = ("codice", "titolo")
 
 
+class ArticoliUtilizzatiFilter(admin.SimpleListFilter):
+    """Articoli presenti oggi nei calcoli del PL: funzioni delle commesse e funzioni tipo della libreria."""
+
+    title = "utilizzati nei calcoli"
+    parameter_name = "utilizzati"
+
+    def lookups(self, request, model_admin):
+        return (("si", "Sì"), ("no", "No"))
+
+    def queryset(self, request, queryset):
+        if self.value() not in ("si", "no"):
+            return queryset
+        chiavi = set()
+        for dettaglio in [*m.ValutazioneFunzione.objects.values_list("dettaglio", flat=True),
+                          *m.FunzioneTipo.objects.values_list("dettaglio", flat=True)]:
+            if isinstance(dettaglio, dict):
+                chiavi |= _componenti(dettaglio)
+        if self.value() == "si":
+            return queryset.filter(chiave__in=chiavi)
+        return queryset.exclude(chiave__in=chiavi)
+
+
 @admin.register(m.ArticoloSicurezza)
 class ArticoloSicurezzaAdmin(admin.ModelAdmin):
     list_display = ("codice", "produttore", "tipo", "pfh", "b10d", "mttfd", "verificato", "utilizzato")
-    list_filter = ("produttore", "tipo", "verificato", ("utilizzato", admin.EmptyFieldListFilter), "libreria")
+    list_filter = (ArticoliUtilizzatiFilter, "produttore", "tipo", "verificato", "libreria")
     search_fields = ("codice", "descrizione", "produttore", "gruppo")
     readonly_fields = ("chiave",)
     fieldsets = (
