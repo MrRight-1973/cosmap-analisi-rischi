@@ -2426,7 +2426,8 @@ class MotoreJavaScriptTest(TestCase):
             raise unittest.SkipTest("Node non installato")
         cartella = Path(settings.BASE_DIR) / "rischi" / "js_test"
         file = sorted(str(f) for f in cartella.glob("*.test.js"))
-        esito = subprocess.run([node, "--test", *file], capture_output=True, text=True, timeout=120)
+        esito = subprocess.run([node, "--test", *file], capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=120)  # Node scrive UTF-8 anche su Windows (cp1252)
         self.assertEqual(esito.returncode, 0, esito.stdout[-3000:] + esito.stderr[-2000:])
 
 
