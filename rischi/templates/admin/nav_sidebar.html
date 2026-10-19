@@ -1,0 +1,8 @@
+{% load i18n %}
+{% comment %}Barra laterale delle pagine interne della libreria: lo stesso elenco dei gruppi della pagina iniziale,
+sempre aperto (senza il pulsante per chiuderla né la casella di ricerca), con evidenziata la voce scelta.{% endcomment %}
+<nav class="sticky" id="nav-sidebar" aria-label="{% translate 'Sidebar' %}">
+  <input type="search" id="nav-filter" hidden>{# richiesto dallo script dell'amministrazione #}
+  <script>try { sessionStorage.removeItem("django.admin.navSidebarFilterValue"); } catch (e) {}</script>
+  {% include 'admin/app_list.html' with app_list=available_apps show_changelinks=False %}
+</nav>

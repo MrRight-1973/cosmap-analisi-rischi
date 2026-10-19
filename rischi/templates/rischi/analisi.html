@@ -97,8 +97,8 @@
     <td>{% for m in f.misure.all %}<a href="{% url 'scheda' m.scheda_id %}">{{ m.scheda.codice|default:"scheda" }}</a>{% if not forloop.last %}, {% endif %}{% empty %}<span class="sotto">a mano</span>{% endfor %}</td>
     <td>{{ f.s|default:"–" }} {{ f.f|default:"–" }} {{ f.p|default:"–" }}</td>
     <td>{{ f.plr|default:"–" }}</td>
-    <td><a href="{% url 'valutazione_funzione' f.pk %}">{% if f.valutazione.pl %}PL {{ f.valutazione.pl }}{% if f.valutazione.esito %} ✓{% elif f.valutazione.esito is False %} ✗{% endif %}{% elif f.valutazione %}incompleto{% else %}da calcolare{% endif %}</a></td>
-    <td><a href="{% url 'prove_funzione' f.pk %}">{% if f.prove.validata %}validata ✓{% elif f.prove.non_ok %}{{ f.prove.non_ok }} prove non OK{% elif f.prove %}{{ f.prove.da_eseguire }} prove da eseguire{% else %}da eseguire{% endif %}</a></td>
+    <td>{% if f.valutazione.pl %}PL {{ f.valutazione.pl }}{% if f.valutazione.esito %} ✓{% elif f.valutazione.esito is False %} ✗{% endif %}{% elif f.valutazione %}incompleto{% else %}da calcolare{% endif %}</td>
+    <td>{% if f.prove.validata %}validata ✓{% elif f.prove.non_ok %}{{ f.prove.non_ok }} prove non OK{% elif f.prove %}{{ f.prove.da_eseguire }} prove da eseguire{% else %}da eseguire{% endif %}</td>
   </tr>{% endfor %}
   </tbody></table>
   {% else %}<p class="sotto">Nessuna funzione di sicurezza. Si aggiunge da una funzione tipo della libreria e si collega alle misure di protezione delle schede; una funzione nuova si crea prima nella libreria (Funzioni tipo).</p>{% endif %}

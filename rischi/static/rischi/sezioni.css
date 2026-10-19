@@ -4,9 +4,21 @@
 .sezione-apribile .segno-sezione { float: right; font-size: 0.75rem; font-weight: normal; opacity: 0.85; text-transform: none; letter-spacing: 0; }
 .sezione-apribile .segno-sezione::after { content: "▾ chiudi"; }
 .sezione-apribile.chiusa .segno-sezione::after { content: "▸ apri"; }
-.sezione-apribile.chiusa > :not(legend):not(h2):not(table) { display: none !important; }
-.sezione-apribile.chiusa > table > tbody { display: none; }
+/* Da chiusa resta solo la fascia blu del titolo: niente testata delle colonne, niente spazi sotto */
+.sezione-apribile.chiusa > :not(legend):not(h2) { display: none !important; }
+.sezione-apribile.titolo-in-tabella.chiusa > table { display: table !important; }
+.sezione-apribile.chiusa > table > :not(caption) { display: none !important; }
 .sezione-apribile.chiusa { padding-bottom: 0; }
+.sezione-apribile.chiusa > legend, .sezione-apribile.chiusa > h2, .sezione-apribile.chiusa > table > caption { margin-bottom: 0; }
 .modulo fieldset.sezione-apribile.chiusa, section.riquadro.sezione-apribile.chiusa, #content-main .sezione-apribile.chiusa { margin-bottom: 8px; }
 /* Pagina iniziale della libreria: gruppi tutti larghi uguali */
 .dashboard #content-main .module table { width: 100%; }
+/* Libreria e utenti: nelle pagine interne resta a sinistra l'elenco dei gruppi della pagina iniziale,
+   sempre aperto, con evidenziata solo la voce scelta */
+#main > #nav-sidebar { margin-left: 0; left: 0; visibility: visible; }
+#main > #nav-sidebar + .content { max-width: calc(100% - 276px); }
+#nav-sidebar .module caption .section:link, #nav-sidebar .module caption .section:visited { color: var(--header-link-color); font-weight: normal; }
+#nav-sidebar .current-app .section:link, #nav-sidebar .current-app .section:visited { font-weight: bold; }
+#nav-sidebar .current-model { background: var(--selected-row); }
+#nav-sidebar .current-model a { font-weight: bold; }
+@media (max-width: 767px) { #main > #nav-sidebar + .content { max-width: 100%; } }
