@@ -18,7 +18,8 @@
     <h2>Flusso</h2>
     <p class="sotto">Le prove si fanno a macchina finita: la validazione si approva per conto suo, dopo l'analisi, senza riaprire la revisione.</p>
     <dl class="dati">
-      <dt>Compilata da</dt><dd>{% if v.inviata_da %}{{ v.inviata_da.get_full_name|default:v.inviata_da.username }} · {{ v.inviata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      <dt>Compilata da</dt><dd>{% if v.compilata_da %}{{ v.compilata_da.get_full_name|default:v.compilata_da.username }} · {{ v.compilata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
+      {% if v.inviata_da %}<dt>Inviata in verifica da</dt><dd>{{ v.inviata_da.get_full_name|default:v.inviata_da.username }} · {{ v.inviata_il|date:"d/m/Y" }}</dd>{% endif %}
       <dt>Verificata da</dt><dd>{% if v.verificata_da %}{{ v.verificata_da.get_full_name|default:v.verificata_da.username }} · {{ v.verificata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
       <dt>Approvata da</dt><dd>{% if v.approvata_da %}{{ v.approvata_da.get_full_name|default:v.approvata_da.username }} · {{ v.approvata_il|date:"d/m/Y" }}{% else %}–{% endif %}</dd>
     </dl>

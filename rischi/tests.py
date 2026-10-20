@@ -2042,6 +2042,34 @@ class ValidazioneTest(BaseConLibreria):
         with self.assertRaises(RevisioneBloccata):
             validazione.prove.get().save()
 
+    def test_compilata_da_dal_primo_salvataggio(self):
+        """Come nella revisione dell'analisi: chi compila compare subito nel flusso, già in bozza, e resta dopo
+        "Rimanda in bozza"; il PDF lo riporta nella riga Compilata."""
+        import importlib
+
+        from django.apps import apps
+
+        from .models import ValidazioneSicurezza
+
+        self.client.force_login(self.compilatore)
+        self.assertContains(self.client.get(self.url_validazione), "<dt>Compilata da</dt><dd>–</dd>", html=True)
+        self.post(self.url_prove, {"dati": self.tutte_ok()})
+        validazione = ValidazioneSicurezza.objects.get(revisione=self.rev)
+        self.assertEqual(validazione.compilata_da, self.compilatore)
+        self.assertEqual(validazione.stato, ValidazioneSicurezza.Stato.BOZZA)
+        pagina = self.client.get(self.url_validazione).content.decode()
+        self.assertIn(f"{self.compilatore.username} · {validazione.compilata_il:%d/%m/%Y}", pagina)
+        servizi.invia_validazione(self.rev, self.compilatore)
+        servizi.verifica_validazione(self.rev, self.verificatore)
+        servizi.rimanda_validazione(self.rev, self.verificatore, "Ricontrolla")
+        validazione.refresh_from_db()
+        self.assertEqual((validazione.compilata_da, validazione.verificata_da), (self.compilatore, None))
+        # Documenti già esistenti prima del campo: si ricava dal registro modifiche
+        ValidazioneSicurezza.objects.filter(pk=validazione.pk).update(compilata_da=None, compilata_il=None)
+        importlib.import_module("rischi.migrations.0044_compilata_da_flusso_proprio").ricava_compilatore(apps, None)
+        validazione.refresh_from_db()
+        self.assertEqual(validazione.compilata_da, self.compilatore)
+
     def test_nuova_revisione_riparte_dalla_validazione(self):
         self.post(self.url_prove, {"dati": self.tutte_ok()})
         self.post(self.url_validazione, {"dati": {"swVersione": "Linea 3 v2"}})
@@ -2179,6 +2207,8 @@ class VerificheElettricheTest(BaseConLibreria):
         self.client.force_login(self.compilatore)
         risposta = self.client.post(reverse("nuova_verifica_elettrica", args=[self.rev.pk]), {"quadro": "Quadro QE1"})
         self.verifica = self.rev.verifiche_elettriche.get()
+        self.assertIsNotNone(self.verifica.compilata_il)
+        self.assertEqual(self.verifica.compilata_da, self.compilatore)
         self.assertRedirects(risposta, reverse("verifica_elettrica", args=[self.verifica.pk]), fetch_redirect_response=False)
         self.url = reverse("verifica_elettrica", args=[self.verifica.pk])
         self.dati = {

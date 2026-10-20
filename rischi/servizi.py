@@ -162,7 +162,10 @@ def _copia_validazione(sorgente, revisione, mappa_funzioni):
     precedente = getattr(sorgente, "validazione", None)
     if precedente is None:
         return
-    validazione = ValidazioneSicurezza.objects.create(revisione=revisione, sistematiche=precedente.sistematiche)
+    validazione = ValidazioneSicurezza.objects.create(
+        revisione=revisione, sistematiche=precedente.sistematiche,
+        compilata_da=revisione.compilata_da, compilata_il=timezone.now(),
+    )
     for prove in precedente.prove.all():
         if prove.funzione_id in mappa_funzioni:
             ProveFunzione.objects.create(
@@ -562,7 +565,8 @@ def salva_prove(funzione, dati, prove_pagina, utente):
     richiedi_ruolo(utente, COMPILATORE)
     validazione = validazione_di(funzione.revisione)
     validazione.verifica_modificabile()
-    if not validazione.pk:
+    if not validazione.pk or not validazione.compilata_da_id:
+        _segna_compilata(validazione, utente)
         validazione.save()
     extra = dati.get("extra") or []
     if not isinstance(extra, list) or not all(isinstance(x, dict) and x.get("id") for x in extra):
@@ -607,6 +611,8 @@ def salva_sistematiche(revisione, dati, utente):
         "swVersione": _testo(dati.get("swVersione"), 200),
         "swFirma": _testo(dati.get("swFirma"), 200),
     }
+    if not validazione.compilata_da_id:
+        _segna_compilata(validazione, utente)
     validazione.save()
     return {"messaggio": "Misure contro i guasti sistematici salvate."}
 
@@ -617,10 +623,18 @@ def _verifica_stato_flusso(oggetto, *stati):
         raise ValidationError(f"Operazione non possibile: {oggetto.NOME} è {stato}.")
 
 
+def _segna_compilata(oggetto, utente):
+    """Chi ha cominciato a compilare il documento e quando, come compilata_da e creata_il della revisione."""
+    oggetto.compilata_da = utente
+    oggetto.compilata_il = timezone.now()
+
+
 def _invia(oggetto, utente):
     """Flusso proprio di validazione e verifiche elettriche, come quello della revisione."""
     richiedi_ruolo(utente, COMPILATORE)
     oggetto.verifica_modificabile()
+    if not oggetto.compilata_da_id:
+        _segna_compilata(oggetto, utente)
     oggetto.stato = oggetto.Stato.IN_VERIFICA
     oggetto.inviata_da = utente
     oggetto.inviata_il = timezone.now()
@@ -803,7 +817,9 @@ def nuova_verifica_elettrica(revisione, quadro, utente):
     if not quadro:
         raise ValidationError("Scrivi il nome dell'equipaggiamento o del quadro.")
     ordine = (revisione.verifiche_elettriche.aggregate(m=models_Max("ordine"))["m"] or 0) + 1
-    return VerificaElettrica.objects.create(revisione=revisione, quadro=quadro, ordine=ordine)
+    return VerificaElettrica.objects.create(
+        revisione=revisione, quadro=quadro, ordine=ordine, compilata_da=utente, compilata_il=timezone.now()
+    )
 
 
 def elimina_verifica_elettrica(verifica, utente):
@@ -851,6 +867,8 @@ def salva_verifica_elettrica(verifica, quadro, dati, risultato_pagina, utente):
         if valore and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", valore):
             raise ValidationError("Data non valida.")
     verifica.quadro = quadro
+    if not verifica.compilata_da_id:
+        _segna_compilata(verifica, utente)
     verifica.dati = {
         **{k: _testo(dati.get(k), 200) for k in CAMPI_TESTATA},
         "esiti": _esiti_puliti(dati.get("esiti") or {}, ("esito", "note", "misurato")),
@@ -934,6 +952,7 @@ def _copia_verifiche_elettriche(sorgente, revisione):
     for v in sorgente.verifiche_elettriche.all():
         VerificaElettrica.objects.create(
             revisione=revisione, ordine=v.ordine, quadro=v.quadro, dati=v.dati,
+            compilata_da=revisione.compilata_da, compilata_il=timezone.now(),
             da_eseguire=v.da_eseguire, non_ok=v.non_ok, isolamento_non_ok=v.isolamento_non_ok,
         )
 
