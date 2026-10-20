@@ -1111,6 +1111,10 @@ class FlussoProprio(models.Model):
         APPROVATA = "APPROVATA", "Approvata"
 
     stato = models.CharField(max_length=12, choices=Stato.choices, default=Stato.BOZZA)
+    compilata_da = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
+    )
+    compilata_il = models.DateTimeField(null=True, blank=True)
     inviata_da = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
     )

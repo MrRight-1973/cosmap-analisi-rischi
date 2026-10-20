@@ -1181,7 +1181,7 @@ def _firme_validazione(doc, validazione, revisione):
     doc.tabella(
         ["", "Nome", "Data", "Firma"],
         [
-            ["Redatta", _nome(validazione.inviata_da) if validazione.inviata_da else "", data(validazione.inviata_il), ""],
+            ["Compilata", _nome(validazione.compilata_da) if validazione.compilata_da else "", data(validazione.compilata_il), ""],
             ["Verificata", _nome(validazione.verificata_da) if validazione.verificata_da else "", data(validazione.verificata_il), ""],
             ["Approvata", _nome(validazione.approvata_da) if validazione.approvata_da else "", data(validazione.approvata_il), ""],
         ],
@@ -1446,7 +1446,7 @@ def verifiche_elettriche(verifica):
     doc.tabella(
         ["", "Nome", "Data", "Firma"],
         [
-            ["Redatta", _nome(verifica.inviata_da) if verifica.inviata_da else "", data(verifica.inviata_il), ""],
+            ["Compilata", _nome(verifica.compilata_da) if verifica.compilata_da else "", data(verifica.compilata_il), ""],
             ["Verificata", _nome(verifica.verificata_da) if verifica.verificata_da else "", data(verifica.verificata_il), ""],
             ["Approvata", _nome(verifica.approvata_da) if verifica.approvata_da else "", data(verifica.approvata_il), ""],
         ],
