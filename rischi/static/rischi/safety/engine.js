@@ -249,15 +249,23 @@
     return { metodo: 'arch', nano, pl, k1: k1 && !k1.errore ? k1 : null, pfhManuale: manuale != null, ch1, ch2, mttfd, mttfdLevel: mLev, dcavg, dcLevel: dLev, ccf, items, errors, warns };
   }
 
-  // Sottosistemi senza percorso sono comuni; quelli con un percorso sono iniziatori alternativi (OR):
-  // ogni percorso = comuni + i suoi, in serie. La funzione ha il PL del percorso peggiore.
+  // Sottosistemi senza percorso sono comuni (a tutti, o ai soli percorsi elencati in "percorsi"); quelli con
+  // un percorso sono iniziatori alternativi (OR): ogni percorso = comuni + i suoi, in serie. La funzione ha il
+  // PL del percorso peggiore. Stessa regola di Schema.appartiene.
+  function nelPercorso(ss, nome) {
+    const proprio = (ss.percorso || '').trim();
+    if (proprio) return proprio === nome;
+    const solo = (ss.percorsi || []).map(n => (n || '').trim()).filter(Boolean);
+    return !solo.length || !nome || solo.includes(nome);
+  }
+
   function evalFunction(fn, articoli, missionTime) {
     const req = plr(fn.S, fn.F, fn.P);
     const subs = (fn.sottosistemi || []).map(ss => ({ ss, r: evalSubsystem(ss, articoli, missionTime) }));
     const names = [...new Set(subs.map(x => (x.ss.percorso || '').trim()).filter(Boolean))];
     const groups = names.length ? names : [''];
     const paths = groups.map(nome => {
-      const chain = subs.filter(x => !(x.ss.percorso || '').trim() || x.ss.percorso.trim() === nome);
+      const chain = subs.filter(x => nelPercorso(x.ss, nome));
       const nano = chain.reduce((s, x) => s + (x.r.nano || 0), 0);
       const complete = chain.length > 0 && chain.every(x => x.r.pl != null);
       let pl = complete ? toPL(nano * 1e-9).pl : null;

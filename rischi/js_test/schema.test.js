@@ -1,7 +1,7 @@
 // node --test safety-eval/test/schema.test.js
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { percorsi, catena, confluenza, gruppi, aggiungiPercorso, rinominaPercorso, eliminaPercorso } = require('../static/rischi/safety/schema.js');
+const { percorsi, catena, albero, confluenza, gruppi, aggiungiPercorso, rinominaPercorso, eliminaPercorso, percorsiDi, impostaPercorsi } = require('../static/rischi/safety/schema.js');
 const E = require('../static/rischi/safety/engine.js');
 
 const ss = (nome, ruolo, percorso = '') => ({ id: nome, nome, ruolo, percorso, metodo: 'pfh', componenti: [] });
@@ -70,4 +70,42 @@ test('confluenza non applicabile: percorso unico, nessun comune, proprio dopo un
   // comune di rilevamento prima di una logica propria
   assert.equal(confluenza({ sottosistemi: [ss('Fungo', 'rilevamento'), ss('CPU A', 'logica', 'A'), ss('KTP', 'rilevamento', 'B')] }), null);
   assert.deepEqual(gruppi({ sottosistemi: [ss('CPU', 'logica'), ss('Fungo', 'rilevamento')] }).map(g => g.blocchi.map(x => x.nome)), [['Fungo', 'CPU']]);
+});
+
+test('blocco comune solo ad alcuni percorsi: ingressi cablati via F-DI, PROFIsafe direttamente nella F-CPU', () => {
+  const A = [{ id: 'x', codice: 'X', pfh: 10, fonte: 'x' }, { id: 'di', codice: 'DI', pfh: 1, fonte: 'x' }];
+  const comp = id => [{ articoloId: id, qty: 1 }];
+  const f = { S: 'S2', F: 'F2', P: 'P2', percorsi: ['Barriere', 'Funghi', 'Ripari', 'PROFIsafe'], sottosistemi: [
+    { ...ss('Barriera', 'rilevamento', 'Barriere'), componenti: comp('x') }, { ...ss('Fungo', 'rilevamento', 'Funghi'), componenti: comp('x') },
+    { ...ss('Riparo', 'rilevamento', 'Ripari'), componenti: comp('x') }, { ...ss('Scanner', 'rilevamento', 'PROFIsafe'), componenti: comp('x') },
+    { ...ss('CPU', 'logica'), componenti: comp('x') }, { ...ss('F-DI', 'logica'), percorsi: ['Barriere', 'Funghi', 'Ripari'], componenti: comp('di') },
+    { ...ss('STO', 'attuazione'), componenti: comp('x') }] };
+  assert.deepEqual(catena(f, 'Funghi').map(x => x.nome), ['Fungo', 'F-DI', 'CPU', 'STO']);
+  assert.deepEqual(catena(f, 'PROFIsafe').map(x => x.nome), ['Scanner', 'CPU', 'STO']);
+  const r = E.evalFunction(f, A, 20);
+  assert.equal(r.paths.find(p => p.nome === 'Funghi').nano, 31);
+  assert.equal(r.paths.find(p => p.nome === 'PROFIsafe').nano, 30);
+  // due confluenze: i tre percorsi cablati nella F-DI, poi con PROFIsafe nella F-CPU
+  const a = albero(f);
+  assert.deepEqual(a.blocchi.map(x => x.nome), ['CPU', 'STO']);
+  assert.deepEqual(a.rami[0].blocchi.map(x => x.nome), ['F-DI']);
+  assert.deepEqual(a.rami[0].rami.map(x => x.nome), ['Barriere', 'Funghi', 'Ripari']);
+  assert.deepEqual(a.rami[1].nome, 'PROFIsafe');
+  assert.equal(confluenza(f), null, 'forma semplice non applicabile');
+  assert.deepEqual(gruppi(f).slice(4).map(g => [g.titolo, g.blocchi.map(x => x.nome)]),
+    [['Comuni a Barriere, Funghi, Ripari', ['F-DI']], ['Comuni a tutti i percorsi', ['CPU', 'STO']]]);
+  // le caselle della pagina
+  const di = f.sottosistemi.find(x => x.nome === 'F-DI');
+  assert.deepEqual(percorsiDi(f, di), ['Barriere', 'Funghi', 'Ripari']);
+  impostaPercorsi(f, di, ['Funghi']);
+  assert.equal(di.percorso, 'Funghi');
+  impostaPercorsi(f, di, ['Barriere', 'Funghi', 'Ripari', 'PROFIsafe']);
+  assert.equal(di.percorso, '');
+  assert.equal(di.percorsi, undefined);
+  impostaPercorsi(f, di, ['Barriere', 'Ripari']);
+  rinominaPercorso(f, 'Ripari', 'Porte');
+  assert.deepEqual(di.percorsi, ['Barriere', 'Porte']);
+  eliminaPercorso(f, 'Barriere');
+  eliminaPercorso(f, 'Porte');
+  assert.ok(!f.sottosistemi.includes(di), 'comune ai soli percorsi eliminati: sparisce');
 });

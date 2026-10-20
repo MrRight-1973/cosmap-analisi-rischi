@@ -109,7 +109,8 @@
     };
     const nomeCorsia = (nome, peggiore) => h('div', { class: 'lane-name' + (peggiore ? ' peggiore' : '') },
       !multi ? 'Percorso unico'
-        : editable ? h('input', { value: nome, title: 'Nome del percorso', onchange: e => { if (!Sc.rinominaPercorso(F, nome, e.target.value)) e.target.value = nome; render(); } })
+        : editable ? h('textarea', { rows: 2, title: 'Nome del percorso', onchange: e => {
+          if (!Sc.rinominaPercorso(F, nome, e.target.value.replace(/\s+/g, ' '))) e.target.value = nome; render(); } }, nome)
         : nome,
       peggiore ? h('span', { class: 'piccolo' }, 'percorso peggiore') : null,
       editable && multi ? h('a', { href: '#', class: 'piccolo', onclick: e => { e.preventDefault();
@@ -124,23 +125,37 @@
       const info = infoCorsia(nome);
       return h('div', { class: 'lane' }, nomeCorsia(nome, info.peggiore), serie(Sc.catena(F, nome)), aggiungi(nome), risultato(info));
     };
-    const conf = Sc.confluenza(F);
-    const confluenti = () => h('div', { class: 'schema conf' }, nomi.flatMap((nome, k) => {
-      const info = infoCorsia(nome);
-      const pos = k === 0 ? 'primo' : k === nomi.length - 1 ? 'ultimo' : 'mezzo';
-      const propri = conf.propri.get(nome);
-      return [
-        h('div', { class: 'nome-add' }, nomeCorsia(nome, info.peggiore), aggiungi(nome)),
-        h('div', { class: 'propri' }, propri.length ? serie(propri) : h('span', { class: 'warn', style: 'align-self:center' }, 'nessun blocco proprio'), h('span', { class: 'coda' })),
-        h('div', { class: 'bus ' + pos }, k === 0 ? h('span', { class: 'punta' }, '▶') : null),
-        k === 0 ? h('div', { class: 'comuni', style: `grid-row: span ${nomi.length}` }, h('div', { class: 'catena' }, serie(conf.comuni)), aggiungi(nome, true)) : null,
-        risultato(info),
-      ];
-    }));
+    // Percorsi che confluiscono nei blocchi comuni, una confluenza per ogni gruppo di blocchi comuni (Schema.albero)
+    const albero = Sc.albero(F);
+    const foglie = n => (n.rami ? n.rami.flatMap(foglie) : [n.nome]);
+    const foglia = n => {
+      const info = infoCorsia(n.nome);
+      return h('div', { class: 'foglia' },
+        h('div', { class: 'nome-add' }, nomeCorsia(n.nome, info.peggiore), risultato(info), aggiungi(n.nome)),
+        h('div', { class: 'propri' }, n.propri.length ? serie(n.propri) : h('span', { class: 'warn', style: 'align-self:center' }, 'nessun blocco proprio')));
+    };
+    const nodo = (n, radice) => {
+      const rami = h('div', { class: 'rami' + (n.blocchi.length ? '' : ' liberi') }, n.rami.map((r, k) =>
+        h('div', { class: 'ramo ' + (n.rami.length === 1 ? 'unico' : k === 0 ? 'primo' : k === n.rami.length - 1 ? 'ultimo' : 'mezzo') },
+          r.rami ? nodo(r, false) : foglia(r), n.blocchi.length ? h('span', { class: 'coda' }) : null)));
+      if (!n.blocchi.length) return rami;
+      const per = foglie(n);
+      if (editable) aggiuntaComuni.push(h('select', { class: 'lane-add', onchange: e => {
+        const ss = nuovoSS(e.target.value, '');
+        if (!radice) ss.percorsi = per;
+        F.sottosistemi.push(ss); UI.sel = ss.id; render(); } },
+        h('option', { value: '', selected: true, disabled: true }, radice ? '+ blocco comune a tutti' : `+ blocco comune a ${per.join(', ')}`),
+        RUOLI.map(([k, t]) => h('option', { value: k }, t.split(' (')[0]))));
+      return h('div', { class: 'nodo' }, rami, h('span', { class: 'punta' }, '▶'),
+        h('div', { class: 'comuni' }, h('div', { class: 'catena' }, serie(n.blocchi))));
+    };
+    const aggiuntaComuni = [];
+    const disegno = albero ? h('div', { class: 'schema conf' }, nodo(albero, true)) : h('div', { class: 'schema' }, nomi.map(corsia));
     return h('div', {},
       h('div', { class: 'legenda' }, RUOLI.map(([k, t]) => h('span', { class: 'r-' + k }, t.split(' (')[0])),
-        multi ? h('span', { class: 'leg-comune' }, conf ? 'tratteggiato = comune: i percorsi confluiscono qui' : 'tratteggiato = comune a tutti i percorsi') : null),
-      h('div', { class: 'scroll' }, conf ? confluenti() : h('div', { class: 'schema' }, nomi.map(corsia))),
+        multi ? h('span', { class: 'leg-comune' }, albero ? 'tratteggiato = comune: i percorsi confluiscono qui' : 'tratteggiato = comune a più percorsi') : null),
+      h('div', { class: 'scroll' }, disegno),
+      aggiuntaComuni.length ? h('div', { class: 'row aggiunta-comuni' }, aggiuntaComuni.reverse()) : null,
       h('p', { class: 'note' }, multi
         ? `La funzione ha il PL del percorso peggiore: ${r.worst && r.worst.pl ? 'PL ' + r.worst.pl + ' (' + r.worst.nome + ')' : 'non ancora calcolabile'}${r.plr ? ', richiesto PL ' + r.plr : ''}.`
         : 'Tutti i blocchi sono in serie: devono funzionare tutti perché la funzione intervenga.'));
@@ -152,11 +167,20 @@
     const nomi = Sc.percorsi(F).filter(Boolean);
     return h('section', { class: 'r-' + ss.ruolo + ' bordo-ruolo' },
       h('div', { class: 'grid' },
-        field('Nome blocco', () => ss.nome, v => ss.nome = v),
+        h('div', { class: 'largo' }, field('Nome blocco', () => ss.nome, v => ss.nome = v)),
         field('Ruolo', () => ss.ruolo, v => ss.ruolo = v, { options: RUOLI }),
-        nomi.length ? field('Percorso', () => ss.percorso || null, v => ss.percorso = v || '', { options: [[null, 'Comune a tutti i percorsi'], ...nomi.map(n => [n, n])] }) : null,
+
         field('Metodo', () => ss.metodo, v => ss.metodo = v, { options: METODI }),
         ss.metodo === 'arch' ? field('Categoria', () => ss.categoria, v => ss.categoria = v, { options: [[null, '—'], ['B', 'B'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4']] }) : null),
+      nomi.length ? h('div', { class: 'percorsi-blocco' },
+        h('label', {}, 'Percorsi in cui passa il blocco (tutti = comune a tutti; alcuni = comune solo a quelli; uno = proprio del percorso)'),
+        h('div', { class: 'row' }, nomi.map(n => {
+          const dentro = Sc.percorsiDi(F, ss).includes(n);
+          return h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: dentro, onchange: e => {
+            const scelti = Sc.percorsiDi(F, ss).filter(x => x !== n).concat(e.target.checked ? [n] : []);
+            if (!Sc.impostaPercorsi(F, ss, scelti)) e.target.checked = true;
+            render(); } }), n);
+        }))) : null,
       ss.metodo === 'arch' && ss.categoria === '1' ? check('Componenti ben collaudati (ISO 13849-2)', () => ss.collaudati, v => ss.collaudati = v) : null,
       h('div', { class: 'row' },
         h('button', { type: 'button', onclick: () => { UI.tab = 'componenti'; render(); } }, 'Scegli gli articoli →'),
@@ -165,7 +189,7 @@
   }
   function vistaSchema() {
     return [
-      h('p', { class: 'sub' }, 'In ogni riga i blocchi sono in serie, da chi rileva a chi arresta. Se la funzione può partire da iniziatori diversi, aggiungi un percorso alternativo per ciascuno: la funzione ha il PL del percorso peggiore. I blocchi comuni (F-CPU, azionamenti) stanno in tutti i percorsi.'),
+      h('p', { class: 'sub' }, 'In ogni riga i blocchi sono in serie, da chi rileva a chi arresta. Se la funzione può partire da iniziatori diversi, aggiungi un percorso alternativo per ciascuno: la funzione ha il PL del percorso peggiore. I blocchi comuni (F-CPU, azionamenti) stanno in tutti i percorsi; un blocco può essere comune anche solo ad alcuni (es. modulo F-DI per gli ingressi cablati, mentre quelli PROFIsafe entrano direttamente nella F-CPU): si sceglie nei dati del blocco.'),
       h('section', {}, schema(MOD),
         MOD ? h('div', { class: 'row' }, h('button', { type: 'button', onclick: () => { Sc.aggiungiPercorso(F); render(); } }, '+ Percorso alternativo')) : null),
       MOD ? editorBlocco() : null,
@@ -214,7 +238,7 @@
       F.sottosistemi.length ? null : h('p', { class: 'warn' }, 'Prima costruisci lo schema a blocchi.'),
       Sc.gruppi(F).map(g => [
         g.titolo ? h('h3', { class: 'gruppo' }, g.comune ? g.titolo : `Percorso ${g.titolo}`,
-          h('span', { class: 'mute' }, g.comune ? ' · in serie dopo ogni percorso' : ' · blocchi propri, in serie')) : null,
+          h('span', { class: 'mute' }, g.comune ? ' · in serie dopo i percorsi' : ' · blocchi propri, in serie')) : null,
         g.blocchi.map(ss => {
           const arch = ss.metodo === 'arch';
           return h('section', { class: 'r-' + ss.ruolo + ' bordo-ruolo' },

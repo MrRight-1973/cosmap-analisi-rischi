@@ -9,6 +9,7 @@ const Schema = require(path.join(__dirname, 'schema.js'));
 const V = require(path.join(__dirname, 'validazione.js'));
 
 const blocco = ss => ({ nome: ss.nome || '', ruolo: ss.ruolo || '', comune: !(ss.percorso || '').trim() });
+const soloA = ss => ((ss.percorso || '').trim() ? [] : (ss.percorsi || []).filter(Boolean));
 const numero = v => (v == null || Number.isNaN(v) ? null : v);
 
 function risultato(funzione, articoli, missionTime) {
@@ -25,14 +26,14 @@ function risultato(funzione, articoli, missionTime) {
     // Schema a blocchi: un percorso per riga con i blocchi in serie, come nella pagina
     schema: Schema.percorsi(f).map(nome => ({ nome, blocchi: Schema.catena(f, nome).map(blocco) })),
     // Come nella pagina: con i blocchi comuni in coda, i percorsi confluiscono nei comuni disegnati una volta sola
-    confluenza: (c => c && {
-      propri: [...c.propri].map(([nome, blocchi]) => ({ nome, blocchi: blocchi.map(blocco) })),
-      comuni: c.comuni.map(blocco),
-    })(Schema.confluenza(f)),
+    // (più confluenze se ci sono blocchi comuni solo ad alcuni percorsi)
+    albero: (function nodo(n) {
+      return n && (n.rami ? { blocchi: n.blocchi.map(blocco), rami: n.rami.map(nodo) } : { nome: n.nome, blocchi: n.propri.map(blocco) });
+    })(Schema.albero(f)),
     sottosistemi: Schema.gruppi(f).flatMap(g => g.blocchi).map(ss => {
       const x = r.subs.find(s => s.ss === ss).r;
       return {
-        nome: ss.nome || '', ruolo: ss.ruolo || '', percorso: (ss.percorso || '').trim(), metodo: x.metodo, categoria: ss.categoria || '',
+        nome: ss.nome || '', ruolo: ss.ruolo || '', percorso: (ss.percorso || '').trim() || soloA(ss).join(', '), metodo: x.metodo, categoria: ss.categoria || '',
         pfh: numero(x.nano), pl: x.pl, mttfd: numero(x.mttfd), mttfdLivello: x.mttfdLevel || null, dcavg: numero(x.dcavg),
         dcLivello: x.dcLevel || null, ccf: x.metodo === 'arch' ? x.ccf : null, fonteK1: x.k1 ? x.k1.fonte : null, pfhManuale: !!x.pfhManuale,
         componenti: (ss.componenti || []).map(c => ({ articoloId: c.articoloId, qty: c.qty ?? 1, canale: c.canale || 1, dc: c.dc ?? null })),

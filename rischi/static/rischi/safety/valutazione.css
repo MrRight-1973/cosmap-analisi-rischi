@@ -57,36 +57,39 @@ html[data-theme="dark"] .r-logica { --rc: #4cc38a; } html[data-theme="dark"] .r-
 .valutazione .lane:last-child { border-bottom: none; }
 .valutazione .lane-name.peggiore { color: var(--rich); }
 .valutazione .lane-name a { color: var(--acc); }
-.valutazione .lane-name { width: 112px; flex: none; display: flex; flex-direction: column; justify-content: center; gap: 4px; font-weight: 600; font-size: 0.85rem; }
+.valutazione .lane-name { width: 170px; flex: none; display: flex; flex-direction: column; justify-content: center; gap: 4px; font-weight: 600; font-size: 0.85rem; }
 #content .valutazione .blk { flex: none; width: 138px; border: 1px solid var(--line); border-left: 5px solid var(--rc); border-radius: 8px; padding: 6px 8px;
   background: var(--bg); font-size: 0.78rem; line-height: 1.35; cursor: pointer; text-align: left; color: var(--ink); }
 .valutazione div.blk { cursor: default; }
-.valutazione .blk b { display: block; font-size: 0.82rem; }
+.valutazione .blk b { display: block; font-size: 0.82rem; overflow-wrap: anywhere; }
 #content .valutazione .blk.comune { border-style: dashed; border-left-style: solid; }
 .valutazione .blk.sel { outline: 2px solid var(--acc); outline-offset: 1px; }
 .valutazione .blk .ruolo { color: var(--rc); font-size: 0.68rem; text-transform: uppercase; letter-spacing: .03em; }
 .valutazione .arrow { align-self: center; color: var(--mute); font-size: 1rem; }
 .valutazione .lane-add { align-self: center; width: 110px; flex: none; margin: 0; }
 .valutazione .lane-res { margin-left: auto; padding-left: 10px; flex: none; min-width: 110px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 3px; font-size: 0.78rem; }
-.valutazione .schema.conf { display: grid; grid-template-columns: 112px max-content 34px max-content 1fr; column-gap: 6px; }
-.valutazione .schema.conf > * { padding: 10px 0; }
+.valutazione .grid .largo { grid-column: span 2; }
+.valutazione .percorsi-blocco { margin-top: 10px; }
+.valutazione .percorsi-blocco .row { margin-top: 2px; gap: 4px 16px; }
+/* confluenze: ogni nodo = rami (percorsi o confluenze più a monte) → blocchi comuni; i rami si uniscono sul bordo destro */
+.valutazione .schema.conf .nodo { display: flex; align-items: center; }
+.valutazione .schema.conf .rami { display: flex; flex-direction: column; align-items: stretch; }
+.valutazione .schema.conf .ramo { display: flex; align-items: center; position: relative; }
+.valutazione .schema.conf .rami:not(.liberi) > .ramo::after { content: ''; position: absolute; right: 0; border-right: 2px solid var(--mute); }
+.valutazione .schema.conf .ramo.primo::after { top: 50%; bottom: 0; }
+.valutazione .schema.conf .ramo.mezzo::after { top: 0; bottom: 0; }
+.valutazione .schema.conf .ramo.ultimo::after { top: 0; bottom: 50%; }
+.valutazione .schema.conf .ramo .coda { flex: 1; min-width: 20px; margin-left: 6px; border-top: 2px solid var(--mute); }
+.valutazione .schema.conf .punta { color: var(--mute); font-size: 12px; line-height: 1; margin: 0 4px 0 -1px; }
+.valutazione .schema.conf .foglia { display: flex; align-items: stretch; gap: 10px; padding: 10px 0; }
 .valutazione .schema.conf .propri { display: flex; align-items: stretch; gap: 6px; }
-.valutazione .schema.conf .propri .coda { flex: 1; min-width: 14px; align-self: center; border-top: 2px solid var(--mute); }
-.valutazione .schema.conf .nome-add { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
-.valutazione .schema.conf .nome-add .lane-name { width: auto; flex: none; }
-.valutazione .schema.conf .nome-add .lane-add { width: 112px; }
-.valutazione .schema.conf .comuni { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.valutazione .schema.conf .nome-add { width: 170px; flex: none; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+.valutazione .schema.conf .nome-add .lane-name { width: auto; }
+.valutazione .schema.conf .nome-add .lane-add { width: 100%; }
+.valutazione .schema.conf .nome-add .lane-res { margin: 0; padding: 0; min-width: 0; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 4px 8px; }
+.valutazione .schema.conf .comuni { display: flex; align-items: center; gap: 8px; margin-right: 6px; }
 .valutazione .schema.conf .comuni .catena { display: flex; align-items: stretch; gap: 6px; }
-.valutazione .schema.conf .comuni .lane-add { align-self: auto; width: auto; }
-.valutazione .schema.conf .lane-res { grid-column: 5; }
-.valutazione .bus { position: relative; }
-.valutazione .bus::before { content: ''; position: absolute; left: 0; width: 50%; top: 50%; border-top: 2px solid var(--mute); }
-.valutazione .bus::after { content: ''; position: absolute; left: 50%; border-left: 2px solid var(--mute); }
-.valutazione .bus.primo::before { width: 100%; }
-.valutazione .bus.primo::after { top: 50%; bottom: 0; }
-.valutazione .bus.mezzo::after { top: 0; bottom: 0; }
-.valutazione .bus.ultimo::after { top: 0; bottom: 50%; }
-.valutazione .bus .punta { position: absolute; right: -7px; top: 50%; transform: translateY(-52%); color: var(--mute); font-size: 12px; line-height: 1; }
+.valutazione .schema.conf .comuni .lane-add { width: auto; }
 .valutazione .legenda { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.78rem; color: var(--mute); margin: 0 0 6px; }
 .valutazione .legenda span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--rc); margin-right: 5px; vertical-align: -1px; }
 .valutazione .legenda .leg-comune { --rc: transparent; border: 1px dashed var(--mute); padding: 0 4px; border-radius: 4px; }
@@ -95,3 +98,6 @@ html[data-theme="dark"] .r-logica { --rc: #4cc38a; } html[data-theme="dark"] .r-
 .valutazione table.reg td input { min-width: 0; padding: 3px 4px; }
 .valutazione input.ko { outline: 2px solid var(--rich); color: var(--rich); }
 #verifica.valutazione { max-width: none; }
+.valutazione .lane-name textarea { width: 100%; box-sizing: border-box; resize: none; font: inherit; font-weight: 600; padding: 4px 6px; }
+.valutazione .aggiunta-comuni { margin-top: 6px; }
+.valutazione .aggiunta-comuni .lane-add { width: auto; }
