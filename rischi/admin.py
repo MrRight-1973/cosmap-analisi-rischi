@@ -727,3 +727,14 @@ def _gruppi_libreria(request, app_label=None):
 
 
 admin.site.get_app_list = _gruppi_libreria
+
+
+def _pagina_app(request, app_label, extra_context=None):
+    """Le voci "Libreria" e simili del percorso portano alla pagina iniziale della libreria, non a quella
+    della singola applicazione: la pagina di partenza è sempre una."""
+    return redirect("admin:index")
+
+
+admin.site.app_index = _pagina_app
+# La pagina iniziale della libreria ha anche lei la fascia con il percorso
+admin.site.index_template = "admin/indice_libreria.html"

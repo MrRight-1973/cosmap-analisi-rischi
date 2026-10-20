@@ -54,8 +54,8 @@
     rendiApribili(sezioni, chiave, libreria, sezioni[0].closest("form.modulo, .modulo") || sezioni[0], function () { return libreria; });
   }
 
-  // Elenco dei gruppi della libreria a sinistra nelle pagine interne: uguale alla pagina iniziale (stessi pulsanti,
-  // stessi gruppi richiudibili, stato condiviso), con evidenziata la voce aperta e il suo gruppo sempre aperto
+  // Elenco dei gruppi della libreria a sinistra nelle pagine interne: uguale alla pagina iniziale (stessi
+  // gruppi richiudibili, stato condiviso), con evidenziata la voce aperta e il suo gruppo sempre aperto
   function preparaBarra() {
     const barra = document.getElementById("nav-sidebar");
     if (!barra) return;
@@ -93,13 +93,13 @@
       });
     });
 
-    // Pulsanti per aprire o chiudere tutto, sopra la prima sezione
+    // Pulsanti per aprire o chiudere tutto, sopra la prima sezione (solo nelle pagine delle commesse)
+    if (libreria) return;
     const comandi = document.createElement("p");
     comandi.className = "comandi-sezioni";
     [["apri", "Apri tutte le sezioni"], ["chiudi", "Chiudi tutte"]].forEach(function ([azione, testo]) {
       const b = document.createElement("button");
       b.type = "button";
-      if (libreria) b.className = "button";
       b.textContent = testo;
       b.addEventListener("click", function () {
         sezioni.forEach((s) => imposta(s, azione === "apri"));
@@ -111,7 +111,25 @@
     primo.parentNode.insertBefore(comandi, primo);
   }
 
+  // Percorso nelle pagine della libreria: la prima voce si chiama come nel menu ("Libreria e utenti") e la voce
+  // dell'applicazione (Libreria, Autenticazione…) sparisce, perché porterebbe alla stessa pagina iniziale.
+  function sistemaPercorso() {
+    const percorso = document.querySelector(".breadcrumbs");
+    const inizio = percorso && percorso.querySelector("a");
+    if (!inizio || inizio.textContent.trim() !== "Pagina iniziale") return;  // "Home" dell'amministrazione
+    inizio.textContent = "Libreria e utenti";
+    const seconda = inizio.nextElementSibling;
+    const resto = seconda && seconda.tagName === "A" && seconda.pathname.startsWith(inizio.pathname)
+      ? seconda.pathname.slice(inizio.pathname.length).replace(/\/$/, "") : null;
+    if (resto && !resto.includes("/")) {  // es. /admin/rischi/: pagina dell'applicazione
+      const separatore = seconda.previousSibling;
+      if (separatore && separatore.nodeType === Node.TEXT_NODE) separatore.remove();
+      seconda.remove();
+    }
+  }
+
   function avvia() {
+    sistemaPercorso();
     prepara();
     preparaBarra();
   }
