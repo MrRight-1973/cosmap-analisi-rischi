@@ -26,7 +26,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus.flowables import _listWrapOn
-from reportlab.lib.utils import ImageReader
+from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.platypus import (
     Image,
     CondPageBreak,
@@ -1012,17 +1012,29 @@ def _data_testo(testo):
 GRIGIO_SCHEMA = "#5F6B7A"
 
 
-def _blocco_schema(disegno, x, y, larghezza, altezza, blocco, caratteri):
+def _righe_testo(testo, larghezza, dimensione, massimo):
+    """Testo a capo nella larghezza data (al massimo `massimo` righe, l'ultima chiusa da … se non basta)."""
+    normale = _carattere_registrato()[0]
+    righe = simpleSplit(testo or "–", normale, dimensione, larghezza) or ["–"]
+    if len(righe) > massimo:
+        righe = righe[:massimo]
+        while righe[-1] and pdfmetrics.stringWidth(righe[-1] + "…", normale, dimensione) > larghezza:
+            righe[-1] = righe[-1][:-1]
+        righe[-1] += "…"
+    return righe
+
+
+def _blocco_schema(disegno, x, y, larghezza, altezza, blocco):
     normale = _carattere_registrato()[0]
     colore = colors.HexColor(COLORI_RUOLO.get(blocco["ruolo"], GRIGIO_SCHEMA))
     disegno.add(Rect(x, y, larghezza, altezza, rx=3, ry=3, fillColor=colors.HexColor("#F7F8FA"),
                      strokeColor=colors.HexColor(GRIGIO_SCHEMA), strokeWidth=0.6,
                      strokeDashArray=[3, 2] if blocco["comune"] else None))
     disegno.add(Rect(x, y, 1.6 * mm, altezza, fillColor=colore, strokeColor=None))
-    nome = blocco["nome"] or "–"
-    disegno.add(String(x + 2.6 * mm, y + altezza - 4.2 * mm, nome[:caratteri] + ("…" if len(nome) > caratteri else ""),
-                       fontName=normale, fontSize=7.5))
-    disegno.add(String(x + 2.6 * mm, y + 2.2 * mm, RUOLI.get(blocco["ruolo"], blocco["ruolo"]).upper(),
+    # nome a capo (fino a tre righe) sopra il ruolo
+    for k, riga in enumerate(_righe_testo(blocco["nome"], larghezza - 3.6 * mm, 7, 3)):
+        disegno.add(String(x + 2.6 * mm, y + altezza - 3.6 * mm - k * 2.9 * mm, riga, fontName=normale, fontSize=7))
+    disegno.add(String(x + 2.6 * mm, y + 1.8 * mm, RUOLI.get(blocco["ruolo"], blocco["ruolo"]).upper(),
                        fontName=normale, fontSize=5.8, fillColor=colore))
 
 
@@ -1033,53 +1045,86 @@ def _freccia_schema(disegno, x1, x2, y):
     disegno.add(Polygon([x2 - 1 * mm, y + 1.2 * mm, x2, y, x2 - 1 * mm, y - 1.2 * mm], fillColor=grigio, strokeColor=None))
 
 
-def _schema_a_blocchi(schema, confluenza=None):
-    """Schema a blocchi come nella pagina. Con la confluenza (blocchi comuni in coda a tutti i percorsi) ogni
-    percorso ha la sua riga con i blocchi propri e confluisce nei sottosistemi comuni, disegnati una volta sola;
-    altrimenti un percorso per riga con tutti i sottosistemi in serie (i comuni col bordo tratteggiato)."""
+def _albero_schema(r):
+    """Albero delle confluenze dal risultato del calcolo (calcola.js): nodo = {blocchi, rami}, percorso = {nome,
+    blocchi}. Senza confluenza, un percorso per riga con tutti i sottosistemi in serie."""
+    if r.get("albero"):
+        return r["albero"]
+    if r.get("confluenza"):  # forma di prima: un solo livello di confluenza
+        return {"blocchi": r["confluenza"]["comuni"], "rami": r["confluenza"]["propri"]}
+    return {"blocchi": [], "rami": r["schema"]}
+
+
+def _schema_a_blocchi(albero):
+    """Schema a blocchi come nella pagina: ogni percorso ha la sua riga con i blocchi propri e confluisce nei
+    sottosistemi comuni (bordo tratteggiato), disegnati una volta sola; con blocchi comuni solo ad alcuni
+    percorsi le confluenze sono più d'una. I nomi di percorsi e blocchi vanno a capo."""
     normale = _carattere_registrato()[0]
-    righe = confluenza["propri"] if confluenza else schema
-    comuni = confluenza["comuni"] if confluenza else []
-    etichetta = 2.6 * cm if any(r["nome"] for r in righe) else 0
-    propri = max((len(r["blocchi"]) for r in righe), default=1) or (0 if comuni else 1)
+    grigio = colors.HexColor(GRIGIO_SCHEMA)
+    foglie = []
+
+    def visita(nodo, profondita):
+        if "rami" not in nodo:
+            foglie.append(nodo)
+            return {}
+        livelli = {profondita: len(nodo["blocchi"])}
+        for ramo in nodo["rami"]:
+            for d, n in visita(ramo, profondita + 1).items():
+                livelli[d] = max(livelli.get(d, 0), n)
+        return livelli
+
+    livelli = visita(albero, 1)
+    colonne = sorted((d for d, n in livelli.items() if n), reverse=True)  # da sinistra: confluenze più a monte
+    etichetta = 2.8 * cm if any(f["nome"] for f in foglie) else 0
+    propri = max((len(f["blocchi"]) for f in foglie), default=0) or (0 if colonne else 1)
     freccia = 0.6 * cm
-    blocchi = propri + len(comuni)
-    frecce = (propri + len(comuni)) if comuni else propri - 1  # con la confluenza c'è anche il tratto verso i comuni
-    larghezza = min(3.6 * cm, (LARGHEZZA - etichetta - freccia * frecce) / blocchi)
-    altezza_blocco, passo = 1.15 * cm, 1.55 * cm
-    disegno = Drawing(LARGHEZZA, passo * len(righe))
-    caratteri = max(8, int(larghezza / (1.55 * mm)))
-    fine_propri = etichetta + propri * larghezza + max(propri - 1, 0) * freccia
-    bus = fine_propri + freccia / 2
-    centri = []
-    for i, riga in enumerate(righe):
-        y = passo * (len(righe) - 1 - i) + (passo - altezza_blocco) / 2
-        meta = y + altezza_blocco / 2
-        centri.append(meta)
-        if riga["nome"]:
-            disegno.add(String(0, meta - 3, riga["nome"][:18], fontName=normale, fontSize=8))
-        x = etichetta
-        for j, blocco in enumerate(riga["blocchi"]):
-            _blocco_schema(disegno, x, y, larghezza, altezza_blocco, blocco, caratteri)
+    blocchi = propri + sum(livelli[d] for d in colonne)
+    frecce = max(propri - 1, 0) + sum(livelli[d] for d in colonne)  # una per ogni passaggio, bus compresi
+    larghezza = min(3.6 * cm, (LARGHEZZA - etichetta - 0.2 * cm - freccia * frecce) / max(blocchi, 1))
+    altezza_blocco, passo = 1.35 * cm, 1.75 * cm
+    disegno = Drawing(LARGHEZZA, passo * len(foglie))
+    # ascissa del bus (linea di confluenza) di ogni livello
+    x = etichetta + 0.2 * cm + propri * larghezza + max(propri - 1, 0) * freccia
+    bus = {}
+    for d in colonne:
+        bus[d] = x + freccia / 2
+        x += freccia + livelli[d] * larghezza + (livelli[d] - 1) * freccia
+
+    def serie(elenco, x, y):
+        for j, blocco in enumerate(elenco):
+            _blocco_schema(disegno, x, y - altezza_blocco / 2, larghezza, altezza_blocco, blocco)
             x += larghezza
-            if j < len(riga["blocchi"]) - 1:
-                _freccia_schema(disegno, x + 1 * mm, x + freccia - 0.5 * mm, meta)
+            if j < len(elenco) - 1:
+                _freccia_schema(disegno, x + 1 * mm, x + freccia - 0.5 * mm, y)
                 x += freccia
-        if comuni:  # tratto fino alla linea di confluenza
-            disegno.add(Line(x + (1 * mm if riga["blocchi"] else 0), meta, bus, meta, strokeColor=colors.HexColor(GRIGIO_SCHEMA), strokeWidth=0.8))
-    if comuni:
-        grigio = colors.HexColor(GRIGIO_SCHEMA)
+        return x
+
+    riga = iter(range(len(foglie)))
+
+    def disegna(nodo, profondita):
+        """Disegna il nodo e restituisce (ordinata dell'uscita, ascissa dove finisce)."""
+        if "rami" not in nodo:
+            y = passo * (len(foglie) - 1 - next(riga)) + passo / 2
+            if nodo["nome"]:
+                testo = _righe_testo(nodo["nome"], etichetta - 0.3 * cm, 8, 3)
+                for k, t in enumerate(testo):
+                    disegno.add(String(0, y + (len(testo) - 1) * 1.6 * mm - 1.1 * mm - k * 3.2 * mm, t, fontName=normale, fontSize=8))
+            return y, serie(nodo["blocchi"], etichetta + 0.2 * cm, y)
+        uscite = [disegna(ramo, profondita + 1) for ramo in nodo["rami"]]
+        if not nodo["blocchi"]:
+            return None, None
+        b = bus[profondita]
+        for y, fine in uscite:
+            if y is not None:
+                disegno.add(Line(fine + 1 * mm, y, b, y, strokeColor=grigio, strokeWidth=0.8))
+        centri = [y for y, _ in uscite if y is not None]
         if len(centri) > 1:
-            disegno.add(Line(bus, min(centri), bus, max(centri), strokeColor=grigio, strokeWidth=0.8))
-        meta = (min(centri) + max(centri)) / 2
-        x = bus + freccia / 2
-        _freccia_schema(disegno, bus, x - 0.5 * mm, meta)
-        for j, blocco in enumerate(comuni):
-            _blocco_schema(disegno, x, meta - altezza_blocco / 2, larghezza, altezza_blocco, blocco, caratteri)
-            x += larghezza
-            if j < len(comuni) - 1:
-                _freccia_schema(disegno, x + 1 * mm, x + freccia - 0.5 * mm, meta)
-                x += freccia
+            disegno.add(Line(b, min(centri), b, max(centri), strokeColor=grigio, strokeWidth=0.8))
+        y = (min(centri) + max(centri)) / 2
+        _freccia_schema(disegno, b, b + freccia / 2 - 0.5 * mm, y)
+        return y, serie(nodo["blocchi"], b + freccia / 2, y)
+
+    disegna(albero, 1)
     return disegno
 
 
@@ -1173,12 +1218,13 @@ def _capitolo_funzione(doc, numero, riga, articoli):
 
     doc.titoletto(f"{numero}.2 Schema a blocchi", 2)
     if r["schema"] and any(riga_s["blocchi"] for riga_s in r["schema"]):
-        confluenza = r.get("confluenza")
-        doc.storia.append(_schema_a_blocchi(r["schema"], confluenza))
+        albero = _albero_schema(r)
+        doc.storia.append(_schema_a_blocchi(albero))
         doc.spazio(1)
         doc.p("Ogni riga è un percorso; i sottosistemi sono in serie. "
               + ("I percorsi confluiscono nei sottosistemi comuni (bordo tratteggiato), disegnati una volta sola."
-                 if confluenza else "Bordo tratteggiato: sottosistema comune a tutti i percorsi."))
+                 if albero["blocchi"] or any("rami" in ramo for ramo in albero["rami"])
+                 else "Bordo tratteggiato: sottosistema comune a più percorsi."))
     else:
         doc.p("Schema a blocchi non compilato.")
 

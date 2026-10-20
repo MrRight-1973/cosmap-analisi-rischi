@@ -2107,14 +2107,31 @@ class ValidazioneTest(BaseConLibreria):
             {**ss, "percorso": percorso} for ss, percorso in zip(self.dettaglio["sottosistemi"], ("Porta", "", ""))
         ] + [{**self.dettaglio["sottosistemi"][0], "id": "fdi2", "nome": "FUNGO", "percorso": "Emergenza"}]}
         servizi.salva_valutazione(self.funzione, dettaglio, {}, self.compilatore)
-        confluenza = calcolo.calcola(self.funzione, dettaglio)["confluenza"]
-        self.assertEqual([r["nome"] for r in confluenza["propri"]], ["Porta", "Emergenza"])
-        self.assertEqual([b["nome"] for b in confluenza["comuni"]], ["FCPU", "STO"])
+        albero = calcolo.calcola(self.funzione, dettaglio)["albero"]
+        self.assertEqual([r["nome"] for r in albero["rami"]], ["Porta", "Emergenza"])
+        self.assertEqual([b["nome"] for b in albero["blocchi"]], ["FCPU", "STO"])
         self.client.force_login(self.compilatore)
         risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "funzioni"]))
         testo = " ".join(p.extract_text() for p in PdfReader(_io.BytesIO(b"".join(risposta.streaming_content))).pages)
         self.assertIn("figura A.1", testo)
         self.assertIn("confluiscono nei sottosistemi comuni", testo)
+
+        # Blocco comune solo al percorso Porta e a un terzo percorso: due confluenze, nomi lunghi a capo
+        dettaglio["percorsi"].append("Barriera di sicurezza fotoelettrica lato operatore")
+        dettaglio["sottosistemi"].append({**self.dettaglio["sottosistemi"][0], "id": "b3", "nome": "Barriera tipo 4 con muting",
+                                          "percorso": "Barriera di sicurezza fotoelettrica lato operatore"})
+        dettaglio["sottosistemi"].append({**self.dettaglio["sottosistemi"][1], "id": "fdi", "nome": "Modulo ingressi F-DI",
+                                          "percorso": "", "percorsi": ["Porta", "Barriera di sicurezza fotoelettrica lato operatore"]})
+        servizi.salva_valutazione(self.funzione, dettaglio, {}, self.compilatore)
+        r = calcolo.calcola(self.funzione, dettaglio)
+        self.assertEqual([b["nome"] for b in r["albero"]["rami"][0]["blocchi"]], ["Modulo ingressi F-DI"])
+        self.assertEqual(r["albero"]["rami"][1]["nome"], "Emergenza")
+        pfh = {p["nome"]: p["pfh"] for p in r["percorsi"]}
+        self.assertGreater(pfh["Porta"], pfh["Emergenza"] - 1e-9)
+        risposta = self.client.post(reverse("genera_documento", args=[self.rev.pk, "funzioni"]))
+        testo = " ".join(p.extract_text() for p in PdfReader(_io.BytesIO(b"".join(risposta.streaming_content))).pages)
+        self.assertIn("Modulo ingressi F-DI", testo)
+        self.assertIn("lato operatore", testo)
 
     def test_relazione_pdf(self):
         import io as _io
