@@ -2753,3 +2753,13 @@ class ProponiTestiTest(BaseConLibreria):
         self.assertNotIn("Manca la chiave", pagina)
         with mock.patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}):
             self.assertIn("Manca la chiave", self.client.get(url).content.decode())
+
+
+class PercorsoLibreriaTest(TestCase):
+    def test_libreria_porta_alla_pagina_iniziale(self):
+        self.client.force_login(User.objects.create_superuser("capo", password="prova-prova-123"))
+        for indirizzo in ("/admin/rischi/", "/admin/auth/"):
+            self.assertRedirects(self.client.get(indirizzo), reverse("admin:index"))
+        pagina = self.client.get(reverse("admin:index")).content.decode()
+        self.assertIn('class="breadcrumbs">Libreria e utenti', pagina)
+        self.assertNotIn("<h1>", self.client.get(reverse("admin:rischi_schedamodello_changelist")).content.decode())
