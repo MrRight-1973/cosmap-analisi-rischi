@@ -43,7 +43,7 @@ test('lo schema e il motore di calcolo vedono gli stessi percorsi', () => {
   const r = E.evalFunction(f, A, 20);
   for (const nome of percorsi(f)) {
     const p = r.paths.find(x => x.nome === nome);
-    assert.deepEqual([...p.sottosistemi].sort(), catena(f, nome).map(x => x.nome).sort());
+    assert.deepEqual(p.sottosistemi, catena(f, nome).map(x => x.nome), 'stesso ordine dello schema');
   }
   assert.equal(r.worst.nome, 'KTP');
 });
@@ -84,6 +84,7 @@ test('blocco comune solo ad alcuni percorsi: ingressi cablati via F-DI, PROFIsaf
   assert.deepEqual(catena(f, 'PROFIsafe').map(x => x.nome), ['Scanner', 'CPU', 'STO']);
   const r = E.evalFunction(f, A, 20);
   assert.equal(r.paths.find(p => p.nome === 'Funghi').nano, 31);
+  assert.deepEqual(r.paths.find(p => p.nome === 'Funghi').sottosistemi, ['Fungo', 'F-DI', 'CPU', 'STO'], 'in ordine di schema');
   assert.equal(r.paths.find(p => p.nome === 'PROFIsafe').nano, 30);
   // due confluenze: i tre percorsi cablati nella F-DI, poi con PROFIsafe nella F-CPU
   const a = albero(f);
@@ -108,4 +109,9 @@ test('blocco comune solo ad alcuni percorsi: ingressi cablati via F-DI, PROFIsaf
   eliminaPercorso(f, 'Barriere');
   eliminaPercorso(f, 'Porte');
   assert.ok(!f.sottosistemi.includes(di), 'comune ai soli percorsi eliminati: sparisce');
+});
+
+test('verifica: i sottosistemi del percorso sono nell\'ordine dello schema anche se aggiunti dopo', () => {
+  const f = { S: 'S2', F: 'F2', P: 'P2', sottosistemi: [ss('CPU', 'logica'), ss('STO', 'attuazione'), ss('Fungo', 'rilevamento', 'Funghi')] };
+  assert.deepEqual(E.evalFunction(f, [], 20).paths[0].sottosistemi, ['Fungo', 'CPU', 'STO']);
 });

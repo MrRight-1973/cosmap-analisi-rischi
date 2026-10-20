@@ -259,13 +259,20 @@
     return !solo.length || !nome || solo.includes(nome);
   }
 
+  const ORDINE_RUOLI = ['rilevamento', 'comunicazione', 'logica', 'attuazione'];
+  const rango = ss => { const i = ORDINE_RUOLI.indexOf(ss.ruolo); return i < 0 ? ORDINE_RUOLI.length : i; };
+  const livello = ss => ((ss.percorso || '').trim() ? 0 : (ss.percorsi || []).filter(Boolean).length ? 1 : 2);
+
   function evalFunction(fn, articoli, missionTime) {
     const req = plr(fn.S, fn.F, fn.P);
     const subs = (fn.sottosistemi || []).map(ss => ({ ss, r: evalSubsystem(ss, articoli, missionTime) }));
     const names = [...new Set(subs.map(x => (x.ss.percorso || '').trim()).filter(Boolean))];
     const groups = names.length ? names : [''];
     const paths = groups.map(nome => {
-      const chain = subs.filter(x => nelPercorso(x.ss, nome));
+      // in ordine di schema, come Schema.catena: per ruolo (rilevamento → logica → attuazione), a parità di ruolo
+      // prima i blocchi propri, poi i comuni ad alcuni percorsi, poi quelli comuni a tutti
+      const chain = subs.map((x, i) => ({ x, i })).filter(({ x }) => nelPercorso(x.ss, nome))
+        .sort((a, b) => rango(a.x.ss) - rango(b.x.ss) || livello(a.x.ss) - livello(b.x.ss) || a.i - b.i).map(({ x }) => x);
       const nano = chain.reduce((s, x) => s + (x.r.nano || 0), 0);
       const complete = chain.length > 0 && chain.every(x => x.r.pl != null);
       let pl = complete ? toPL(nano * 1e-9).pl : null;
